@@ -30,22 +30,22 @@ void utils_waitforpower(){
         power_off();
 }
 
-int readfolder(char *items[], unsigned int *muhbits){
+int readfolder(char *items[], unsigned int *muhbits, const char path[]){
     DIR dir;
     FILINFO fno;
-    char path[100] = "sd:/";
+    int i = 0;
 
     if (f_opendir(&dir, path)) {
         gfx_printf("\nFailed to open %s", path);
     }
-
-    int i = 0;
-    while (!f_readdir(&dir, &fno) && fno.fname[0]){
-        size_t size = strlen(fno.fname) + 1;
-        items[i] = (char*) malloc (size);
-        strlcpy(items[i], fno.fname, size);
-        if (fno.fattrib & AM_DIR) muhbits[i] |= (OPTION1);
-        i++;
+    else{
+        while (!f_readdir(&dir, &fno) && fno.fname[0]){
+            size_t size = strlen(fno.fname) + 1;
+            items[i] = (char*) malloc (size);
+            strlcpy(items[i], fno.fname, size);
+            if (fno.fattrib & AM_DIR) muhbits[i] |= (OPTION1);
+            i++;
+        }
     }
     return i;
 }

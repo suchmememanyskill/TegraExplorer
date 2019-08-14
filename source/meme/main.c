@@ -24,11 +24,13 @@ void meme_main(){
     sdmmc_storage_set_mmc_partition(&storage, 1);
 
     //f_rename("sd:/yeet.txt", "sd:/yote.txt");
-    
+
     char *itemsinfolder[250];
     unsigned int muhbits[250];
     int folderamount = 0;
-    folderamount = readfolder(itemsinfolder, muhbits);
+    char path[100] = "sd:/";
+
+    folderamount = readfolder(itemsinfolder, muhbits, path);
 
     int i = 0;
     gfx_printf("%d", folderamount);

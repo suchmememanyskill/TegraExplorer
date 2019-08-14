@@ -2,4 +2,4 @@
 
 void utils_gfx_init();
 void utils_waitforpower();
-int readfolder(char *items[], unsigned int *muhbits);
+int readfolder(char *items[], unsigned int *muhbits, const char path[]);
