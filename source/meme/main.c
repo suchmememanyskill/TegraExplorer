@@ -7,11 +7,6 @@
 #include "../libs/fatfs/ff.h"
 #include "../storage/sdmmc.h"
 
-#define OPTION1 (1 << 0)
-#define OPTION2 (1 << 1)
-#define OPTION3 (1 << 2)
-#define OPTION4 (1 << 3)
-
 void meme_main(){
     utils_gfx_init();
     static const u32 colors[7] = {COLOR_RED, COLOR_ORANGE, COLOR_YELLOW, COLOR_GREEN, COLOR_BLUE, COLOR_VIOLET, COLOR_DEFAULT};

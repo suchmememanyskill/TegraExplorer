@@ -9,11 +9,6 @@
 #include "../libs/fatfs/ff.h"
 #include "../storage/sdmmc.h"
 
-#define OPTION1 (1 << 0)
-#define OPTION2 (1 << 1)
-#define OPTION3 (1 << 2)
-#define OPTION4 (1 << 3)
-
 void utils_gfx_init(){
     display_backlight_brightness(100, 1000);
     gfx_clear_grey(0x1B);
