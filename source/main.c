@@ -162,5 +162,6 @@ void ipl_main()
     gfx_con_init();
     display_backlight_pwm_init();
 
+    sd_mount();
     meme_main();
 }
