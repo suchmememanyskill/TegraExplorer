@@ -4,37 +4,30 @@
 #include "../utils/btn.h"
 #include "utils.h"
 #include "main.h"
+#include "mainfunctions.h"
 #include "../libs/fatfs/ff.h"
 #include "../storage/sdmmc.h"
+#include "graphics.h"
 
 void meme_main(){
     utils_gfx_init();
-    static const u32 colors[7] = {COLOR_RED, COLOR_ORANGE, COLOR_YELLOW, COLOR_GREEN, COLOR_BLUE, COLOR_VIOLET, COLOR_DEFAULT};
-    gfx_printf("%k%pHello World!\n%k%pHi denn i think i did it\n%p%kAnother test\n", colors[1], colors[0], colors[2], colors[5], colors[6], colors[3]);
-
+    //static const u32 colors[7] = {COLOR_RED, COLOR_ORANGE, COLOR_YELLOW, COLOR_GREEN, COLOR_BLUE, COLOR_VIOLET, COLOR_DEFAULT};
+    //gfx_printf("%k%pTegraExplorer, made by SuchMemeManySkill    \n%k%p", colors[6], colors[3], colors[3], colors[6]);
+    /*
     sdmmc_storage_t storage;
     sdmmc_t sdmmc;
 
     sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
     sdmmc_storage_set_mmc_partition(&storage, 1);
-
+    */
     //f_rename("sd:/yeet.txt", "sd:/yote.txt");
 
-    char *itemsinfolder[250];
-    unsigned int muhbits[250];
-    int folderamount = 0;
-    char path[100] = "sd:/";
+    char *itemsinfolder[500];
+    unsigned int muhbits[500];
 
-    folderamount = readfolder(itemsinfolder, muhbits, path);
+    sdexplorer(itemsinfolder, muhbits);
 
-    int i = 0;
-    gfx_printf("%d", folderamount);
-    while(i < folderamount){
-        gfx_printf("\n%s", itemsinfolder[i]);
-        if (muhbits[i] & OPTION1) gfx_printf(" <DIR>");
-        else gfx_printf(" <FILE>");
-        i++;
-    }
+    gfx_printf("\n\nExited main loop, vol+ to reboot to rcm\nvol- to reboot normally\npower to power off");
 
     utils_waitforpower();
 }

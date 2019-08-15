@@ -164,4 +164,5 @@ void ipl_main()
 
     sd_mount();
     meme_main();
+    sd_unmount();
 }

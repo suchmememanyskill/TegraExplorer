@@ -7,4 +7,6 @@
 
 void utils_gfx_init();
 void utils_waitforpower();
-int readfolder(char *items[], unsigned int *muhbits, const char path[]);
+void removepartpath(char *path);
+void addpartpath(char *path, char *add);
+int readfolder(char *items[], unsigned int *muhbits, const char *path);
