@@ -46,6 +46,7 @@
 #define COLOR_BLUE   0xFF00DDFF
 #define COLOR_VIOLET 0xFF8040FF
 #define COLOR_DEFAULT 0xFF1B1B1B
+#define COLOR_WHITE 0xFFFFFFFF
 
 typedef signed char s8;
 typedef short s16;

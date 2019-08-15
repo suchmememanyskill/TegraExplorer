@@ -24,9 +24,9 @@ void _printwithhighlight(int offset, int folderamount, char *items[], int highli
     gfx_con_setpos(0, 32);
     while(i < folderamount && i < 76){
         ret = _copystring(temp, items[i + offset], 39);
-        if(i == highlight - 1) gfx_printf("\n%k%p%s%k%p", COLOR_DEFAULT, COLOR_GREEN, temp, COLOR_GREEN, COLOR_DEFAULT);
+        if(i == highlight - 1) gfx_printf("\n%k%p%s%k%p", COLOR_DEFAULT, COLOR_WHITE, temp, COLOR_WHITE, COLOR_DEFAULT);
         else gfx_printf("\n%s", temp);
-        
+
         while(ret >= 0){
         gfx_printf(" ");
         ret = ret - 1;
@@ -47,7 +47,7 @@ int fileexplorergui(char *items[], unsigned int *muhbits, const char path[], int
     char temp[43];
     gfx_con_setpos(0, 16);
     _copystring(temp, path, 43);
-    gfx_printf("%k%s\n%k", COLOR_ORANGE, temp, COLOR_GREEN);
+    gfx_printf("%k%s\n%k", COLOR_GREEN, temp, COLOR_WHITE);
     while(1){
         if (change){
         _printwithhighlight(offset, folderamount, items, select, muhbits);

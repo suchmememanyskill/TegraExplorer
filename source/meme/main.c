@@ -27,7 +27,7 @@ void meme_main(){
 
     sdexplorer(itemsinfolder, muhbits);
 
-    gfx_printf("\n\nExited main loop, vol+ to reboot to rcm\nvol- to reboot normally\npower to power off");
+    gfx_printf("%k\n\nExited main loop, vol+ to reboot to rcm\nvol- to reboot normally\npower to power off", COLOR_GREEN);
 
     utils_waitforpower();
 }
