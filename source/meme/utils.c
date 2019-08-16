@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "../libs/fatfs/ff.h"
 #include "../storage/sdmmc.h"
+#include "graphics.h"
 
 void utils_gfx_init(){
     display_backlight_brightness(100, 1000);
@@ -29,9 +30,8 @@ void addpartpath(char *path, char *add){
 
 void return_readable_byte_amounts(int size, char *in){
     char type[3];
-    int sizetemp = size;
+    unsigned long int sizetemp = size;
     int muhbytes = 0;
-    strcpy(type, "B");
     while(sizetemp > 1024){
         muhbytes++;
         sizetemp = sizetemp / 1024;
@@ -46,6 +46,9 @@ void return_readable_byte_amounts(int size, char *in){
             break;
         case 2:
             strcpy(type, "MB");
+            break;
+        case 3:
+            strcpy(type, "GB");
             break;
         default:
             strcpy(type, "GB");
@@ -109,30 +112,39 @@ int readfolder(char *items[], unsigned int *muhbits, const char *path){
 int copy(const char *src, const char *dst){
     FIL in;
     FIL out;
-
+    if (strcmp(src, dst) == 0){
+        //in and out are the same, aborting!
+        return 2;
+    }
     if (f_open(&in, src, FA_READ) != FR_OK){
         //something has gone wrong
-        return 0;
+        return 1;
     }
     if (f_open(&out, dst, FA_CREATE_ALWAYS | FA_WRITE) != FR_OK){
         //something has gone wrong
-        return 0;
+        return 1;
     }
 
     int BUFFSIZ = 32768;
     u64 size = f_size(&in);
+    unsigned long totalsize = size, kbwritten = 0;
     void *buff = malloc(BUFFSIZ);
-    int kbwritten = 0;
-    gfx_printf("%d\n", size);
+    int mbwritten = 0, percentage = 0;
+    bool abort = false;
+    meme_clearscreen();
+    gfx_printf("press VOL- to abort the file transfer!\n\n");
     while(size > BUFFSIZ){
         int res1, res2;
         res1 = f_read(&in, buff, BUFFSIZ, NULL);
         res2 = f_write(&out, buff, BUFFSIZ, NULL);
 
-        kbwritten = kbwritten + BUFFSIZ;
+        kbwritten = kbwritten + (BUFFSIZ / 1024);
+        mbwritten = kbwritten / 1024;
+        percentage = (mbwritten * 100) / (totalsize / 1024 / 1024);
 
-        gfx_printf("Written %d\r", kbwritten);
+        gfx_printf("Written %dMB [%k%d%k%%]\r", mbwritten, COLOR_GREEN, percentage, COLOR_WHITE);
         size = size - BUFFSIZ;
+        if (btn_read() & BTN_VOL_DOWN) size = 0, abort = true;
     }
     
     if(size != 0){
@@ -143,9 +155,14 @@ int copy(const char *src, const char *dst){
     f_close(&in);
     f_close(&out);
 
+    if(abort){
+        f_unlink(dst);
+    }
+
+
     free(buff);
 
-    return 1;
+    return 0;
 }
 
 int copywithpath(const char *src, const char *dstpath, int mode){

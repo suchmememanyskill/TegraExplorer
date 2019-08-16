@@ -56,7 +56,7 @@ void meme_clearscreen(){
     gfx_printf("%k%pTegraExplorer, by SuchMemeManySkill\n%k%p", COLOR_DEFAULT, COLOR_WHITE, COLOR_WHITE, COLOR_DEFAULT);
 }
 
-void _printwithhighlight(int offset, int folderamount, char *items[], int highlight, unsigned int *muhbits, const char path[]){
+void _printwithhighlight(int offset, int folderamount, char *items[], int highlight, unsigned int *muhbits, int *filesizes){
     char temp[39];
     int i = 0;
     int ret = 0; 
@@ -73,14 +73,10 @@ void _printwithhighlight(int offset, int folderamount, char *items[], int highli
         ret = ret - 1;
         }
         
-        gfx_con.x = 720 - (16 * 7);
+        gfx_con.x = 720 - (16 * 6);
         if (!(muhbits[i + offset] & OPTION1)) { //should change later
             char temp[6];
-            char temppath[PATHSIZE];
-            strcpy(temppath, path);
-            strcat(temppath, "/");
-            strcat(temppath, items[i + offset]);
-            return_readable_byte_amounts(getfilesize(temppath), temp);
+            return_readable_byte_amounts(filesizes[i + offset], temp);
             gfx_printf("%s", temp);
         }
         i++;
@@ -93,12 +89,26 @@ int fileexplorergui(char *items[], unsigned int *muhbits, const char path[], int
     int sleepvalue = 300;
     int offset = 0;
     char temp[43];
-    gfx_con_setpos(0, 16);
+    int *filesizes;
+    int i = 0;
+    filesizes = (int*) calloc(500, sizeof(int));
+    gfx_con_setpos(0, 48);
+    for (i = 0; i < folderamount; i++){
+        if(!(muhbits[i] & OPTION1)){
+            char temppath[PATHSIZE];
+            strcpy(temppath, path);
+            strcat(temppath, "/");
+            strcat(temppath, items[i]);
+            filesizes[i] = getfilesize(temppath);
+            gfx_printf("Calcing filesizes: %d / %d\r", i, folderamount - 2);
+        }
+    }
     _copystring(temp, path, 43);
+    gfx_con_setpos(0, 16);
     gfx_printf("%k%s\n%k", COLOR_GREEN, temp, COLOR_WHITE);
     while(1){
         if (change){
-        _printwithhighlight(offset, folderamount, items, select, muhbits, path);
+        _printwithhighlight(offset, folderamount, items, select, muhbits, filesizes);
         change = false;
         msleep(sleepvalue);
         }
@@ -128,5 +138,6 @@ int fileexplorergui(char *items[], unsigned int *muhbits, const char path[], int
         if (sleepvalue < 30) sleepvalue = 30;
     }
     int ret = select + offset;
+    free(filesizes);
     return ret;
 }
