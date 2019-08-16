@@ -153,7 +153,6 @@ extern void pivot_stack(u32 stack_top);
 
 void ipl_main()
 {
-    bool sd_mounted = false;
     config_hw();
     pivot_stack(IPL_STACK_TOP);
     heap_init(IPL_HEAP_START);
@@ -164,8 +163,6 @@ void ipl_main()
     gfx_con_init();
     display_backlight_pwm_init();
 
-    
-    sd_mounted = sd_mount();
-    meme_main(sd_mounted);
+    meme_main();
     sd_unmount();
 }
