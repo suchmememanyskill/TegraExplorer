@@ -37,7 +37,7 @@ void utils_waitforpower(){
         power_off();
 }
 
-void _addchartoarray(char *add, char *items[], int spot){
+void addchartoarray(char *add, char *items[], int spot){
     size_t size = strlen(add) + 1;
     items[spot] = (char*) malloc (size);
     strlcpy(items[spot], add, size);
@@ -46,27 +46,84 @@ void _addchartoarray(char *add, char *items[], int spot){
 void _mallocandaddfolderbit(unsigned int *muhbits, int spot, bool value){
     muhbits[spot] = (unsigned int) malloc (sizeof(int));
     if (value) muhbits[spot] |= (OPTION1);
+    //ff.h line 368
 }
 
 int readfolder(char *items[], unsigned int *muhbits, const char *path){
     DIR dir;
     FILINFO fno;
     int i = 2;
-    _addchartoarray(".", items, 0);
-    _addchartoarray("..", items, 1);
+    addchartoarray("Clipboard -> current folder", items, 0);
+    addchartoarray("Current folder -> One folder up", items, 1);
     _mallocandaddfolderbit(muhbits, 0, true);
     _mallocandaddfolderbit(muhbits, 1, true);
 
     if (f_opendir(&dir, path)) {
         gfx_printf("\nFailed to open %s", path);
+        return 0;
     }
     else {
         while (!f_readdir(&dir, &fno) && fno.fname[0]){
-            _addchartoarray(fno.fname, items, i);
+            addchartoarray(fno.fname, items, i);
             _mallocandaddfolderbit(muhbits, i, fno.fattrib & AM_DIR);
             i++;
         }
     }
     f_closedir(&dir);
     return i;
+}
+
+int copy(const char *src, const char *dst){
+    FIL in;
+    FIL out;
+
+    if (f_open(&in, src, FA_READ) != FR_OK){
+        //something has gone wrong
+        return 0;
+    }
+    if (f_open(&out, dst, FA_CREATE_ALWAYS | FA_WRITE) != FR_OK){
+        //something has gone wrong
+        return 0;
+    }
+
+    int BUFFSIZ = 32768;
+    u64 size = f_size(&in);
+    void *buff = malloc(BUFFSIZ);
+    int kbwritten = 0;
+    gfx_printf("%d\n", size);
+    while(size > BUFFSIZ){
+        int res1, res2;
+        res1 = f_read(&in, buff, BUFFSIZ, NULL);
+        res2 = f_write(&out, buff, BUFFSIZ, NULL);
+
+        kbwritten = kbwritten + BUFFSIZ;
+
+        gfx_printf("Written %d\r", kbwritten);
+        size = size - BUFFSIZ;
+    }
+    
+    if(size != 0){
+        f_read(&in, buff, size, NULL);
+        f_write(&out, buff, size, NULL);
+    }
+
+    f_close(&in);
+    f_close(&out);
+
+    free(buff);
+
+    return 1;
+}
+
+int copywithpath(const char *src, const char *dstpath, int mode){
+    FILINFO fno;
+    f_stat(src, &fno);
+    char dst[255];
+    strcpy(dst, dstpath);
+    if (strcmp(dstpath, "sd:/") != 0) strcat(dst, "/");
+    strcat(dst, fno.fname);
+    int ret = -1;
+    if (mode == 0) ret = copy(src, dst);
+    if (mode == 1) f_rename(src, dst);
+    return ret;
 }

@@ -229,6 +229,9 @@ void gfx_putc(char c)
 			if (gfx_con.y > gfx_ctxt.height - 16)
 				gfx_con.y = 0;
 		}
+		else if (c == '\r'){
+			gfx_con.x = 0;
+		}
 		break;
 	case 8:
 	default:

@@ -1,3 +1,3 @@
 #pragma once
 
-void meme_main();
+void meme_main(bool sdinit);

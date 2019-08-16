@@ -17,6 +17,45 @@ int _copystring(char *out, const char *in, int copynumb){
     return ret;
 }
 
+int messagebox(char *message){
+    int ret = -1;
+    meme_clearscreen();
+    gfx_printf("%s", message);
+    u8 res = btn_wait();
+        if (res & BTN_POWER) ret = 0;
+        else ret = 1;
+    meme_clearscreen();
+    return ret;
+}
+
+int gfx_menulist(int ypos, char *list[], int length){
+    int i = 0;
+    int highlight = 1;
+    while(1){
+        gfx_con_setpos(0, ypos);
+        while(i < length){
+            if (i == highlight - 1) gfx_printf("%k%p%s%k%p\n", COLOR_DEFAULT, COLOR_WHITE, list[i], COLOR_WHITE, COLOR_DEFAULT);
+            else gfx_printf("%s\n", list[i]);
+            i++;
+        }
+        i = 0;
+        u8 res = btn_wait();
+        if (res & BTN_VOL_UP) highlight--;
+        else if (res & BTN_VOL_DOWN) highlight++;
+        else if (res & BTN_POWER) break;
+        if (highlight < 1) highlight = 1;
+        if (highlight > length) highlight = length;
+    }
+    return highlight;
+}
+
+void meme_clearscreen(){
+    gfx_clear_grey(0x1B);
+    gfx_con_setpos(0, 0);
+    gfx_box(0, 0, 719, 15, COLOR_WHITE);
+    gfx_printf("%k%pTegraExplorer, by SuchMemeManySkill\n%k%p", COLOR_DEFAULT, COLOR_WHITE, COLOR_WHITE, COLOR_DEFAULT);
+}
+
 void _printwithhighlight(int offset, int folderamount, char *items[], int highlight, unsigned int *muhbits){
     char temp[39];
     int i = 0;
@@ -25,6 +64,7 @@ void _printwithhighlight(int offset, int folderamount, char *items[], int highli
     while(i < folderamount && i < 76){
         ret = _copystring(temp, items[i + offset], 39);
         if(i == highlight - 1) gfx_printf("\n%k%p%s%k%p", COLOR_DEFAULT, COLOR_WHITE, temp, COLOR_WHITE, COLOR_DEFAULT);
+        else if ((i == 0 || i == 1) && offset == 0) gfx_printf("%k\n%s%k", COLOR_ORANGE, temp, COLOR_WHITE);
         else gfx_printf("\n%s", temp);
 
         while(ret >= 0){

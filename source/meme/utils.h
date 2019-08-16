@@ -10,3 +10,6 @@ void utils_waitforpower();
 void removepartpath(char *path);
 void addpartpath(char *path, char *add);
 int readfolder(char *items[], unsigned int *muhbits, const char *path);
+int copy(const char *src, const char *dst);
+void addchartoarray(char *add, char *items[], int spot);
+int copywithpath(const char *src, const char *dstpath, int mode);
