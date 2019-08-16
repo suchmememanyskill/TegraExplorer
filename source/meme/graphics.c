@@ -59,13 +59,14 @@ void meme_clearscreen(){
 void _printwithhighlight(int offset, int folderamount, char *items[], int highlight, unsigned int *muhbits){
     char temp[39];
     int i = 0;
-    int ret = 0;
+    int ret = 0; 
     gfx_con_setpos(0, 32);
     while(i < folderamount && i < 76){
         ret = _copystring(temp, items[i + offset], 39);
         if(i == highlight - 1) gfx_printf("\n%k%p%s%k%p", COLOR_DEFAULT, COLOR_WHITE, temp, COLOR_WHITE, COLOR_DEFAULT);
         else if ((i == 0 || i == 1) && offset == 0) gfx_printf("%k\n%s%k", COLOR_ORANGE, temp, COLOR_WHITE);
-        else gfx_printf("\n%s", temp);
+        else if (muhbits[i+offset] & OPTION1) gfx_printf("\n%s", temp);
+        else gfx_printf("%k\n%s%k", COLOR_BLUE, temp, COLOR_WHITE);
 
         while(ret >= 0){
         gfx_printf(" ");
