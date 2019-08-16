@@ -27,6 +27,39 @@ void addpartpath(char *path, char *add){
     strcat(path, add);
 }
 
+void return_readable_byte_amounts(int size, char *in){
+    char type[3];
+    int sizetemp = size;
+    int muhbytes = 0;
+    strcpy(type, "B");
+    while(sizetemp > 1024){
+        muhbytes++;
+        sizetemp = sizetemp / 1024;
+    }
+
+    switch(muhbytes){
+        case 0:
+            strcpy(type, "B");
+            break;
+        case 1:
+            strcpy(type, "KB");
+            break;
+        case 2:
+            strcpy(type, "MB");
+            break;
+        default:
+            strcpy(type, "GB");
+            break;
+    }
+    sprintf(in, "%d%s", sizetemp, type);
+}
+
+int getfilesize(const char *path){
+    FILINFO fno;
+    f_stat(path, &fno);
+    return fno.fsize;
+}
+
 void utils_waitforpower(){
     u32 btn = btn_wait();
     if (btn & BTN_VOL_UP)
@@ -118,7 +151,7 @@ int copy(const char *src, const char *dst){
 int copywithpath(const char *src, const char *dstpath, int mode){
     FILINFO fno;
     f_stat(src, &fno);
-    char dst[255];
+    char dst[PATHSIZE];
     strcpy(dst, dstpath);
     if (strcmp(dstpath, "sd:/") != 0) strcat(dst, "/");
     strcat(dst, fno.fname);

@@ -23,8 +23,11 @@ int _openfilemenu(const char *path, char *clipboardpath){
     addchartoarray("Delete file", options, 3);
 
     gfx_printf("%kPath: %s%k\n\n", COLOR_GREEN, path, COLOR_WHITE);
-    int temp = (fno.fsize / 1024 / 1024);
-    gfx_printf("Size MB: %d", temp);
+
+    char size[6];
+    return_readable_byte_amounts(fno.fsize, size);
+
+    gfx_printf("Size: %s", size);
     
     res = gfx_menulist(160, options, 4);
     switch(res){
@@ -52,8 +55,8 @@ void sdexplorer(char *items[], unsigned int *muhbits){
     int value = 1;
     int copymode = -1;
     int folderamount = 0;
-    char path[255] = "sd:/";
-    char clipboard[255] = "";
+    char path[PATHSIZE] = "sd:/";
+    char clipboard[PATHSIZE] = "";
     int temp = -1;
     //static const u32 colors[8] = {COLOR_RED, COLOR_ORANGE, COLOR_YELLOW, COLOR_GREEN, COLOR_BLUE, COLOR_VIOLET, COLOR_DEFAULT, COLOR_WHITE};
     while(1){

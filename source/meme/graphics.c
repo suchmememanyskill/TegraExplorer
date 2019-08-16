@@ -56,7 +56,7 @@ void meme_clearscreen(){
     gfx_printf("%k%pTegraExplorer, by SuchMemeManySkill\n%k%p", COLOR_DEFAULT, COLOR_WHITE, COLOR_WHITE, COLOR_DEFAULT);
 }
 
-void _printwithhighlight(int offset, int folderamount, char *items[], int highlight, unsigned int *muhbits){
+void _printwithhighlight(int offset, int folderamount, char *items[], int highlight, unsigned int *muhbits, const char path[]){
     char temp[39];
     int i = 0;
     int ret = 0; 
@@ -73,9 +73,16 @@ void _printwithhighlight(int offset, int folderamount, char *items[], int highli
         ret = ret - 1;
         }
         
-        gfx_con.x = 720 - (16 * 6);
-        if (muhbits[i + offset] & OPTION1) gfx_printf("DIR");
-        else gfx_printf("FILE");
+        gfx_con.x = 720 - (16 * 7);
+        if (!(muhbits[i + offset] & OPTION1)) { //should change later
+            char temp[6];
+            char temppath[PATHSIZE];
+            strcpy(temppath, path);
+            strcat(temppath, "/");
+            strcat(temppath, items[i + offset]);
+            return_readable_byte_amounts(getfilesize(temppath), temp);
+            gfx_printf("%s", temp);
+        }
         i++;
     }
 }
@@ -91,7 +98,7 @@ int fileexplorergui(char *items[], unsigned int *muhbits, const char path[], int
     gfx_printf("%k%s\n%k", COLOR_GREEN, temp, COLOR_WHITE);
     while(1){
         if (change){
-        _printwithhighlight(offset, folderamount, items, select, muhbits);
+        _printwithhighlight(offset, folderamount, items, select, muhbits, path);
         change = false;
         msleep(sleepvalue);
         }

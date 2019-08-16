@@ -217,7 +217,7 @@ void gfx_putc(char c)
 				}
 			}
 			gfx_con.x += 16;
-			if (gfx_con.x >= gfx_ctxt.width - 16) {
+			if (gfx_con.x >= gfx_ctxt.width - 8) {
 				gfx_con.x = 0;
 				gfx_con.y += 16;
 			}
