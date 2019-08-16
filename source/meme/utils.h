@@ -15,5 +15,5 @@ int readfolder(char *items[], unsigned int *muhbits, const char *path);
 int copy(const char *src, const char *dst);
 void addchartoarray(char *add, char *items[], int spot);
 int copywithpath(const char *src, const char *dstpath, int mode);
-void return_readable_byte_amounts(int size, char *in);
+void return_readable_byte_amounts(unsigned long int size, char *in);
 int getfilesize(const char *path);

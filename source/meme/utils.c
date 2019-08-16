@@ -10,6 +10,7 @@
 #include "../storage/sdmmc.h"
 #include "graphics.h"
 
+
 void utils_gfx_init(){
     display_backlight_brightness(100, 1000);
     gfx_clear_grey(0x1B);
@@ -28,7 +29,7 @@ void addpartpath(char *path, char *add){
     strcat(path, add);
 }
 
-void return_readable_byte_amounts(int size, char *in){
+void return_readable_byte_amounts(unsigned long int size, char *in){
     char type[3];
     unsigned long int sizetemp = size;
     int muhbytes = 0;

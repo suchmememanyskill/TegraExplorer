@@ -7,20 +7,28 @@
 #include "../libs/fatfs/ff.h"
 #include "../storage/sdmmc.h"
 #include "graphics.h"
+#include "external_utils.h"
 
-int _openfilemenu(const char *path, char *clipboardpath){
+int _openfilemenu(char *path, char *clipboardpath){
     meme_clearscreen();
     FILINFO fno;
     f_stat(path, &fno);
-    char *options[4];
+    char *options[5];
     int res = 0;
     int mres = -1;
     int ret = -1;
+    int i = 4;
+    bool payload = false;
 
     addchartoarray("Back", options, 0);
     addchartoarray("Copy to clipboard", options, 1);
     addchartoarray("Move to clipboard", options, 2);
     addchartoarray("Delete file", options, 3);
+    if (strstr(path, ".bin") != NULL){
+        addchartoarray("Launch payload", options, i);
+        payload = true;
+        i++;
+    }
 
     gfx_printf("%kPath: %s%k\n\n", COLOR_GREEN, path, COLOR_WHITE);
 
@@ -29,8 +37,10 @@ int _openfilemenu(const char *path, char *clipboardpath){
 
     gfx_printf("Size: %s", size);
     
-    res = gfx_menulist(160, options, 4);
+    res = gfx_menulist(160, options, i);
     switch(res){
+        case 1:
+            break;
         case 2:
             ret = 0;
             strcpy(clipboardpath, path);
@@ -44,7 +54,7 @@ int _openfilemenu(const char *path, char *clipboardpath){
             if (mres == 0) f_unlink(path);
             break;
         default:
-            break;
+            if (payload) launch_payload(path, 0);
     }
 
     meme_clearscreen();
