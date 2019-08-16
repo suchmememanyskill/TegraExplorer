@@ -53,8 +53,8 @@ int readfolder(char *items[], unsigned int *muhbits, const char *path){
     DIR dir;
     FILINFO fno;
     int i = 2;
-    addchartoarray("Clipboard -> current folder", items, 0);
-    addchartoarray("Current folder -> One folder up", items, 1);
+    addchartoarray("Current folder -> One folder up", items, 0);
+    addchartoarray("Clipboard -> current folder", items, 1);
     _mallocandaddfolderbit(muhbits, 0, true);
     _mallocandaddfolderbit(muhbits, 1, true);
 

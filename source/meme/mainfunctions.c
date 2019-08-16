@@ -65,14 +65,14 @@ void sdexplorer(char *items[], unsigned int *muhbits){
         value = fileexplorergui(items, muhbits, path, folderamount);
         
         if (value == 1) {
+            if (strcmp("sd:/", path) == 0) break;
+            else removepartpath(path);
+        }
+        else if (value == 2) {
             if (copymode != -1){
                 copywithpath(clipboard, path, copymode);
                 copymode = -1;
             }
-        }
-        else if (value == 2) {
-            if (strcmp("sd:/", path) == 0) break;
-            else removepartpath(path);
         }
         else {
             if(muhbits[value - 1] & OPTION1) addpartpath(path, items[value - 1]);

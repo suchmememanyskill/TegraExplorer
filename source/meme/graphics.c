@@ -66,7 +66,7 @@ void _printwithhighlight(int offset, int folderamount, char *items[], int highli
         if(i == highlight - 1) gfx_printf("\n%k%p%s%k%p", COLOR_DEFAULT, COLOR_WHITE, temp, COLOR_WHITE, COLOR_DEFAULT);
         else if ((i == 0 || i == 1) && offset == 0) gfx_printf("%k\n%s%k", COLOR_ORANGE, temp, COLOR_WHITE);
         else if (muhbits[i+offset] & OPTION1) gfx_printf("\n%s", temp);
-        else gfx_printf("%k\n%s%k", COLOR_BLUE, temp, COLOR_WHITE);
+        else gfx_printf("%k\n%s%k", COLOR_VIOLET, temp, COLOR_WHITE);
 
         while(ret >= 0){
         gfx_printf(" ");
