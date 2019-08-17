@@ -20,9 +20,9 @@ extern boot_cfg_t b_cfg;
 extern bool sd_mount();
 extern void sd_unmount();
 
-int launch_payload(char *path, int update){
-	if (!update)
-		gfx_clear_grey(0x1B);
+int launch_payload(char *path, bool update)
+{
+	if (!update) gfx_clear_grey(0x1B);
 	gfx_con_setpos(0, 0);
 	if (!path)
 		return 1;
@@ -30,10 +30,10 @@ int launch_payload(char *path, int update){
 	if (sd_mount()){
 		FIL fp;
 		if (f_open(&fp, path, FA_READ)){
+			EPRINTF("Payload missing!\n");
 			return 2;
 		}
 
-		// Read and copy the payload to our chosen address
 		void *buf;
 		u32 size = f_size(&fp);
 
@@ -44,17 +44,16 @@ int launch_payload(char *path, int update){
 
 		if (f_read(&fp, buf, size, NULL)){
 			f_close(&fp);
+
 			return 3;
 		}
 
 		f_close(&fp);
-		free(path);
+
+		sd_unmount();
 
 		if (size < 0x30000){
-			if (update)
-				memcpy((u8 *)(RCM_PAYLOAD_ADDR + PATCHED_RELOC_SZ), &b_cfg, sizeof(boot_cfg_t)); // Transfer boot cfg.
-			else
-				reloc_patcher(PATCHED_RELOC_ENTRY, EXT_PAYLOAD_ADDR, ALIGN(size, 0x10));
+			reloc_patcher(PATCHED_RELOC_ENTRY, EXT_PAYLOAD_ADDR, ALIGN(size, 0x10));
 
 			reconfig_hw_workaround(false, byte_swap_32(*(u32 *)(buf + size - sizeof(u32))));
 		}
@@ -68,7 +67,6 @@ int launch_payload(char *path, int update){
 
 		msleep(100);
 
-		// Launch our payload.
 		if (!update)
 			(*ext_payload_ptr)();
 		else {
