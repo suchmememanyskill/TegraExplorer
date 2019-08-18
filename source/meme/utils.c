@@ -64,16 +64,6 @@ int getfilesize(const char *path){
     return fno.fsize;
 }
 
-void utils_waitforpower(){
-    u32 btn = btn_wait();
-    if (btn & BTN_VOL_UP)
-        reboot_rcm();
-    else if (btn & BTN_VOL_DOWN)
-        reboot_normal();
-    else
-        power_off();
-}
-
 void addchartoarray(char *add, char *items[], int spot){
     size_t size = strlen(add) + 1;
     items[spot] = (char*) malloc (size);

@@ -31,8 +31,6 @@
 #include "meme/main.h"
 #include "meme/utils.h"
 
-#include "keys/keys.h"
-
 sdmmc_t sd_sdmmc;
 sdmmc_storage_t sd_storage;
 __attribute__ ((aligned (16))) FATFS sd_fs;

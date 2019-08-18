@@ -8,7 +8,6 @@
 #define PATHSIZE 512
 
 void utils_gfx_init();
-void utils_waitforpower();
 void removepartpath(char *path);
 void addpartpath(char *path, char *add);
 int readfolder(char *items[], unsigned int *muhbits, const char *path);

@@ -53,7 +53,7 @@ void meme_clearscreen(){
     gfx_clear_grey(0x1B);
     gfx_con_setpos(0, 0);
     gfx_box(0, 0, 719, 15, COLOR_WHITE);
-    gfx_printf("%k%pTegraExplorer, by SuchMemeManySkill\n%k%p", COLOR_DEFAULT, COLOR_WHITE, COLOR_WHITE, COLOR_DEFAULT);
+    gfx_printf("%k%pTegraExplorer\n%k%p", COLOR_DEFAULT, COLOR_WHITE, COLOR_WHITE, COLOR_DEFAULT);
 }
 
 void _printwithhighlight(int offset, int folderamount, char *items[], int highlight, unsigned int *muhbits, int *filesizes){

@@ -14,6 +14,9 @@
 #include "../mem/emc.h"
 #include "../mem/sdram.h"
 #include "../soc/t210.h"
+#include "../sec/se.h"
+#include "../utils/types.h"
+#include "../keys/key_sources.inl"
 
 extern void reloc_patcher(u32 payload_dst, u32 payload_src, u32 payload_size);
 extern boot_cfg_t b_cfg;
