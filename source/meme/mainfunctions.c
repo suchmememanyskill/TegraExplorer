@@ -61,25 +61,33 @@ int _openfilemenu(char *path, char *clipboardpath){
     return ret;
 }
 
-void sdexplorer(char *items[], unsigned int *muhbits){
+void sdexplorer(char *items[], unsigned int *muhbits, char *rootpath){
     int value = 1;
     int copymode = -1;
     int folderamount = 0;
     char path[PATHSIZE] = "sd:/";
+    strcpy(path, rootpath);
+    char app[20], rpp[20];
     char clipboard[PATHSIZE] = "";
     int temp = -1;
+    strcpy(app, rootpath);
+    strcpy(rpp, app);
+    removepartpath(rpp, "rpp");
     //static const u32 colors[8] = {COLOR_RED, COLOR_ORANGE, COLOR_YELLOW, COLOR_GREEN, COLOR_BLUE, COLOR_VIOLET, COLOR_DEFAULT, COLOR_WHITE};
+
     while(1){
         gfx_clear_grey(0x1B);
         gfx_con_setpos(0, 0);
         gfx_box(0, 0, 719, 15, COLOR_WHITE);
         folderamount = readfolder(items, muhbits, path);
-        gfx_printf("%k%pTegraExplorer                          %d\n%k%p", COLOR_DEFAULT, COLOR_WHITE, folderamount - 2, COLOR_WHITE, COLOR_DEFAULT);
+        gfx_printf("%k%pTegraExplorer - %s", COLOR_DEFAULT, COLOR_WHITE, app);
+        gfx_con_setpos(39 * 16, 0);
+        gfx_printf("%d\n%k%p", folderamount - 2, COLOR_WHITE, COLOR_DEFAULT);
         value = fileexplorergui(items, muhbits, path, folderamount);
         
         if (value == 1) {
-            if (strcmp("sd:/", path) == 0) break;
-            else removepartpath(path);
+            if (strcmp(app, path) == 0) break;
+            else removepartpath(path, rpp);
         }
         else if (value == 2) {
             if (copymode != -1){
@@ -88,12 +96,12 @@ void sdexplorer(char *items[], unsigned int *muhbits){
             }
         }
         else {
-            if(muhbits[value - 1] & OPTION1) addpartpath(path, items[value - 1]);
+            if(muhbits[value - 1] & OPTION1) addpartpath(path, items[value - 1], app);
             else {
-                addpartpath(path, items[value - 1]);
+                addpartpath(path, items[value - 1], app);
                 temp = _openfilemenu(path, clipboard);
                 if (temp != -1) copymode = temp; 
-                removepartpath(path);
+                removepartpath(path, rpp);
             }
         }
     }

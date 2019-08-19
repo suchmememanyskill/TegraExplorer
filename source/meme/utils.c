@@ -17,15 +17,17 @@ void utils_gfx_init(){
     gfx_con_setpos(0, 0);
 }
 
-void removepartpath(char *path){
+void removepartpath(char *path, char *root){
     char *ret;
+    char temproot[20];
     ret = strrchr(path, '/');
     memset(ret, '\0', 1);
-    if (strcmp(path, "sd:") == 0) strcpy(path, "sd:/");
+    sprintf(temproot, "%s%s", root, "/");
+    if (strcmp(path, root) == 0) strcpy(path, temproot);
 }
 
-void addpartpath(char *path, char *add){
-    if (strcmp(path, "sd:/") != 0) strcat(path, "/");
+void addpartpath(char *path, char *add, char *root){
+    if (strcmp(path, root) != 0) strcat(path, "/");
     strcat(path, add);
 }
 
@@ -131,7 +133,7 @@ int copy(const char *src, const char *dst){
 
         kbwritten = kbwritten + (BUFFSIZ / 1024);
         mbwritten = kbwritten / 1024;
-        percentage = (mbwritten * 100) / (totalsize / 1024 / 1024);
+        percentage = (mbwritten * 100) / ((totalsize / 1024) / 1024);
 
         gfx_printf("Written %dMB [%k%d%k%%]\r", mbwritten, COLOR_GREEN, percentage, COLOR_WHITE);
         size = size - BUFFSIZ;

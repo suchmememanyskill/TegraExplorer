@@ -8,8 +8,8 @@
 #define PATHSIZE 512
 
 void utils_gfx_init();
-void removepartpath(char *path);
-void addpartpath(char *path, char *add);
+void removepartpath(char *path, char *root);
+void addpartpath(char *path, char *add, char *root);
 int readfolder(char *items[], unsigned int *muhbits, const char *path);
 int copy(const char *src, const char *dst);
 void addchartoarray(char *add, char *items[], int spot);
