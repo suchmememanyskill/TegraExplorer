@@ -21,6 +21,7 @@ int messagebox(char *message){
     int ret = -1;
     meme_clearscreen();
     gfx_printf("%s", message);
+    msleep(100);
     u8 res = btn_wait();
         if (res & BTN_POWER) ret = 0;
         else ret = 1;

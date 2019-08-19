@@ -29,9 +29,9 @@ void meme_main(){
     sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
     sdmmc_storage_set_mmc_partition(&storage, 1); */
 
-    dump_biskeys(bis_keys);
+    dump_biskeys(bis_keys); // add succeed check
 
-    char *options[5];
+    char *options[6];
     char *itemsinfolder[1000];
     unsigned int muhbits[1000];
     bool sd_mounted = false;
@@ -45,12 +45,13 @@ void meme_main(){
             i++;
         }
         addchartoarray("[emmc:/] SYSTEM", options, i);
-        addchartoarray("\nTools", options, i+1);
-        addchartoarray("About", options, i+2);
-        addchartoarray("Exit", options, i+3);
-
+        if (!sd_mounted) addchartoarray("\nMount SD", options, i+1);
+        else addchartoarray("\nUnmount SD", options, i+1);
+        addchartoarray("\nTools", options, i+2);
+        addchartoarray("About", options, i+3);
+        addchartoarray("Exit", options, i+4);
         meme_clearscreen();
-        ret = gfx_menulist(32, options, (i + 4));
+        ret = gfx_menulist(32, options, (i + 5));
 
         if (strcmp(options[ret - 1], "[SD:/] SD card") == 0){
             sdexplorer(itemsinfolder, muhbits, "sd:/");
@@ -58,16 +59,26 @@ void meme_main(){
         else if (strcmp(options[ret - 1], "About") == 0){
             messagebox(ABOUT_MESSAGE);
         }
+        else if (strcmp(options[ret - 1], "\nMount SD") == 0 || strcmp(options[ret - 1], "\nUnmount SD") == 0){
+            if (sd_mounted){
+                sd_unmount();
+                sd_mounted = false;
+            }
+            else {
+                sd_mounted = sd_mount();
+                if (!sd_mounted) messagebox("\nSD INIT FAILED");
+            }
+        }
         else if (strcmp(options[ret - 1], "[emmc:/] SYSTEM") == 0){
-            sdexplorer(itemsinfolder, muhbits, "emmc:/");
+            ret = messagebox(SYSTEM_WARNING_MESSAGE); // note: maybe add some sort of color system for messageboxes
+            if (ret == 0) sdexplorer(itemsinfolder, muhbits, "emmc:/");
         }
         else if (strcmp(options[ret - 1], "\nTools") == 0){
             meme_clearscreen();
             addchartoarray("Back", options, 0);
             addchartoarray("\nPrint BISKEYS", options, 1);
             if (!sd_mounted) addchartoarray("Mount SD", options, 2);
-            else addchartoarray("Unmount SD", options, 2);
-            ret = gfx_menulist(32, options, 3);
+            ret = gfx_menulist(32, options, 2);
             switch(ret){
                 case 2:
                     meme_clearscreen();
@@ -78,16 +89,6 @@ void meme_main(){
                     gfx_printf("\n\nBisKey 2 + 3:\n");
                     gfx_hexdump(0, bis_keys[2], 0x20 * sizeof(u8));
                     btn_wait();
-                    break;
-                case 3:
-                    if (sd_mounted){
-                        sd_unmount();
-                        sd_mounted = false;
-                    }
-                    else {
-                        sd_mounted = sd_mount();
-                        if (!sd_mounted) messagebox("\nSD INIT FAILED");
-                    }
                     break;
             }
         }
