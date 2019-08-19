@@ -10,7 +10,6 @@
 #include "../storage/sdmmc.h"
 #include "graphics.h"
 
-
 void utils_gfx_init(){
     display_backlight_brightness(100, 1000);
     gfx_clear_grey(0x1B);
@@ -24,6 +23,25 @@ void removepartpath(char *path, char *root){
     memset(ret, '\0', 1);
     sprintf(temproot, "%s%s", root, "/");
     if (strcmp(path, root) == 0) strcpy(path, temproot);
+}
+
+int dumptosd(const char *path){
+    f_mkdir("sd:/tegraexplorer");
+    f_mkdir("sd:/tegraexplorer/nanddump");
+    FILINFO fno;
+    int res = 0;
+    f_stat(path, &fno);
+    char pathname[PATHSIZE];
+    char foldername[75];
+    strcpy(pathname, path);
+    removepartpath(pathname, "emmc:");
+    strcpy(foldername, strrchr(pathname, '/'));
+    if (strcmp(foldername, "/") == 0) strcpy(foldername, "/root");
+    sprintf(pathname, "%s%s", "sd:/tegraexplorer/nanddump", foldername);
+    f_mkdir(pathname);
+    sprintf(pathname, "%s%s%s%s", "sd:/tegraexplorer/nanddump", foldername, "/", fno.fname);
+    res = copy(path, pathname);
+    return res;
 }
 
 void addpartpath(char *path, char *add, char *root){
@@ -152,7 +170,6 @@ int copy(const char *src, const char *dst){
     if(abort){
         f_unlink(dst);
     }
-
 
     free(buff);
 

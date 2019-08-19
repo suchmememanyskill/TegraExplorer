@@ -13,20 +13,22 @@ int _openfilemenu(char *path, char *clipboardpath){
     meme_clearscreen();
     FILINFO fno;
     f_stat(path, &fno);
-    char *options[5];
+    char *options[6];
     int res = 0;
     int mres = -1;
     int ret = -1;
     int i = 4;
-    bool payload = false;
 
-    addchartoarray("Back", options, 0);
+    addchartoarray("Back\n", options, 0);
     addchartoarray("Copy to clipboard", options, 1);
     addchartoarray("Move to clipboard", options, 2);
-    addchartoarray("Delete file", options, 3);
+    addchartoarray("Delete file\n", options, 3);
     if (strstr(path, ".bin") != NULL){
         addchartoarray("Launch payload", options, i);
-        payload = true;
+        i++;
+    }    
+    if (strcmp(strstr(path, "emmc:/"), path) == 0){
+        addchartoarray("Dump to SD", options, i);
         i++;
     }
 
@@ -54,7 +56,12 @@ int _openfilemenu(char *path, char *clipboardpath){
             if (mres == 0) f_unlink(path);
             break;
         default:
-            if (payload) launch_payload(path, 0);
+            if (strcmp(options[res - 1], "Launch payload") == 0) launch_payload(path, 0);
+            else if (strcmp(options[res - 1], "Dump to SD") == 0) {
+                int res = 0;
+                res = dumptosd(path);
+                if (res == 1) messagebox("Copy Failed\nInput or Output is invalid");
+            }
     }
 
     meme_clearscreen();

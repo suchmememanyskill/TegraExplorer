@@ -16,3 +16,4 @@ void addchartoarray(char *add, char *items[], int spot);
 int copywithpath(const char *src, const char *dstpath, int mode, char *app);
 void return_readable_byte_amounts(unsigned long int size, char *in);
 int getfilesize(const char *path);
+int dumptosd(const char *path);
