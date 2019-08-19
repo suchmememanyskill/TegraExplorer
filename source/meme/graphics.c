@@ -14,7 +14,7 @@ int _copystring(char *out, const char *in, int copynumb){
     if (strlength > copynumb + 1) strlength = copynumb;
     memset(out + strlength, '\0', 1);
     int ret = copynumb - strlength;
-    return ret;
+    return ret + 4;
 }
 
 int messagebox(char *message){

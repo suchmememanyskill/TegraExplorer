@@ -30,8 +30,11 @@ extern void sd_unmount();
 static bool   _key_exists(const void *data) { return memcmp(data, zeros, 0x10); };
 static void   _generate_kek(u32 ks, const void *key_source, void *master_key, const void *kek_seed, const void *key_seed);
 
-int launch_payload(char *path, bool update)
-{
+sdmmc_storage_t storage;
+emmc_part_t *system_part;
+sdmmc_t sdmmc;
+
+int launch_payload(char *path, bool update){
 	if (!update) gfx_clear_grey(0x1B);
 	gfx_con_setpos(0, 0);
 	if (!path)
@@ -89,10 +92,8 @@ int launch_payload(char *path, bool update)
 }
 
 void dump_biskeys(u8 bis_key[4][32]){
-	tsec_ctxt_t tsec_ctxt;
-    sdmmc_t sdmmc;
-	sdmmc_storage_t storage;
 	u8 temp_key[0x10], device_key[0x10] = {0};
+    tsec_ctxt_t tsec_ctxt;
 
 	int retries = 0;
 
@@ -177,6 +178,46 @@ void dump_biskeys(u8 bis_key[4][32]){
         se_aes_crypt_block_ecb(8, 0, bis_key[2] + 0x10, bis_key_source[2] + 0x10);
         memcpy(bis_key[3], bis_key[2], 0x20);
     }
+
+    sdmmc_storage_set_mmc_partition(&storage, 0);
+    // Parse eMMC GPT.
+    LIST_INIT(gpt);
+    nx_emmc_gpt_parse(&gpt, &storage);
+
+    /*
+    char part_name[37] = "SYSTEM";
+
+    // todo: menu selection for this
+
+    u32 bis_key_index = 0;
+    if (strcmp(part_name, "PRODINFOF") == 0)
+        bis_key_index = 0;
+    else if (strcmp(part_name, "SAFE") == 0)
+        bis_key_index = 1;
+    else if (strcmp(part_name, "SYSTEM") == 0)
+        bis_key_index = 2;
+    else if (strcmp(part_name, "USER") == 0)
+        bis_key_index = 3;
+    else {
+        gfx_printf("Partition name %s unrecognized.", part_name);
+        return;
+    }
+    */
+    se_aes_key_set(8, bis_key[2] + 0x00, 0x10);
+    se_aes_key_set(9, bis_key[2] + 0x10, 0x10);
+
+    system_part = nx_emmc_part_find(&gpt, "SYSTEM");
+    if (!system_part) {
+        gfx_printf("Failed to locate SYSTEM partition.");
+        return;
+    }
+
+    __attribute__ ((aligned (16))) FATFS emmc_fs;
+    if (f_mount(&emmc_fs, "emmc:", 1)) {
+        gfx_printf("Mount failed.");
+        return;
+    }
+    return;
 }
 
 static void _generate_kek(u32 ks, const void *key_source, void *master_key, const void *kek_seed, const void *key_seed) {

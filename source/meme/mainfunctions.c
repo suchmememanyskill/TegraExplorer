@@ -65,10 +65,10 @@ void sdexplorer(char *items[], unsigned int *muhbits, char *rootpath){
     int value = 1;
     int copymode = -1;
     int folderamount = 0;
-    char path[PATHSIZE] = "sd:/";
+    char path[PATHSIZE] = "";
+    char clipboard[PATHSIZE] = "";
     strcpy(path, rootpath);
     char app[20], rpp[20];
-    char clipboard[PATHSIZE] = "";
     int temp = -1;
     strcpy(app, rootpath);
     strcpy(rpp, app);
@@ -80,6 +80,10 @@ void sdexplorer(char *items[], unsigned int *muhbits, char *rootpath){
         gfx_con_setpos(0, 0);
         gfx_box(0, 0, 719, 15, COLOR_WHITE);
         folderamount = readfolder(items, muhbits, path);
+        if (folderamount == -1){
+            messagebox("\nInvalid path\n\nReturning to main menu");
+            break;
+        }
         gfx_printf("%k%pTegraExplorer - %s", COLOR_DEFAULT, COLOR_WHITE, app);
         gfx_con_setpos(39 * 16, 0);
         gfx_printf("%d\n%k%p", folderamount - 2, COLOR_WHITE, COLOR_DEFAULT);
@@ -91,9 +95,10 @@ void sdexplorer(char *items[], unsigned int *muhbits, char *rootpath){
         }
         else if (value == 2) {
             if (copymode != -1){
-                copywithpath(clipboard, path, copymode);
+                copywithpath(clipboard, path, copymode, app);
                 copymode = -1;
             }
+            else messagebox("\nThe Clipboard is empty!");
         }
         else {
             if(muhbits[value - 1] & OPTION1) addpartpath(path, items[value - 1], app);

@@ -87,9 +87,10 @@ int readfolder(char *items[], unsigned int *muhbits, const char *path){
     _mallocandaddfolderbit(muhbits, 0, true);
     _mallocandaddfolderbit(muhbits, 1, true);
 
+    
     if (f_opendir(&dir, path)) {
         gfx_printf("\nFailed to open %s", path);
-        return 0;
+        return -1;
     }
     else {
         while (!f_readdir(&dir, &fno) && fno.fname[0]){
@@ -158,12 +159,12 @@ int copy(const char *src, const char *dst){
     return 0;
 }
 
-int copywithpath(const char *src, const char *dstpath, int mode){
+int copywithpath(const char *src, const char *dstpath, int mode, char *app){
     FILINFO fno;
     f_stat(src, &fno);
     char dst[PATHSIZE];
     strcpy(dst, dstpath);
-    if (strcmp(dstpath, "sd:/") != 0) strcat(dst, "/");
+    if (strcmp(dstpath, app) != 0) strcat(dst, "/");
     strcat(dst, fno.fname);
     int ret = -1;
     if (mode == 0) ret = copy(src, dst);

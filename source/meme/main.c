@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 #include "../gfx/di.h"
 #include "../gfx/gfx.h"
 #include "../utils/btn.h"
@@ -15,19 +16,21 @@
 extern bool sd_mount();
 extern void sd_unmount();
 
+static u8 bis_keys[4][0x20];
+
 void meme_main(){
     utils_gfx_init();
     //dump_keys();
 
-    u8 bis_keys[4][0x20] = {0};
-    dump_biskeys(bis_keys);
-    
+    /*
     sdmmc_storage_t storage;
     sdmmc_t sdmmc;
 
     sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
-    sdmmc_storage_set_mmc_partition(&storage, 1);
-    
+    sdmmc_storage_set_mmc_partition(&storage, 1); */
+
+    dump_biskeys(bis_keys);
+
     char *options[5];
     char *itemsinfolder[1000];
     unsigned int muhbits[1000];
@@ -41,13 +44,13 @@ void meme_main(){
             addchartoarray("[SD:/] SD card", options, i);
             i++;
         }
-        //addchartoarray("[emmc:/] SYSTEM", options, i);
-        addchartoarray("\nTools", options, i);
-        addchartoarray("About", options, i+1);
-        addchartoarray("Exit", options, i+2);
+        addchartoarray("[emmc:/] SYSTEM", options, i);
+        addchartoarray("\nTools", options, i+1);
+        addchartoarray("About", options, i+2);
+        addchartoarray("Exit", options, i+3);
 
         meme_clearscreen();
-        ret = gfx_menulist(32, options, (i + 3));
+        ret = gfx_menulist(32, options, (i + 4));
 
         if (strcmp(options[ret - 1], "[SD:/] SD card") == 0){
             sdexplorer(itemsinfolder, muhbits, "sd:/");
