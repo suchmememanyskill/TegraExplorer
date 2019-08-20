@@ -15,7 +15,7 @@
 #include "../utils/types.h"
 
 int launch_payload(char *path, int update);
-void dump_biskeys(u8 bis_key[4][32]);
+int dump_biskeys(u8 bis_key[4][32]);
 
 static const u8 zeros[0x10] = {0};
 

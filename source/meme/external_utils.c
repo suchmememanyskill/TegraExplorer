@@ -91,7 +91,7 @@ int launch_payload(char *path, bool update){
 	return 4;
 }
 
-void dump_biskeys(u8 bis_key[4][32]){
+int dump_biskeys(u8 bis_key[4][32]){
 	u8 temp_key[0x10], device_key[0x10] = {0};
     tsec_ctxt_t tsec_ctxt;
 
@@ -106,7 +106,7 @@ void dump_biskeys(u8 bis_key[4][32]){
     const pkg1_id_t *pkg1_id = pkg1_identify(pkg1);
     if (!pkg1_id) {
         EPRINTF("Unknown pkg1 version.");
-        return;
+        return -1;
     }
 
     bool found_tsec_fw = false;
@@ -119,7 +119,7 @@ void dump_biskeys(u8 bis_key[4][32]){
     }
     if (!found_tsec_fw) {
         EPRINTF("Failed to locate TSEC firmware.");
-        return;
+        return -1;
     }
 
     u8 tsec_keys[0x10] = {0};
@@ -150,7 +150,7 @@ void dump_biskeys(u8 bis_key[4][32]){
 
     if (res < 0) {
         gfx_printf("ERROR %x dumping TSEC.\n", res);
-        return;
+        return -1;
     }
 
     u32 sbk[4] = {FUSE(FUSE_PRIVATE_KEY0), FUSE(FUSE_PRIVATE_KEY1),
@@ -209,15 +209,15 @@ void dump_biskeys(u8 bis_key[4][32]){
     system_part = nx_emmc_part_find(&gpt, "SYSTEM");
     if (!system_part) {
         gfx_printf("Failed to locate SYSTEM partition.");
-        return;
+        return -1;
     }
 
     __attribute__ ((aligned (16))) FATFS emmc_fs;
     if (f_mount(&emmc_fs, "emmc:", 1)) {
         gfx_printf("Mount failed.");
-        return;
+        return -1;
     }
-    return;
+    return pkg1_id->kb;
 }
 
 static void _generate_kek(u32 ks, const void *key_source, void *master_key, const void *kek_seed, const void *key_seed) {

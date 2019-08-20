@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 #include "../gfx/di.h"
 #include "../gfx/gfx.h"
 #include "../utils/btn.h"
@@ -68,12 +69,81 @@ int _openfilemenu(char *path, char *clipboardpath){
     return ret;
 }
 
+int dumpfirmware(char *items[], unsigned int *muhbits){
+    DIR dir;
+    FILINFO fno;
+    char path[28] = "emmc:/Contents/registered";
+    char sdpath[28] = "sd:/tegraexplorer/firmware";
+    char tempnand[100] = "";
+    char tempsd[100] = "";
+    int ret = 0, i = 0, foldersize = 0;
+
+    meme_clearscreen();
+    gfx_printf("\nStarting copy of firmware\n\n");
+
+    f_mkdir("sd:/tegraexplorer");
+    f_mkdir("sd:/tegraexplorer/firmware");
+
+    readfolder(items, muhbits, path);
+
+    if (f_opendir(&dir, path)) {
+        messagebox("Failed to open directory!");
+        return -1;
+    }
+
+    while (!f_readdir(&dir, &fno) && fno.fname[0]){
+        addchartoarray(fno.fname, items, foldersize);
+        mallocandaddfolderbit(muhbits, foldersize, fno.fattrib & AM_DIR);
+        foldersize++;
+    }
+
+    f_closedir(&dir);
+
+    for (i = 0; i <= foldersize; i++){
+        if (muhbits[i] & AM_DIR){
+            sprintf(tempnand, "%s/%s", path, items[i]);
+            if(f_opendir(&dir, tempnand)){
+                messagebox("Failure opening folder");
+                return -2;
+            }
+            sprintf(tempnand, "%s/%s/00", path, items[i]);
+            sprintf(tempsd, "%s/%s", sdpath, items[i]);
+            //messagebox(tempnand);
+            //dumptosd(tempnand);
+            //btn_wait();
+            //messagebox(tempsd);
+            ret = copy(tempnand, tempsd, 0);
+            if (ret != 0) {
+                messagebox("Copy failed! (infolder)");
+                return 1;
+            }
+            f_closedir(&dir);
+        }
+        else {
+            sprintf(tempnand, "%s/%s", path, items[i]);
+            sprintf(tempsd, "%s/%s", sdpath, items[i]);
+            ret = copy(tempnand, tempsd, 0);
+            if (ret != 0) {
+                messagebox("Copy failed! (infile)");
+                return 1;
+            }
+        }
+        gfx_printf("Copied %d / %d nca files\r", i + 1, foldersize + 1);
+    }
+    return 0;
+}
+
+void wtf(char *items[], unsigned int *muhbits){
+    dumpfirmware(items, muhbits); // DOESNT WORK
+}
+
 void sdexplorer(char *items[], unsigned int *muhbits, char *rootpath){
+    //dumpfirmware(items, muhbits); // WORKS ?!?!?!?!
     int value = 1;
     int copymode = -1;
     int folderamount = 0;
     char path[PATHSIZE] = "";
-    char clipboard[PATHSIZE] = "";
+    static char clipboard[PATHSIZE + 1] = "";
     strcpy(path, rootpath);
     char app[20], rpp[20];
     int temp = -1;

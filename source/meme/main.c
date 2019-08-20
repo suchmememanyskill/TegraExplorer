@@ -7,21 +7,19 @@
 #include "main.h"
 #include "mainfunctions.h"
 #include "../libs/fatfs/ff.h"
-#include "../storage/sdmmc.h"
 #include "../utils/util.h"
-#include "../sec/se.h"
 #include "graphics.h"
 #include "external_utils.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
 
-static u8 bis_keys[4][0x20];
+static u32 bis_keys[4][8];
 
 void meme_main(){
     utils_gfx_init();
     //dump_keys();
-
+    
     /*
     sdmmc_storage_t storage;
     sdmmc_t sdmmc;
@@ -29,7 +27,8 @@ void meme_main(){
     sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
     sdmmc_storage_set_mmc_partition(&storage, 1); */
 
-    dump_biskeys(bis_keys); // add succeed check
+    int firmver = -1;
+    firmver = dump_biskeys(bis_keys); // add succeed check
 
     char *options[6];
     char *itemsinfolder[1000];
@@ -77,8 +76,8 @@ void meme_main(){
             meme_clearscreen();
             addchartoarray("Back", options, 0);
             addchartoarray("\nPrint BISKEYS", options, 1);
-            if (!sd_mounted) addchartoarray("Mount SD", options, 2);
-            ret = gfx_menulist(32, options, 2);
+            addchartoarray("Dump firmware", options, 2);
+            ret = gfx_menulist(32, options, 3);
             switch(ret){
                 case 2:
                     meme_clearscreen();
@@ -89,6 +88,10 @@ void meme_main(){
                     gfx_printf("\n\nBisKey 2 + 3:\n");
                     gfx_hexdump(0, bis_keys[2], 0x20 * sizeof(u8));
                     btn_wait();
+                    break;
+                case 3:
+                    ret = messagebox("\nThis will dump your firmware to your sd!\nThis might take a while\n\nVol-/+ to cancel\nPower to continue...");
+                    if (ret == 0) wtf(itemsinfolder, muhbits);
                     break;
             }
         }

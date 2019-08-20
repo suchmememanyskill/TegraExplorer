@@ -9,6 +9,7 @@
 #include "../libs/fatfs/ff.h"
 #include "../storage/sdmmc.h"
 #include "graphics.h"
+#include "external_utils.h"
 
 void utils_gfx_init(){
     display_backlight_brightness(100, 1000);
@@ -40,7 +41,7 @@ int dumptosd(const char *path){
     sprintf(pathname, "%s%s", "sd:/tegraexplorer/nanddump", foldername);
     f_mkdir(pathname);
     sprintf(pathname, "%s%s%s%s", "sd:/tegraexplorer/nanddump", foldername, "/", fno.fname);
-    res = copy(path, pathname);
+    res = copy(path, pathname, 1);
     return res;
 }
 
@@ -90,7 +91,7 @@ void addchartoarray(char *add, char *items[], int spot){
     strlcpy(items[spot], add, size);
 }
 
-void _mallocandaddfolderbit(unsigned int *muhbits, int spot, bool value){
+void mallocandaddfolderbit(unsigned int *muhbits, int spot, bool value){
     muhbits[spot] = (unsigned int) malloc (sizeof(int));
     if (value) muhbits[spot] |= (OPTION1);
     //ff.h line 368
@@ -102,8 +103,8 @@ int readfolder(char *items[], unsigned int *muhbits, const char *path){
     int i = 2;
     addchartoarray("Current folder -> One folder up", items, 0);
     addchartoarray("Clipboard -> Current folder", items, 1);
-    _mallocandaddfolderbit(muhbits, 0, true);
-    _mallocandaddfolderbit(muhbits, 1, true);
+    mallocandaddfolderbit(muhbits, 0, true);
+    mallocandaddfolderbit(muhbits, 1, true);
 
     
     if (f_opendir(&dir, path)) {
@@ -113,7 +114,7 @@ int readfolder(char *items[], unsigned int *muhbits, const char *path){
     else {
         while (!f_readdir(&dir, &fno) && fno.fname[0]){
             addchartoarray(fno.fname, items, i);
-            _mallocandaddfolderbit(muhbits, i, fno.fattrib & AM_DIR);
+            mallocandaddfolderbit(muhbits, i, fno.fattrib & AM_DIR);
             i++;
         }
     }
@@ -121,15 +122,21 @@ int readfolder(char *items[], unsigned int *muhbits, const char *path){
     return i;
 }
 
-int copy(const char *src, const char *dst){
+int copy(const char *src, const char *dst, int print){
     FIL in;
     FIL out;
+    unsigned int res = 0;
+    char temp[100];
     if (strcmp(src, dst) == 0){
         //in and out are the same, aborting!
         return 2;
     }
-    if (f_open(&in, src, FA_READ) != FR_OK){
+    res = f_open(&in, src, FA_READ | FA_OPEN_EXISTING);
+    if (res != FR_OK){
         //something has gone wrong
+        //sprintf(temp, "%s %d", src, res);
+        //messagebox(temp);
+
         return 1;
     }
     if (f_open(&out, dst, FA_CREATE_ALWAYS | FA_WRITE) != FR_OK){
@@ -143,8 +150,10 @@ int copy(const char *src, const char *dst){
     void *buff = malloc(BUFFSIZ);
     int mbwritten = 0, percentage = 0;
     bool abort = false;
-    meme_clearscreen();
-    gfx_printf("press VOL- to abort the file transfer!\n\n");
+    if (print == 1) {
+        meme_clearscreen();
+        gfx_printf("press VOL- to abort the file transfer!\n\n");
+    }
     while(size > BUFFSIZ){
         int res1, res2;
         res1 = f_read(&in, buff, BUFFSIZ, NULL);
@@ -154,9 +163,11 @@ int copy(const char *src, const char *dst){
         mbwritten = kbwritten / 1024;
         percentage = (mbwritten * 100) / ((totalsize / 1024) / 1024);
 
-        gfx_printf("Written %dMB [%k%d%k%%]\r", mbwritten, COLOR_GREEN, percentage, COLOR_WHITE);
         size = size - BUFFSIZ;
-        if (btn_read() & BTN_VOL_DOWN) size = 0, abort = true;
+        if (print == 1){
+            gfx_printf("Written %dMB [%k%d%k%%]\r", mbwritten, COLOR_GREEN, percentage, COLOR_WHITE);
+            if (btn_read() & BTN_VOL_DOWN) size = 0, abort = true;
+        }
     }
     
     if(size != 0){
@@ -184,7 +195,7 @@ int copywithpath(const char *src, const char *dstpath, int mode, char *app){
     if (strcmp(dstpath, app) != 0) strcat(dst, "/");
     strcat(dst, fno.fname);
     int ret = -1;
-    if (mode == 0) ret = copy(src, dst);
+    if (mode == 0) ret = copy(src, dst, 1);
     if (mode == 1) f_rename(src, dst);
     return ret;
 }
