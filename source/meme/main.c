@@ -91,7 +91,7 @@ void meme_main(){
                     break;
                 case 3:
                     ret = messagebox("\nThis will dump your firmware to your sd!\nThis might take a while\n\nVol-/+ to cancel\nPower to continue...");
-                    if (ret == 0) wtf(itemsinfolder, muhbits);
+                    if (ret == 0 && sd_mounted) sdexplorer(itemsinfolder, muhbits, "DumpFirmware");
                     break;
             }
         }

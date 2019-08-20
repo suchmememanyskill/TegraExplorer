@@ -84,8 +84,6 @@ int dumpfirmware(char *items[], unsigned int *muhbits){
     f_mkdir("sd:/tegraexplorer");
     f_mkdir("sd:/tegraexplorer/firmware");
 
-    readfolder(items, muhbits, path);
-
     if (f_opendir(&dir, path)) {
         messagebox("Failed to open directory!");
         return -1;
@@ -99,19 +97,10 @@ int dumpfirmware(char *items[], unsigned int *muhbits){
 
     f_closedir(&dir);
 
-    for (i = 0; i <= foldersize; i++){
+    for (i = 0; i < foldersize; i++){
         if (muhbits[i] & AM_DIR){
-            sprintf(tempnand, "%s/%s", path, items[i]);
-            if(f_opendir(&dir, tempnand)){
-                messagebox("Failure opening folder");
-                return -2;
-            }
             sprintf(tempnand, "%s/%s/00", path, items[i]);
             sprintf(tempsd, "%s/%s", sdpath, items[i]);
-            //messagebox(tempnand);
-            //dumptosd(tempnand);
-            //btn_wait();
-            //messagebox(tempsd);
             ret = copy(tempnand, tempsd, 0);
             if (ret != 0) {
                 messagebox("Copy failed! (infolder)");
@@ -128,22 +117,22 @@ int dumpfirmware(char *items[], unsigned int *muhbits){
                 return 1;
             }
         }
-        gfx_printf("Copied %d / %d nca files\r", i + 1, foldersize + 1);
+        gfx_printf("Copied %d / %d nca files\r", i + 1, foldersize);
     }
+    messagebox("\nDump completed!\n\nThe firmware dump is located \n  in sd:/tegraexplorer/firmware");
     return 0;
 }
 
-void wtf(char *items[], unsigned int *muhbits){
-    dumpfirmware(items, muhbits); // DOESNT WORK
-}
-
 void sdexplorer(char *items[], unsigned int *muhbits, char *rootpath){
-    //dumpfirmware(items, muhbits); // WORKS ?!?!?!?!
+    if (strcmp(rootpath, "DumpFirmware") == 0){
+        dumpfirmware(items, muhbits);
+        return;
+    }
     int value = 1;
     int copymode = -1;
     int folderamount = 0;
     char path[PATHSIZE] = "";
-    static char clipboard[PATHSIZE + 1] = "";
+    char clipboard[PATHSIZE + 1] = "";
     strcpy(path, rootpath);
     char app[20], rpp[20];
     int temp = -1;
