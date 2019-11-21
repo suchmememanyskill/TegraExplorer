@@ -21,5 +21,5 @@ Navigate around the menu's using the vol+, vol- and power buttons
 Based on [Lockpick_RCM](https://github.com/shchmue/Lockpick_RCM), and thus based on [Hekate](https://github.com/CTCaer/hekate)
 
 Lots of help from:
-shchmue
-Denn
+- shchmue
+- Denn
