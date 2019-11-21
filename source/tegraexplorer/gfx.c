@@ -24,11 +24,11 @@ int makemenu(menu_item menu[], int menuamount){
         gfx_con_setpos(0, 31);
 
         if (currentpos == 1){
-            while (currentpos < menuamount && menu[currentpos - 1].property < 0)
+            while (currentpos < menuamount && menu[currentpos - 1].property < 1)
                 currentpos++;
         }
         if (currentpos == menuamount){
-            while (currentpos > 1 && menu[currentpos - 1].property < 0)
+            while (currentpos > 1 && menu[currentpos - 1].property < 1)
                 currentpos--;
         }
 
@@ -46,13 +46,13 @@ int makemenu(menu_item menu[], int menuamount){
 
         if (res & BTN_VOL_UP && currentpos > 1){
             currentpos--;
-            while(menu[currentpos - 1].property < 0 && currentpos > 1)
+            while(menu[currentpos - 1].property < 1 && currentpos > 1)
                 currentpos--;
         }
             
         else if (res & BTN_VOL_DOWN && currentpos < menuamount){
             currentpos++;
-            while(menu[currentpos - 1].property < 0 && currentpos < menuamount)
+            while(menu[currentpos - 1].property < 1 && currentpos < menuamount)
                 currentpos++;
         }
 
