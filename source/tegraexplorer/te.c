@@ -10,26 +10,26 @@ extern void sd_unmount();
 bool sd_mounted = false;
 
 menu_item mainmenu[MAINMENU_AMOUNT] = {
-    {"[SD:/] SD CARD", COLOR_GREEN, 1, 1},
-    {"[EMMC:/] ?", COLOR_GREEN, 2, 1},
-    {"\nMount/Unmount SD", COLOR_WHITE, 3, 1},
-    {"Tools", COLOR_VIOLET, 4, 1},
-    {"\nCredits", COLOR_WHITE, 5, 1},
-    {"Exit", COLOR_WHITE, 6, 1}
+    {"[SD:/] SD CARD", COLOR_GREEN, SD_CARD, 1},
+    {"[EMMC:/] ?", COLOR_GREEN, EMMC, 1},
+    {"\nMount/Unmount SD", COLOR_WHITE, MOUNT_SD, 1},
+    {"Tools", COLOR_VIOLET, TOOLS, 1},
+    {"\nCredits", COLOR_WHITE, CREDITS, 1},
+    {"Exit", COLOR_WHITE, EXIT, 1}
 };
 
 menu_item shutdownmenu[5] = {
     {"-- EXIT --\n", COLOR_ORANGE, -1, 0},
-    {"Back", COLOR_WHITE, 1, 1},
-    {"\nReboot to RCM", COLOR_VIOLET, 2, 1},
-    {"Reboot normally", COLOR_ORANGE, 3, 1},
-    {"Power off", COLOR_BLUE, 4, 1}
+    {"Back", COLOR_WHITE, -1, 1},
+    {"\nReboot to RCM", COLOR_VIOLET, REBOOT_RCM, 1},
+    {"Reboot normally", COLOR_ORANGE, REBOOT_NORMAL, 1},
+    {"Power off", COLOR_BLUE, POWER_OFF, 1}
 };
 
 menu_item toolsmenu[3] = {
     {"-- TOOLS --\n", COLOR_VIOLET, -1, 0},
-    {"Back", COLOR_WHITE, 1, 1},
-    {"\nDisplay Console Info", COLOR_GREEN, 2, 1}
+    {"Back", COLOR_WHITE, -1, 1},
+    {"\nDisplay Console Info", COLOR_GREEN, DISPLAY_INFO, 1}
 };
 
 void fillmainmenu(){
@@ -66,6 +66,46 @@ void te_main(){
         fillmainmenu();
         res = makemenu(mainmenu, MAINMENU_AMOUNT);
 
+        switch(res){
+            case SD_CARD:
+                break;
+            case EMMC:
+                break;
+            case MOUNT_SD:
+                if (sd_mounted){
+                    sd_mounted = false;
+                    sd_unmount();
+                } 
+                else
+                    sd_mounted = sd_mount();
+
+                break;
+
+            case TOOLS:
+                res = makemenu(toolsmenu, 3);
+
+                if (res == DISPLAY_INFO)
+                    displayinfo();
+                
+                break;
+            
+            case CREDITS:
+                message(CREDITS_MESSAGE, COLOR_WHITE);
+                break;
+
+            case EXIT:
+                res = makemenu(shutdownmenu, 5);
+
+                if (res == REBOOT_RCM)
+                    reboot_rcm();
+                else if (res == REBOOT_NORMAL)
+                    reboot_normal();
+                else if (res == POWER_OFF)
+                    power_off(); //todo declock bpmp
+
+                break;
+        }
+        /*
         if (res == 3){
             if (sd_mounted){
                 sd_mounted = false;
@@ -94,5 +134,6 @@ void te_main(){
             else if (res == 4)
                 power_off(); //todo declock bpmp
         }
+        */
     }
 }

@@ -11,6 +11,25 @@ typedef struct _menu_item {
     short property;
 } menu_item;
 
-menu_item mainmenu[MAINMENU_AMOUNT];
+enum mainmenu_return {
+    SD_CARD = 1,
+    EMMC,
+    MOUNT_SD,
+    TOOLS,
+    CREDITS,
+    EXIT
+};
+
+enum shutdownmenu_return {
+    REBOOT_RCM = 1,
+    REBOOT_NORMAL,
+    POWER_OFF
+};
+
+enum toolsmenu_return {
+    DISPLAY_INFO = 1
+};
+
+//menu_item mainmenu[MAINMENU_AMOUNT];
 
 void te_main();
