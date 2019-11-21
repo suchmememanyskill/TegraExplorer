@@ -10,7 +10,7 @@ void clearscreen(){
     gfx_printf("%k%KTegraexplorer%k%K\n", COLOR_DEFAULT, COLOR_WHITE, COLOR_WHITE, COLOR_DEFAULT);
 }
 
-void message(char* message, u32 color){
+int message(char* message, u32 color){
     clearscreen();
     gfx_printf("%k%s%k", color, message, COLOR_DEFAULT);
     return btn_wait();
@@ -22,11 +22,19 @@ int makemenu(menu_item menu[], int menuamount){
 
     while (1){
         gfx_con_setpos(0, 31);
+
+        if (currentpos == 1){
+            while (currentpos < menuamount && menu[currentpos - 1].property < 0)
+                currentpos++;
+        }
+        if (currentpos == menuamount){
+            while (currentpos > 1 && menu[currentpos - 1].property < 0)
+                currentpos--;
+        }
+
         for (i = 0; i < menuamount; i++){
-            if (menu[i].property < 0) {
-                i--;
+            if (menu[i].property < 0)
                 continue;
-            }
             if (i == currentpos - 1)
                 gfx_printf("%k%K%s%K\n", COLOR_DEFAULT, COLOR_WHITE, menu[i].name, COLOR_DEFAULT);
             else
@@ -36,16 +44,19 @@ int makemenu(menu_item menu[], int menuamount){
 
         res = btn_wait();
 
-        if (res & BTN_VOL_UP)
+        if (res & BTN_VOL_UP && currentpos > 1){
             currentpos--;
-        else if (res & BTN_VOL_DOWN)
+            while(menu[currentpos - 1].property < 0 && currentpos > 1)
+                currentpos--;
+        }
+            
+        else if (res & BTN_VOL_DOWN && currentpos < menuamount){
             currentpos++;
+            while(menu[currentpos - 1].property < 0 && currentpos < menuamount)
+                currentpos++;
+        }
+
         else if (res & BTN_POWER)
             return menu[currentpos - 1].internal_function;
-
-        if (currentpos > menuamount)
-            currentpos = menuamount;
-        else if (currentpos < 1)
-            currentpos = 1;
     }
 }

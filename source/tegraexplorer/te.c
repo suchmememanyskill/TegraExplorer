@@ -6,6 +6,7 @@
 
 extern bool sd_mount();
 extern void sd_unmount();
+bool sd_mounted = false;
 
 menu_item mainmenu[MAINMENU_AMOUNT] = {
     {"[SD:/] SD CARD", COLOR_GREEN, 1, 0},
@@ -23,32 +24,26 @@ menu_item shutdownmenu[4] = {
     {"Back", COLOR_WHITE, 4, 0}
 };
 
-int calcmenuitems(){
-    int amount = 0, i;
-
-    for (i = 0; i < MAINMENU_AMOUNT; i++)
-        if (mainmenu[i].property >= 0)
-            amount++;
-    
-    return amount;
-}
-
 void fillmainmenu(){
     int i;
 
     for (i = 0; i < MAINMENU_AMOUNT; i++){
         switch (i + 1) {
             case 1:
-                if (sd_mount)
+                if (sd_mounted)
                     mainmenu[i].property = 1;
                 else
                     mainmenu[i].property = -1;
                 break;
             case 3:
-                if (sd_mount)
+                if (sd_mounted){
                     mainmenu[i].property = 1;
-                else
-                    mainmenu[i].property = -1;
+                    strcpy(mainmenu[i].name, "Unmount SD");
+                }
+                else {
+                    mainmenu[i].property = 0;
+                    strcpy(mainmenu[i].name, "Mount SD");
+                }
                 break;
         }
     }
@@ -57,12 +52,23 @@ void fillmainmenu(){
 void te_main(){
     int res;
 
+    sd_mounted = sd_mount();
+
     while (1){
         fillmainmenu();
-        res = makemenu(mainmenu, calcmenuitems());
+        res = makemenu(mainmenu, MAINMENU_AMOUNT);
+
+        if (res == 3){
+            if (sd_mounted){
+                sd_mounted = false;
+                sd_unmount();
+            }
+            else
+                sd_mounted = sd_mount();
+        }
 
         if (res == 5)
-            message(CREDITS_MESSAGE, COLOR_GREEN);
+            message(CREDITS_MESSAGE, COLOR_WHITE);
 
         if (res == 6){
             res = makemenu(shutdownmenu, 4);
