@@ -56,6 +56,7 @@ static u32 _heap_alloc(heap_t *heap, u32 size, u32 alignment)
 			node->used = 1;
 			new->used = 0;
 			new->next = node->next;
+			new->next->prev = new;
 			new->prev = node;
 			node->next = new;
 
@@ -107,17 +108,12 @@ void heap_init(u32 base)
 
 void *malloc(u32 size)
 {
-	return (void *)_heap_alloc(&_heap, size, 0x10);
-}
-
-void *memalign(u32 align, u32 size)
-{
-	return (void *)_heap_alloc(&_heap, size, align);
+	return (void *)_heap_alloc(&_heap, size, sizeof(hnode_t));
 }
 
 void *calloc(u32 num, u32 size)
 {
-	void *res = (void *)_heap_alloc(&_heap, num * size, 0x10);
+	void *res = (void *)_heap_alloc(&_heap, num * size, sizeof(hnode_t));
 	memset(res, 0, num * size);
 	return res;
 }

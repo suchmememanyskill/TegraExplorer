@@ -32,18 +32,21 @@ void _cluster_enable_power()
 	// Enable cores power.
 	// 1-3.x: MAX77621_NFSR_ENABLE.
 	i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_CONTROL1_REG,
-		MAX77621_AD_ENABLE | MAX77621_NFSR_ENABLE | MAX77621_SNS_ENABLE);
+		MAX77621_AD_ENABLE | MAX77621_NFSR_ENABLE | MAX77621_SNS_ENABLE | MAX77621_RAMP_12mV_PER_US);
 	// 1.0.0-3.x: MAX77621_T_JUNCTION_120 | MAX77621_CKKADV_TRIP_DISABLE | MAX77621_INDUCTOR_NOMINAL.
 	i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_CONTROL2_REG,
 		MAX77621_T_JUNCTION_120 | MAX77621_WDTMR_ENABLE | MAX77621_CKKADV_TRIP_75mV_PER_US| MAX77621_INDUCTOR_NOMINAL);
-	i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_VOUT_REG, MAX77621_VOUT_ENABLE | 0x37);
-	i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_VOUT_DVC_REG, MAX77621_VOUT_ENABLE | 0x37);
+	i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_VOUT_REG, MAX77621_VOUT_ENABLE | MAX77621_VOUT_0_95V);
+	i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_VOUT_DVC_REG, MAX77621_VOUT_ENABLE | MAX77621_VOUT_0_95V);
 }
 
-int _cluster_pmc_enable_partition(u32 part, u32 toggle, bool enable)
+int _cluster_pmc_enable_partition(u32 part, int enable)
 {
-	// Check if the partition has already been turned on.
-	if (enable && PMC(APBDEV_PMC_PWRGATE_STATUS) & part)
+	u32 part_mask = 1 << part;
+	u32 desired_state = enable << part;
+
+	// Check if the partition has the state we want.
+	if ((PMC(APBDEV_PMC_PWRGATE_STATUS) & part_mask) == desired_state)
 		return 1;
 
 	u32 i = 5001;
@@ -55,12 +58,13 @@ int _cluster_pmc_enable_partition(u32 part, u32 toggle, bool enable)
 			return 0;
 	}
 
-	PMC(APBDEV_PMC_PWRGATE_TOGGLE) = toggle | (enable ? 0x100 : 0);
+	// Toggle power gating.
+	PMC(APBDEV_PMC_PWRGATE_TOGGLE) = part | 0x100;
 
 	i = 5001;
 	while (i > 0)
 	{
-		if (PMC(APBDEV_PMC_PWRGATE_STATUS) & part)
+		if ((PMC(APBDEV_PMC_PWRGATE_STATUS) & part_mask) == desired_state)
 			break;
 		usleep(1);
 		i--;
@@ -103,11 +107,11 @@ void cluster_boot_cpu0(u32 entry)
 	CLOCK(CLK_RST_CONTROLLER_CPU_SOFTRST_CTRL2) &= 0xFFFFF000;
 
 	// Enable CPU rail.
-	_cluster_pmc_enable_partition(1, 0, true);
+	_cluster_pmc_enable_partition(0, 1);
 	// Enable cluster 0 non-CPU.
-	_cluster_pmc_enable_partition(0x8000, 15, true);
+	_cluster_pmc_enable_partition(15, 1);
 	// Enable CE0.
-	_cluster_pmc_enable_partition(0x4000, 14, true);
+	_cluster_pmc_enable_partition(14, 1);
 
 	// Request and wait for RAM repair.
 	FLOW_CTLR(FLOW_CTLR_RAM_REPAIR) = 1;
@@ -117,10 +121,10 @@ void cluster_boot_cpu0(u32 entry)
 	EXCP_VEC(EVP_CPU_RESET_VECTOR) = 0;
 
 	// Set reset vector.
-	SB(SB_AA64_RESET_LOW) = entry | 1;
+	SB(SB_AA64_RESET_LOW) = entry | SB_AA64_RST_AARCH64_MODE_EN;
 	SB(SB_AA64_RESET_HIGH) = 0;
 	// Non-secure reset vector write disable.
-	SB(SB_CSR) = 2;
+	SB(SB_CSR) = SB_CSR_NS_RST_VEC_WR_DIS;
 	(void)SB(SB_CSR);
 
 	// Clear MSELECT reset.

@@ -14,7 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "types.h"
+#include "sprintf.h"
 
 #include <stdarg.h>
 
@@ -104,8 +104,9 @@ u32 sprintf(char *buffer, const char *fmt, ...) {
                 goto out;
             default:
                 _putc(buffer + count, '%');
+                count++;
                 _putc(buffer + count, *fmt);
-                count += 2;
+                count++;
                 break;
             }
         } else {

@@ -19,6 +19,7 @@
 #define _UTIL_H_
 
 #include "types.h"
+#include "../mem/minerva.h"
 
 #define byte_swap_32(num) (((num >> 24) & 0xff) | ((num << 8) & 0xff0000) | \
 						((num >> 8 )& 0xff00) | ((num << 24) & 0xff000000))
@@ -29,11 +30,22 @@ typedef struct _cfg_op_t
 	u32 val;
 } cfg_op_t;
 
+typedef struct _nyx_storage_t
+{
+	u32 version;
+	u32 cfg;
+	u8  irama[0x8000];
+	u8  hekate[0x30000];
+	u8  rsvd[0x800000];
+	mtc_config_t mtc_cfg;
+	emc_table_t mtc_table;
+} nyx_storage_t;
+
 u32 get_tmr_us();
 u32 get_tmr_ms();
 u32 get_tmr_s();
-void usleep(u32 ticks);
-void msleep(u32 milliseconds);
+void usleep(u32 us);
+void msleep(u32 ms);
 void panic(u32 val);
 void reboot_normal();
 void reboot_rcm();

@@ -41,13 +41,13 @@ void gfx_hexdump(u32 base, const u8 *buf, u32 len);
 
 void gfx_set_pixel(u32 x, u32 y, u32 color);
 void gfx_line(int x0, int y0, int x1, int y1, u32 color);
-void gfx_box(int x0, int y0, int x1, int y1, u32 color);
 void gfx_put_small_sep();
 void gfx_put_big_sep();
 void gfx_set_rect_grey(const u8 *buf, u32 size_x, u32 size_y, u32 pos_x, u32 pos_y);
 void gfx_set_rect_rgb(const u8 *buf, u32 size_x, u32 size_y, u32 pos_x, u32 pos_y);
 void gfx_set_rect_argb(const u32 *buf, u32 size_x, u32 size_y, u32 pos_x, u32 pos_y);
 void gfx_render_bmp_argb(const u32 *buf, u32 size_x, u32 size_y, u32 pos_x, u32 pos_y);
+void gfx_box(int x0, int y0, int x1, int y1, u32 color);
 
 // Global gfx console and context.
 gfx_ctxt_t gfx_ctxt;

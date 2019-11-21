@@ -20,6 +20,8 @@
 
 #include "../utils/types.h"
 
+#define FB_ADDRESS 0xC0000000
+
 /*! Display registers. */
 #define _DIREG(reg) ((reg) * 4)
 
@@ -233,7 +235,7 @@
 #define  UV_LINE_STRIDE(x) (((x) & 0xffff) << 16)
 #define DC_WIN_DV_CONTROL 0x70E
 
-// The following registers are A/B/C shadows of the 0xBC0/0xDC0/0xFC0 registers (see DISPLAY_WINDOW_HEADER).
+/*! The following registers are A/B/C shadows of the 0xBC0/0xDC0/0xFC0 registers (see DISPLAY_WINDOW_HEADER). */
 #define DC_WINBUF_START_ADDR 0x800
 #define DC_WINBUF_ADDR_H_OFFSET 0x806
 #define DC_WINBUF_ADDR_V_OFFSET 0x808
@@ -333,7 +335,7 @@
 #define  DSI_PAD_CONTROL_VS1_PDIO_CLK   (1 <<  8)
 #define  DSI_PAD_CONTROL_VS1_PDIO(x)    (((x) & 0xf) <<  0)
 
-#define DSI_PAD_CONTROL_CD 0x4c
+#define DSI_PAD_CONTROL_CD 0x4C
 #define DSI_VIDEO_MODE_CONTROL 0x4E
 
 #define DSI_PAD_CONTROL_1 0x4F

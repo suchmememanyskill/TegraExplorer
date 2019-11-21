@@ -39,7 +39,13 @@
 
 static u32 _get_sdram_id()
 {
-	return (fuse_read_odm(4) & 0x38) >> 3;
+	u32 sdram_id = (fuse_read_odm(4) & 0x38) >> 3;
+
+	// Check if id is proper.
+	if (sdram_id > 7)
+		sdram_id = 0;
+
+	return sdram_id;
 }
 
 static void _sdram_config(const sdram_params_t *params)
@@ -539,7 +545,7 @@ void sdram_init()
 	const sdram_params_t *params = (const sdram_params_t *)sdram_get_params();
 
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_SD_CFG2, 0x05);
-	max77620_regulator_set_voltage(REGULATOR_SD1, 1100000);
+	max77620_regulator_set_voltage(REGULATOR_SD1, 1100000); // Set DRAM voltage.
 
 	PMC(APBDEV_PMC_VDDP_SEL) = params->pmc_vddp_sel;
 	usleep(params->pmc_vddp_sel_wait);

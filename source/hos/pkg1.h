@@ -19,10 +19,23 @@
 
 #include "../utils/types.h"
 
+typedef struct _key_info_t
+{
+	u32 start_offset;
+	u32 hks_offset;
+	bool hks_offset_is_from_end;
+	u32 alignment;
+	u32 hash_max;
+	u8 hash_order[13];
+	u32 es_offset;
+	u32 ssl_offset;
+} key_info_t;
+
 typedef struct _pkg1_id_t
 {
 	const char *id;
 	u32 kb;
+	key_info_t key_info;
 } pkg1_id_t;
 
 const pkg1_id_t *pkg1_identify(u8 *pkg1);

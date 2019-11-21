@@ -21,6 +21,7 @@
 
 #include "../sec/se.h"
 #include "../mem/heap.h"
+#include "../soc/bpmp.h"
 #include "../soc/t210.h"
 #include "../sec/se_t210.h"
 #include "../utils/util.h"
@@ -31,6 +32,9 @@ typedef struct _se_ll_t
 	vu32 addr;
 	vu32 size;
 } se_ll_t;
+
+static u32 _se_rsa_mod_sizes[TEGRA_SE_RSA_KEYSLOT_COUNT];
+static u32 _se_rsa_exp_sizes[TEGRA_SE_RSA_KEYSLOT_COUNT];
 
 static void _gf256_mul_x(void *block)
 {
@@ -90,17 +94,15 @@ static int _se_wait()
 
 static int _se_execute(u32 op, void *dst, u32 dst_size, const void *src, u32 src_size)
 {
-	se_ll_t *ll_dst = NULL, *ll_src = NULL;
+	se_ll_t *ll_dst = (se_ll_t *)0xECFFFFE0, *ll_src = (se_ll_t *)0xECFFFFF0;
 
 	if (dst)
 	{
-		ll_dst = (se_ll_t *)malloc(sizeof(se_ll_t));
 		_se_ll_init(ll_dst, (u32)dst, dst_size);
 	}
 
 	if (src)
 	{
-		ll_src = (se_ll_t *)malloc(sizeof(se_ll_t));
 		_se_ll_init(ll_src, (u32)src, src_size);
 	}
 
@@ -108,14 +110,13 @@ static int _se_execute(u32 op, void *dst, u32 dst_size, const void *src, u32 src
 
 	SE(SE_ERR_STATUS_0) = SE(SE_ERR_STATUS_0);
 	SE(SE_INT_STATUS_REG_OFFSET) = SE(SE_INT_STATUS_REG_OFFSET);
-	SE(SE_OPERATION_REG_OFFSET) = SE_OPERATION(op);
 
+	bpmp_mmu_maintenance(BPMP_MMU_MAINT_CLN_INV_WAY);
+
+	SE(SE_OPERATION_REG_OFFSET) = SE_OPERATION(op);
 	int res = _se_wait();
 
-	if (src)
-		free(ll_src);
-	if (dst)
-		free(ll_dst);
+	bpmp_mmu_maintenance(BPMP_MMU_MAINT_CLN_INV_WAY);
 
 	return res;
 }
@@ -133,7 +134,7 @@ static int _se_execute_one_block(u32 op, void *dst, u32 dst_size, const void *sr
 	memcpy(block, src, src_size);
 	int res = _se_execute(op, block, 0x10, block, 0x10);
 	memcpy(dst, block, dst_size);
-	
+
 	free(block);
 	return res;
 }
@@ -151,6 +152,66 @@ void se_rsa_acc_ctrl(u32 rs, u32 flags)
 		SE(SE_RSA_KEYTABLE_ACCESS_REG_OFFSET + 4 * rs) = (((flags >> 4) & 4) | (flags & 3)) ^ 7;
 	if (flags & 0x80)
 		SE(SE_RSA_KEYTABLE_ACCESS_LOCK_OFFSET) &= ~(1 << rs);
+}
+
+// se_rsa_key_set() was derived from Atmosphère's set_rsa_keyslot
+void se_rsa_key_set(u32 ks, const void *mod, u32 mod_size, const void *exp, u32 exp_size)
+{
+	u32 *data = (u32 *)mod;
+	for (u32 i = 0; i < mod_size / 4; i++)
+	{
+		SE(SE_RSA_KEYTABLE_ADDR) = RSA_KEY_NUM(ks) | RSA_KEY_TYPE(RSA_KEY_TYPE_MOD) | i;
+		SE(SE_RSA_KEYTABLE_DATA) = byte_swap_32(data[mod_size / 4 - i - 1]);
+	}
+
+	data = (u32 *)exp;
+	for (u32 i = 0; i < exp_size / 4; i++)
+	{
+		SE(SE_RSA_KEYTABLE_ADDR) = RSA_KEY_NUM(ks) | RSA_KEY_TYPE(RSA_KEY_TYPE_EXP) | i;
+		SE(SE_RSA_KEYTABLE_DATA) = byte_swap_32(data[exp_size / 4 - i - 1]);
+	}
+
+	_se_rsa_mod_sizes[ks] = mod_size;
+	_se_rsa_exp_sizes[ks] = exp_size;
+}
+
+// se_rsa_key_clear() was derived from Atmosphère's clear_rsa_keyslot
+void se_rsa_key_clear(u32 ks)
+{
+	for (u32 i = 0; i < TEGRA_SE_RSA2048_DIGEST_SIZE / 4; i++)
+	{
+		SE(SE_RSA_KEYTABLE_ADDR) = RSA_KEY_NUM(ks) | RSA_KEY_TYPE(RSA_KEY_TYPE_MOD) | i;
+		SE(SE_RSA_KEYTABLE_DATA) = 0;
+	}
+	for (u32 i = 0; i < TEGRA_SE_RSA2048_DIGEST_SIZE / 4; i++)
+	{
+		SE(SE_RSA_KEYTABLE_ADDR) = RSA_KEY_NUM(ks) | RSA_KEY_TYPE(RSA_KEY_TYPE_EXP) | i;
+		SE(SE_RSA_KEYTABLE_DATA) = 0;
+	}
+}
+
+// se_rsa_exp_mod() was derived from Atmosphère's se_synchronous_exp_mod and se_get_exp_mod_output
+int se_rsa_exp_mod(u32 ks, void *dst, u32 dst_size, const void *src, u32 src_size)
+{
+	int res;
+	u8 stack_buf[TEGRA_SE_RSA2048_DIGEST_SIZE];
+
+	for (u32 i = 0; i < src_size; i++)
+		stack_buf[i] = *((u8 *)src + src_size - i - 1);
+
+	SE(SE_CONFIG_REG_OFFSET) = SE_CONFIG_ENC_ALG(ALG_RSA) | SE_CONFIG_DST(DST_RSAREG);
+	SE(SE_RSA_CONFIG) = RSA_KEY_SLOT(ks);
+	SE(SE_RSA_KEY_SIZE_REG_OFFSET) = (_se_rsa_mod_sizes[ks] >> 6) - 1;
+	SE(SE_RSA_EXP_SIZE_REG_OFFSET) = _se_rsa_exp_sizes[ks] >> 2;
+
+	res = _se_execute(OP_START, NULL, 0, stack_buf, src_size);
+
+	// Copy output hash.
+	u32 *dst32 = (u32 *)dst;
+	for (u32 i = 0; i < dst_size / 4; i++)
+		dst32[dst_size / 4 - i - 1] = byte_swap_32(SE(SE_RSA_OUTPUT + (i << 2)));
+
+	return res;
 }
 
 void se_key_acc_ctrl(u32 ks, u32 flags)
@@ -227,18 +288,7 @@ int se_aes_crypt_ecb(u32 ks, u32 enc, void *dst, u32 dst_size, const void *src, 
 
 int se_aes_crypt_block_ecb(u32 ks, u32 enc, void *dst, const void *src)
 {
-	if (enc)
-	{
-		SE(SE_CONFIG_REG_OFFSET) = SE_CONFIG_ENC_ALG(ALG_AES_ENC) | SE_CONFIG_DST(DST_MEMORY);
-		SE(SE_CRYPTO_REG_OFFSET) = SE_CRYPTO_KEY_INDEX(ks) | SE_CRYPTO_CORE_SEL(CORE_ENCRYPT);
-	}
-	else
-	{
-		SE(SE_CONFIG_REG_OFFSET) = SE_CONFIG_DEC_ALG(ALG_AES_DEC) | SE_CONFIG_DST(DST_MEMORY);
-		SE(SE_CRYPTO_REG_OFFSET) = SE_CRYPTO_KEY_INDEX(ks) | SE_CRYPTO_CORE_SEL(CORE_DECRYPT);
-	}
-	SE(SE_BLOCK_COUNT_REG_OFFSET) = 0;
-	return _se_execute(OP_START, dst, 0x10, src, 0x10);
+	return se_aes_crypt_ecb(ks, enc, dst, 0x10, src, 0x10);
 }
 
 int se_aes_crypt_ctr(u32 ks, void *dst, u32 dst_size, const void *src, u32 src_size, void *ctr)
@@ -371,7 +421,7 @@ int se_calc_sha256(void *dst, const void *src, u32 src_size)
 	int res;
 	// Setup config for SHA256, size = BITS(src_size).
 	SE(SE_CONFIG_REG_OFFSET) = SE_CONFIG_ENC_MODE(MODE_SHA256) | SE_CONFIG_ENC_ALG(ALG_SHA) | SE_CONFIG_DST(DST_HASHREG);
-	SE(SE_SHA_CONFIG_REG_OFFSET) = SHA_ENABLE;
+	SE(SE_SHA_CONFIG_REG_OFFSET) = SHA_INIT_ENABLE;
 	SE(SE_SHA_MSG_LENGTH_REG_OFFSET) = (u32)(src_size << 3);
 	SE(SE_SHA_MSG_LENGTH_REG_OFFSET + 4 * 1) = 0;
 	SE(SE_SHA_MSG_LENGTH_REG_OFFSET + 4 * 2) = 0;
@@ -389,5 +439,48 @@ int se_calc_sha256(void *dst, const void *src, u32 src_size)
 	for (u32 i = 0; i < 8; i++)
 		dst32[i] = byte_swap_32(SE(SE_HASH_RESULT_REG_OFFSET + (i << 2)));
 
+	return res;
+}
+
+int se_calc_hmac_sha256(void *dst, const void *src, u32 src_size, const void *key, u32 key_size) {
+	int res = 0;
+	u8 *secret = (u8 *)malloc(0x40);
+	u8 *ipad = (u8 *)malloc(0x40 + src_size);
+	u8 *opad = (u8 *)malloc(0x60);
+
+	if (key_size > 0x40)
+	{
+		if (!se_calc_sha256(secret, key, key_size))
+			goto out;
+		memset(secret + 0x20, 0, 0x20);
+	}
+	else
+	{
+		memcpy(secret, key, key_size);
+		memset(secret + key_size, 0, 0x40 - key_size);
+	}
+
+	u32 *secret32 = (u32 *)secret;
+	u32 *ipad32 = (u32 *)ipad;
+	u32 *opad32 = (u32 *)opad;
+	for (u32 i = 0; i < 0x10; i++)
+	{
+		ipad32[i] = secret32[i] ^ 0x36363636;
+		opad32[i] = secret32[i] ^ 0x5C5C5C5C;
+	}
+
+	memcpy(ipad + 0x40, src, src_size);
+	if (!se_calc_sha256(dst, ipad, 0x40 + src_size))
+		goto out;
+	memcpy(opad + 0x40, dst, 0x20);
+	if (!se_calc_sha256(dst, opad, 0x60))
+		goto out;
+
+	res = 1;
+
+out:;
+	free(secret);
+	free(ipad);
+	free(opad);
 	return res;
 }

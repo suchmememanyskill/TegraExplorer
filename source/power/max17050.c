@@ -259,7 +259,7 @@ int max17050_fix_configuration()
 	/* Init complete, Clear the POR bit */
 	//_max17050_set_por_bit(0); // Should we? Or let the switch to reconfigure POR?
 
-	// Sets POR, BI, BR. 
+	// Sets POR, BI, BR.
 	_max17050_set_por_bit(0x8801);
 
 	return 0;

@@ -21,6 +21,8 @@
 #include "../utils/types.h"
 #include "sdmmc_driver.h"
 
+u32 sd_power_cycle_time_start;
+
 typedef struct _mmc_cid
 {
 	u32 manfid;
@@ -47,7 +49,7 @@ typedef struct _mmc_csd
 	u32 read_blkbits;
 	u32 write_blkbits;
 	u32 capacity;
-	u8  write_protect;  
+	u8  write_protect;
 	u16 busspeed;
 } mmc_csd_t;
 
@@ -107,6 +109,7 @@ int sdmmc_storage_read(sdmmc_storage_t *storage, u32 sector, u32 num_sectors, vo
 int sdmmc_storage_write(sdmmc_storage_t *storage, u32 sector, u32 num_sectors, void *buf);
 int sdmmc_storage_init_mmc(sdmmc_storage_t *storage, sdmmc_t *sdmmc, u32 id, u32 bus_width, u32 type);
 int sdmmc_storage_set_mmc_partition(sdmmc_storage_t *storage, u32 partition);
+void sdmmc_storage_init_wait_sd();
 int sdmmc_storage_init_sd(sdmmc_storage_t *storage, sdmmc_t *sdmmc, u32 id, u32 bus_width, u32 type);
 int sdmmc_storage_init_gc(sdmmc_storage_t *storage, sdmmc_t *sdmmc);
 
