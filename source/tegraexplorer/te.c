@@ -8,6 +8,7 @@
 
 extern bool sd_mount();
 extern void sd_unmount();
+extern int launch_payload(char *path);
 bool sd_mounted;
 
 menu_item mainmenu[MAINMENU_AMOUNT] = {
@@ -19,12 +20,14 @@ menu_item mainmenu[MAINMENU_AMOUNT] = {
     {"Exit", COLOR_WHITE, EXIT, 1}
 };
 
-menu_item shutdownmenu[5] = {
+menu_item shutdownmenu[7] = {
     {"-- EXIT --\n", COLOR_ORANGE, -1, 0},
     {"Back", COLOR_WHITE, -1, 1},
     {"\nReboot to RCM", COLOR_VIOLET, REBOOT_RCM, 1},
     {"Reboot normally", COLOR_ORANGE, REBOOT_NORMAL, 1},
-    {"Power off", COLOR_BLUE, POWER_OFF, 1}
+    {"Power off\n", COLOR_BLUE, POWER_OFF, 1},
+    {"Reboot to Hekate", COLOR_GREEN, HEKATE, -1},
+    {"Reboot to Atmosphere", COLOR_GREEN, AMS, -1}
 };
 
 menu_item toolsmenu[3] = {
@@ -96,7 +99,23 @@ void te_main(){
                 break;
 
             case EXIT:
-                res = makemenu(shutdownmenu, 5);
+                if (sd_mounted){  
+                    if (checkfile("/bootloader/update.bin"))
+                        shutdownmenu[5].property = 1;
+                    else
+                        shutdownmenu[5].property = -1;
+
+                    if (checkfile("/atmosphere/reboot_payload.bin"))
+                        shutdownmenu[6].property = 1;
+                    else
+                        shutdownmenu[6].property = -1;
+                }
+                else {
+                    shutdownmenu[5].property = -1;
+                    shutdownmenu[6].property = -1;
+                }
+
+                res = makemenu(shutdownmenu, 7);
 
                 switch(res){
                     case REBOOT_RCM:
@@ -107,6 +126,12 @@ void te_main(){
 
                     case POWER_OFF:
                         power_off();
+
+                    case HEKATE:
+                        launch_payload("/bootloader/update.bin");
+                    
+                    case AMS:
+                        launch_payload("/atmosphere/reboot_payload.bin");
                 } //todo declock bpmp
 
                 break;

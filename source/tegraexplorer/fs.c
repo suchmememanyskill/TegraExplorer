@@ -24,6 +24,38 @@ char *getnextloc(char *current, char *add){
     return ret;
 }
 
+char *getprevloc(char *current){
+    char *ret, *temp;
+    size_t size = strlen(current) + 1;
+
+    ret = (char*) malloc (size);
+    strcpy(ret, current);
+
+    temp = strrchr(ret, '/');
+    memset(temp, '\0', 1);
+
+    if (strlen(rootpath) > strlen(ret))
+        strcpy(ret, rootpath);
+
+    return ret;
+}
+
+fs_entry getfileobj(int spot){
+    return fileobjects[spot];
+}
+
+bool checkfile(char* path){
+    FRESULT fr;
+    FILINFO fno;
+
+    fr = f_stat(path, &fno);
+
+    if (fr & FR_NO_FILE)
+        return false;
+    else
+        return true;
+}
+
 void addobject(char* name, int spot, bool isfol, bool isarc){
     size_t size = strlen(name) + 1;
     fileobjects[spot].property = 0;
@@ -76,10 +108,34 @@ int readfolder(const char *path){
 }
 
 void filemenu(const char *startpath){
-    int amount;
+    int amount, res;
     strcpy(rootpath, startpath);
     strcpy(currentpath, startpath);
-    
     amount = readfolder(currentpath);
-    makefilemenu(fileobjects, amount, currentpath);
+
+    while (1){
+        res = makefilemenu(fileobjects, amount, currentpath);
+        if (res < 1){
+            if (res == -2){
+                if (!strcmp(rootpath, currentpath))
+                    break;
+                else {
+                    strcpy(currentpath, getprevloc(currentpath));
+                    amount = readfolder(currentpath);
+                }
+            }
+            if (res == -1){
+                break;
+            }
+                
+            if (res == 0)
+                break;
+        }
+        else {
+            if (fileobjects[res - 1].property & ISDIR){
+                strcpy(currentpath, getnextloc(currentpath, fileobjects[res - 1].name));
+                amount = readfolder(currentpath);
+            }
+        }
+    }
 }

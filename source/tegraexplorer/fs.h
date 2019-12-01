@@ -26,3 +26,4 @@ typedef struct _fs_entry {
 
 int readfolder(const char *path);
 void filemenu();
+bool checkfile(char* path);

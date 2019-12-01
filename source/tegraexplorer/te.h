@@ -23,7 +23,9 @@ enum mainmenu_return {
 enum shutdownmenu_return {
     REBOOT_RCM = 1,
     REBOOT_NORMAL,
-    POWER_OFF
+    POWER_OFF,
+    HEKATE,
+    AMS
 };
 
 enum toolsmenu_return {
