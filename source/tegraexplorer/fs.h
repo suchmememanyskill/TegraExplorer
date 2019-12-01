@@ -24,6 +24,13 @@ typedef struct _fs_entry {
     u8 property;
 } fs_entry;
 
+enum filemenuoptions {
+    COPY = 1,
+    MOVE,
+    DELETE,
+    PAYLOAD
+};
+
 int readfolder(const char *path);
 void filemenu();
 bool checkfile(char* path);

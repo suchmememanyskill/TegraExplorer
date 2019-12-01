@@ -231,6 +231,8 @@ void gfx_putc(char c)
 			gfx_con.x = 672;
 		else if (c == '\a')
 			gfx_con.x = 608;
+		else if (c == '\r')
+			gfx_con.x = 0;
 
 		break;
 	case 8:

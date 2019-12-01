@@ -7,10 +7,26 @@
 #include "../utils/sprintf.h"
 #include "../utils/btn.h"
 #include "../gfx/gfx.h"
+#include "../utils/util.h"
 
 fs_entry fileobjects[500];
 char rootpath[10] = "";
 char currentpath[255] = "";
+char clipboard[255] = "";
+u8 clipboardhelper = 0;
+extern const char sizevalues[4][3];
+extern int launch_payload(char *path);
+
+menu_item explfilemenu[8] = {
+    {"-- File Menu --", COLOR_BLUE, -1, 0},
+    {"FILE", COLOR_GREEN, -1, 0},
+    {"\nSIZE", COLOR_VIOLET, -1, 0},
+    {"\n\n\nBack", COLOR_WHITE, -1, 1},
+    {"\nCopy to clipboard", COLOR_BLUE, COPY, 1},
+    {"Move to clipboard", COLOR_BLUE, MOVE, 1},
+    {"\nDelete file", COLOR_RED, DELETE, 1},
+    {"\nLaunch Payload", COLOR_ORANGE, PAYLOAD, 1}
+};
 
 char *getnextloc(char *current, char *add){
     char *ret;
@@ -108,7 +124,8 @@ int readfolder(const char *path){
 }
 
 void filemenu(const char *startpath){
-    int amount, res;
+    int amount, res, tempint;
+    char temp[100];
     strcpy(rootpath, startpath);
     strcpy(currentpath, startpath);
     amount = readfolder(currentpath);
@@ -135,6 +152,42 @@ void filemenu(const char *startpath){
             if (fileobjects[res - 1].property & ISDIR){
                 strcpy(currentpath, getnextloc(currentpath, fileobjects[res - 1].name));
                 amount = readfolder(currentpath);
+            }
+            else {
+                strlcpy(explfilemenu[1].name, fileobjects[res - 1].name, 43);
+            
+                for (tempint = 4; tempint < 8; tempint++)
+                    if ((fileobjects[res - 1].property & (1 << tempint)))
+                        break;
+
+                sprintf(temp, "\nSize: %d %s", fileobjects[res - 1].size, sizevalues[tempint - 4]);
+                strcpy(explfilemenu[2].name, temp);
+
+                if (strstr(fileobjects[res - 1].name, ".bin") != NULL)
+                    explfilemenu[7].property = 1;
+                else
+                    explfilemenu[7].property = -1;
+
+                res = makemenu(explfilemenu, 8);
+
+                switch (res){
+                    case COPY:
+                    case MOVE:
+                        strcpy(clipboard, getnextloc(currentpath, fileobjects[res - 1].name));
+                        break;
+                    case DELETE:
+                        msleep(100);
+                        sprintf(temp, "Do you want to delete:\n%s\n\nPress Power to confirm\nPress Vol+/- to cancel", fileobjects[res - 1].name);
+                        res = message(temp, COLOR_RED);
+                        if (res & BTN_POWER){
+                            f_unlink(getnextloc(currentpath, fileobjects[res - 1].name));
+                            amount = readfolder(currentpath);
+                        }
+                        break;
+                    case PAYLOAD:
+                        launch_payload(getnextloc(currentpath, fileobjects[res - 1].name));
+                        break;
+                }
             }
         }
     }
