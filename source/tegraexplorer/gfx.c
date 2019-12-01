@@ -108,6 +108,7 @@ void printfsentry(fs_entry file, bool highlight){
 
         gfx_printf("%k%s%K\a%d\e%s", COLOR_VIOLET, display, COLOR_DEFAULT, file.size, sizevalues[size - 4]);
     }
+    free(display);
 }
 
 int makefilemenu(fs_entry *files, int amount, char *path){
