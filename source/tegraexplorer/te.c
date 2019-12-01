@@ -4,10 +4,11 @@
 #include "gfx.h"
 #include "../utils/util.h"
 #include "tools.h"
+#include "fs.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
-bool sd_mounted = false;
+bool sd_mounted;
 
 menu_item mainmenu[MAINMENU_AMOUNT] = {
     {"[SD:/] SD CARD", COLOR_GREEN, SD_CARD, 1},
@@ -68,6 +69,7 @@ void te_main(){
 
         switch(res){
             case SD_CARD:
+                filemenu("SD:/");
                 break;
             case EMMC:
                 break;
@@ -96,44 +98,18 @@ void te_main(){
             case EXIT:
                 res = makemenu(shutdownmenu, 5);
 
-                if (res == REBOOT_RCM)
-                    reboot_rcm();
-                else if (res == REBOOT_NORMAL)
-                    reboot_normal();
-                else if (res == POWER_OFF)
-                    power_off(); //todo declock bpmp
+                switch(res){
+                    case REBOOT_RCM:
+                        reboot_rcm();
+                    
+                    case REBOOT_NORMAL:
+                        reboot_normal();
+
+                    case POWER_OFF:
+                        power_off();
+                } //todo declock bpmp
 
                 break;
         }
-        /*
-        if (res == 3){
-            if (sd_mounted){
-                sd_mounted = false;
-                sd_unmount();
-            }
-            else
-                sd_mounted = sd_mount();
-        }
-
-        if (res == 4){
-            res = makemenu(toolsmenu, 3);
-
-            if (res == 2)
-                displayinfo();
-        }
-
-        if (res == 5)
-            message(CREDITS_MESSAGE, COLOR_WHITE);
-
-        if (res == 6){
-            res = makemenu(shutdownmenu, 5);
-            if (res == 2)
-                reboot_rcm();
-            else if (res == 3)
-                reboot_normal();
-            else if (res == 4)
-                power_off(); //todo declock bpmp
-        }
-        */
     }
 }

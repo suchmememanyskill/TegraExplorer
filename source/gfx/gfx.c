@@ -227,6 +227,11 @@ void gfx_putc(char c)
 			if (gfx_con.y > gfx_ctxt.height - 16)
 				gfx_con.y = 0;
 		}
+		else if (c == '\e')
+			gfx_con.x = 672;
+		else if (c == '\a')
+			gfx_con.x = 608;
+
 		break;
 	case 8:
 	default:
@@ -261,6 +266,7 @@ void gfx_putc(char c)
 			if (gfx_con.y > gfx_ctxt.height - 8)
 				gfx_con.y = 0;
 		}
+
 		break;
 	}
 }
