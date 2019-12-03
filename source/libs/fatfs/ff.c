@@ -49,6 +49,11 @@
 
 ---------------------------------------------------------------------------*/
 
+PARTITION VolToPart[2] = {
+	{0, 1},
+	{1, 1}
+};
+
 #if FF_DEFINED != 86604	/* Revision ID */
 #error Wrong include file (ff.h).
 #endif
@@ -6039,7 +6044,7 @@ FRESULT f_mkfs (
 		sys = 0x07;			/* HPFS/NTFS/exFAT */
 	} else {
 		if (fmt == FS_FAT32) {
-			sys = 0x0C;		/* FAT32X */
+			sys = 0x0B;		/* FAT32X */
 		} else {
 			if (sz_vol >= 0x10000) {
 				sys = 0x06;	/* FAT12/16 (large) */
@@ -6117,12 +6122,13 @@ FRESULT f_fdisk (
 	e_hd = (BYTE)(n - 1);
 	sz_cyl = 63 * n;
 	tot_cyl = sz_disk / sz_cyl;
+	gfx_printf("tot_cyl: %d\nsz_disk: %d\nsz_cyl: %d\n", tot_cyl, sz_disk, sz_cyl);
 
 	/* Create partition table */
 	mem_set(buf, 0, FF_MAX_SS);
 	p = buf + MBR_Table; b_cyl = 0;
 	for (i = 0; i < 4; i++, p += SZ_PTE) {
-		p_cyl = (szt[i] <= 100U) ? (DWORD)tot_cyl * szt[i] / 100 : szt[i] / sz_cyl;	/* Number of cylinders */
+		p_cyl = (szt[i] <= 100U) ? (DWORD)tot_cyl * (szt[i] / 100) : szt[i] / sz_cyl;	/* Number of cylinders */
 		if (p_cyl == 0) continue;
 		s_part = (DWORD)sz_cyl * b_cyl;
 		sz_part = (DWORD)sz_cyl * p_cyl;

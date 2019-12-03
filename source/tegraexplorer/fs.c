@@ -206,9 +206,9 @@ void filemenu(const char *startpath){
                 else
                     explfilemenu[7].property = -1;
 
-                res = makemenu(explfilemenu, 8);
+                tempint = makemenu(explfilemenu, 8);
 
-                switch (res){
+                switch (tempint){
                     case COPY:
                         writeclipboard(getnextloc(currentpath, fileobjects[res - 1].name), false, false);
                         break;
@@ -218,8 +218,8 @@ void filemenu(const char *startpath){
                     case DELETE:
                         msleep(100);
                         sprintf(temp, "Do you want to delete:\n%s\n\nPress Power to confirm\nPress Vol+/- to cancel", fileobjects[res - 1].name);
-                        res = message(temp, COLOR_RED);
-                        if (res & BTN_POWER){
+                        tempint = message(temp, COLOR_RED);
+                        if (tempint & BTN_POWER){
                             f_unlink(getnextloc(currentpath, fileobjects[res - 1].name));
                             amount = readfolder(currentpath);
                         }

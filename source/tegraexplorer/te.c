@@ -30,11 +30,12 @@ menu_item shutdownmenu[7] = {
     {"Reboot to Atmosphere", COLOR_GREEN, AMS, -1}
 };
 
-menu_item toolsmenu[4] = {
+menu_item toolsmenu[5] = {
     {"-- TOOLS --\n", COLOR_VIOLET, -1, 0},
     {"Back", COLOR_WHITE, -1, 1},
     {"\nDisplay Console Info", COLOR_GREEN, DISPLAY_INFO, 1},
-    {"Display GPIO pins [DEV]", COLOR_RED, DISPLAY_GPIO, 1}
+    {"Display GPIO pins [DEV]", COLOR_RED, DISPLAY_GPIO, 1},
+    {"FORMAT TEST", COLOR_RED, FORMATFAT32, 1}
 };
 
 void fillmainmenu(){
@@ -88,7 +89,7 @@ void te_main(){
                 break;
 
             case TOOLS:
-                res = makemenu(toolsmenu, 4);
+                res = makemenu(toolsmenu, 5);
 
                 if (res == DISPLAY_INFO)
                     displayinfo();
@@ -96,6 +97,9 @@ void te_main(){
                 if (res == DISPLAY_GPIO)
                     displaygpio();
                 
+                if (res == FORMATFAT32)
+                    format();
+
                 break;
             
             case CREDITS:

@@ -2,3 +2,4 @@
 
 void displayinfo();
 void displaygpio();
+void format();
