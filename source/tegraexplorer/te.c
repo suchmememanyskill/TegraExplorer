@@ -30,10 +30,11 @@ menu_item shutdownmenu[7] = {
     {"Reboot to Atmosphere", COLOR_GREEN, AMS, -1}
 };
 
-menu_item toolsmenu[3] = {
+menu_item toolsmenu[4] = {
     {"-- TOOLS --\n", COLOR_VIOLET, -1, 0},
     {"Back", COLOR_WHITE, -1, 1},
-    {"\nDisplay Console Info", COLOR_GREEN, DISPLAY_INFO, 1}
+    {"\nDisplay Console Info", COLOR_GREEN, DISPLAY_INFO, 1},
+    {"Display GPIO pins [DEV]", COLOR_RED, DISPLAY_GPIO, 1}
 };
 
 void fillmainmenu(){
@@ -87,10 +88,13 @@ void te_main(){
                 break;
 
             case TOOLS:
-                res = makemenu(toolsmenu, 3);
+                res = makemenu(toolsmenu, 4);
 
                 if (res == DISPLAY_INFO)
                     displayinfo();
+
+                if (res == DISPLAY_GPIO)
+                    displaygpio();
                 
                 break;
             

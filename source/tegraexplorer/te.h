@@ -29,7 +29,8 @@ enum shutdownmenu_return {
 };
 
 enum toolsmenu_return {
-    DISPLAY_INFO = 1
+    DISPLAY_INFO = 1,
+    DISPLAY_GPIO
 };
 
 //menu_item mainmenu[MAINMENU_AMOUNT];

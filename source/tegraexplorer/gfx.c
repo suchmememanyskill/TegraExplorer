@@ -16,7 +16,7 @@ const char fixedoptions[3][50] = {
 };
 
 const char sizevalues[4][3] = {
-    " B",
+    "B ",
     "KB",
     "MB",
     "GB"

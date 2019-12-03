@@ -11,8 +11,8 @@
 
 fs_entry fileobjects[500];
 char rootpath[10] = "";
-char currentpath[255] = "";
-char clipboard[255] = "";
+char currentpath[300] = "";
+char clipboard[300] = "";
 u8 clipboardhelper = 0;
 extern const char sizevalues[4][3];
 extern int launch_payload(char *path);
@@ -27,6 +27,38 @@ menu_item explfilemenu[8] = {
     {"\nDelete file", COLOR_RED, DELETE, 1},
     {"\nLaunch Payload", COLOR_ORANGE, PAYLOAD, 1}
 };
+
+void writecurpath(const char *in){
+    /*
+    if (currentpath != NULL)
+        free(currentpath);
+
+    size_t len = strlen(in) + 1;
+    currentpath = (char*) malloc (len);
+    strcpy(currentpath, in);
+    */
+   strcpy(currentpath, in);
+}
+
+void writeclipboard(const char *in, bool operation, bool folder){
+    //if (clipboard != NULL)
+    //    free(clipboard);
+
+    clipboardhelper = 0;
+    
+    if (operation)
+        clipboardhelper |= (OPERATION);
+
+    if (folder)
+        clipboardhelper |= (ISDIR);
+
+    /*
+    size_t len = strlen(in) + 1;
+    clipboard = (char*) malloc (len);
+    strcpy(clipboard, in);
+    */
+   strcpy(clipboard, in);
+}
 
 char *getnextloc(char *current, char *add){
     char *ret;
@@ -76,6 +108,11 @@ void addobject(char* name, int spot, bool isfol, bool isarc){
     size_t size = strlen(name) + 1;
     fileobjects[spot].property = 0;
 
+    if (fileobjects[spot].name != NULL){
+        free(fileobjects[spot].name);
+        fileobjects[spot].name = NULL;
+    }
+
     fileobjects[spot].name = (char*) malloc (size);
     strlcpy(fileobjects[spot].name, name, size);
 
@@ -86,6 +123,7 @@ void addobject(char* name, int spot, bool isfol, bool isarc){
         int sizes = 0;
         FILINFO fno;
         f_stat(getnextloc(currentpath, name), &fno);
+            
         size = fno.fsize;
         
         while (size > 1024){
@@ -127,7 +165,7 @@ void filemenu(const char *startpath){
     int amount, res, tempint;
     char temp[100];
     strcpy(rootpath, startpath);
-    strcpy(currentpath, startpath);
+    writecurpath(startpath);
     amount = readfolder(currentpath);
 
     while (1){
@@ -137,7 +175,7 @@ void filemenu(const char *startpath){
                 if (!strcmp(rootpath, currentpath))
                     break;
                 else {
-                    strcpy(currentpath, getprevloc(currentpath));
+                    writecurpath(getprevloc(currentpath));
                     amount = readfolder(currentpath);
                 }
             }
@@ -150,7 +188,7 @@ void filemenu(const char *startpath){
         }
         else {
             if (fileobjects[res - 1].property & ISDIR){
-                strcpy(currentpath, getnextloc(currentpath, fileobjects[res - 1].name));
+                writecurpath(getnextloc(currentpath, fileobjects[res - 1].name));
                 amount = readfolder(currentpath);
             }
             else {
@@ -172,8 +210,10 @@ void filemenu(const char *startpath){
 
                 switch (res){
                     case COPY:
+                        writeclipboard(getnextloc(currentpath, fileobjects[res - 1].name), false, false);
+                        break;
                     case MOVE:
-                        strcpy(clipboard, getnextloc(currentpath, fileobjects[res - 1].name));
+                        writeclipboard(getnextloc(currentpath, fileobjects[res - 1].name), true, false);
                         break;
                     case DELETE:
                         msleep(100);

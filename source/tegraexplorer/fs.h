@@ -9,6 +9,8 @@
 #define ISKB (1 << 5)
 #define ISB  (1 << 4)
 
+#define OPERATION (1 << 1)
+
 /* Bit table for property:
 0000 0001: Directory bit
 0000 0010: Archive bit
