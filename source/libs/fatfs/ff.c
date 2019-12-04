@@ -6134,12 +6134,13 @@ FRESULT f_fdisk (
 		sz_part = (DWORD)sz_cyl * p_cyl;
 		if (i == 0) {	/* Exclude first track of cylinder 0 */
 			s_hd = 1;
-			s_part += 63; sz_part -= 63;
+			s_part += 32831; sz_part -= 32831;
 		} else {
 			s_hd = 0;
 		}
 		e_cyl = b_cyl + p_cyl - 1;	/* End cylinder */
 		if (e_cyl >= tot_cyl) LEAVE_MKFS(FR_INVALID_PARAMETER);
+
 
 		/* Set partition table */
 		p[1] = s_hd;						/* Start head */
@@ -6151,7 +6152,6 @@ FRESULT f_fdisk (
 		p[7] = (BYTE)e_cyl;					/* End cylinder */
 		st_dword(p + 8, s_part);			/* Start sector in LBA */
 		st_dword(p + 12, sz_part);			/* Number of sectors */
-
 		/* Next partition */
 		b_cyl += p_cyl;
 	}

@@ -6,6 +6,7 @@
 #include "../soc/gpio.h"
 #include "../utils/util.h"
 #include "../utils/types.h"
+#include "../libs/fatfs/diskio.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
@@ -14,7 +15,7 @@ void displayinfo(){
     clearscreen();
 
     FATFS *fs;
-    DWORD fre_clust, fre_sect, tot_sect, temp_sect;
+    DWORD fre_clust, fre_sect, tot_sect, temp_sect, sz_disk;
     int res;
 
     gfx_printf("Getting storage info: please wait...");
@@ -30,7 +31,12 @@ void displayinfo(){
     temp_sect = tot_sect;
     temp_sect -= 61145088;
 
-    gfx_printf("\n1st part: %d\n2nd part: 61145088", temp_sect);
+    gfx_printf("\n1st part: %d\n2nd part: 61145088\n\n", temp_sect);
+
+    disk_initialize(0);
+    disk_ioctl(0, GET_SECTOR_COUNT, &sz_disk);
+
+    gfx_printf("total sectors: %d", sz_disk);
 
     btn_wait();
 }
@@ -74,14 +80,14 @@ void format(){
     gfx_printf("Getting free cluster info from 1st partition");
 
     if (res = f_getfree("sd:", &fre_clust, &fs))
-        gfx_printf("%kGetfree failed! errcode %d", COLOR_RED, res);
+        gfx_printf("%kGetfree failed! errcode %d", COLOR_ORANGE, res);
     else {
         tot_sect = (fs->n_fatent - 2) * fs->csize;
         temp_sect = tot_sect;
         temp_sect -= 61145089;
         gfx_printf("Total sectors: %d\nFree after emummc: %d\n\n", tot_sect, temp_sect);
         if (temp_sect < 0)
-            gfx_printf("%kNot enough space free!\n", COLOR_RED);
+            gfx_printf("%kNot enough space free!\n", COLOR_ORANGE);
         else {
             gfx_printf("Partitioning sd...\nPartition1 size: %d\nPartition2 size: %d\n", plist[0], plist[1]);
             plist[0] = temp_sect;
