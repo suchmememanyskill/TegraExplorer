@@ -17,15 +17,16 @@ u8 clipboardhelper = 0;
 extern const char sizevalues[4][3];
 extern int launch_payload(char *path);
 
-menu_item explfilemenu[8] = {
+menu_item explfilemenu[9] = {
     {"-- File Menu --", COLOR_BLUE, -1, 0},
     {"FILE", COLOR_GREEN, -1, 0},
     {"\nSIZE", COLOR_VIOLET, -1, 0},
     {"\n\n\nBack", COLOR_WHITE, -1, 1},
     {"\nCopy to clipboard", COLOR_BLUE, COPY, 1},
     {"Move to clipboard", COLOR_BLUE, MOVE, 1},
-    {"\nDelete file", COLOR_RED, DELETE, 1},
-    {"\nLaunch Payload", COLOR_ORANGE, PAYLOAD, 1}
+    {"\nDelete file\n", COLOR_RED, DELETE, 1},
+    {"Launch Payload", COLOR_ORANGE, PAYLOAD, 1},
+    {"View Hex", COLOR_GREEN, HEXVIEW, 1}
 };
 
 void writecurpath(const char *in){
@@ -102,6 +103,46 @@ bool checkfile(char* path){
         return false;
     else
         return true;
+}
+
+void viewbytes(char *path){
+    FIL in;
+    u8 print[2048];
+    u32 size;
+    QWORD offset = 0;
+    int res;
+
+    clearscreen();
+    res = f_open(&in, path, FA_READ | FA_OPEN_EXISTING);
+    if (res != FR_OK){
+        message("fuck", COLOR_RED);
+        return;
+    }
+
+    msleep(200);
+
+    while (1){
+        f_lseek(&in, offset * 16);
+
+        res = f_read(&in, &print, 2048 * sizeof(u8), &size);
+        if (res != FR_OK){
+            message("ohgod", COLOR_RED);
+        }
+
+        printbytes(print, size, offset * 16);
+        res = btn_read();
+
+        if (!res)
+            res = btn_wait();
+
+        if (res & BTN_VOL_DOWN && 2048 * sizeof(u8) == size)
+            offset++;
+        if (res & BTN_VOL_UP && offset > 0)
+            offset--;
+        if (res & BTN_POWER)
+            break;
+    }
+    f_close(&in);
 }
 
 void addobject(char* name, int spot, bool isfol, bool isarc){
@@ -206,7 +247,7 @@ void filemenu(const char *startpath){
                 else
                     explfilemenu[7].property = -1;
 
-                tempint = makemenu(explfilemenu, 8);
+                tempint = makemenu(explfilemenu, 9);
 
                 switch (tempint){
                     case COPY:
@@ -226,6 +267,9 @@ void filemenu(const char *startpath){
                         break;
                     case PAYLOAD:
                         launch_payload(getnextloc(currentpath, fileobjects[res - 1].name));
+                        break;
+                    case HEXVIEW:
+                        viewbytes(getnextloc(currentpath, fileobjects[res - 1].name));
                         break;
                 }
             }

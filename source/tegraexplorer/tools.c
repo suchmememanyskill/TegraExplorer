@@ -31,7 +31,7 @@ void displayinfo(){
     temp_sect = tot_sect;
     temp_sect -= 61145088;
 
-    gfx_printf("\n1st part: %d\n2nd part: 61145088\n\n", temp_sect);
+    gfx_printf("\n%k1st part: %d\n2nd part: 61145088\n\n%k", COLOR_RED, temp_sect, COLOR_WHITE);
 
     disk_initialize(0);
     disk_ioctl(0, GET_SECTOR_COUNT, &sz_disk);

@@ -80,6 +80,11 @@ int makemenu(menu_item menu[], int menuamount){
     }
 }
 
+void printbytes(u8 print[], u32 size, u32 offset){
+    gfx_con_setpos(0, 31);
+    gfx_hexdump(offset, print, size * sizeof(u8));
+}
+
 void printfsentry(fs_entry file, bool highlight, bool refresh){
     int size = 0;
     char *display;

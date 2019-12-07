@@ -30,7 +30,8 @@ enum filemenuoptions {
     COPY = 1,
     MOVE,
     DELETE,
-    PAYLOAD
+    PAYLOAD,
+    HEXVIEW
 };
 
 int readfolder(const char *path);

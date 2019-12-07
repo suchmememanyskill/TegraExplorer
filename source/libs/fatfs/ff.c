@@ -6134,7 +6134,7 @@ FRESULT f_fdisk (
 		sz_part = (DWORD)sz_cyl * p_cyl;
 		if (i == 0) {	/* Exclude first track of cylinder 0 */
 			s_hd = 1;
-			s_part += 32831; sz_part -= 32831;
+			s_part += 32768; sz_part -= 32768;
 		} else {
 			s_hd = 0;
 		}
