@@ -7,15 +7,18 @@
 #include "../utils/util.h"
 #include "../utils/types.h"
 #include "../libs/fatfs/diskio.h"
+#include "../storage/sdmmc.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
+extern sdmmc_storage_t sd_storage;
 
 void displayinfo(){
     clearscreen();
 
     FATFS *fs;
     DWORD fre_clust, fre_sect, tot_sect, temp_sect, sz_disk;
+    s64 capacity;
     int res;
 
     gfx_printf("Getting storage info: please wait...");
@@ -33,10 +36,10 @@ void displayinfo(){
 
     gfx_printf("\n%k1st part: %d\n2nd part: 61145088\n\n%k", COLOR_RED, temp_sect, COLOR_WHITE);
 
-    disk_initialize(0);
-    disk_ioctl(0, GET_SECTOR_COUNT, &sz_disk);
+    capacity = sd_storage.csd.capacity;
+    capacity -= 61145088;
 
-    gfx_printf("total sectors: %d", sz_disk);
+    gfx_printf("\n%k1st part: %d\n2nd part: 61145088\n\n%k", COLOR_RED, capacity, COLOR_WHITE);
 
     btn_wait();
 }
@@ -65,47 +68,54 @@ void displaygpio(){
 void format(){
     clearscreen();
     int res;
+    bool fatalerror = false;
 
-    u32 timer;
-    FATFS *fs;
-    DWORD fre_clust, tot_sect, temp_sect;
+    u32 timer, totalsectors;
     BYTE work[FF_MAX_SS];
-    DWORD plist[] = {188928257, 61145089, 0};
-    DWORD sectsize = 16 * 512;
+    DWORD plist[] = {666, 61145088};
+    DWORD clustsize = 16 * 512;
     BYTE formatoptions = 0;
     formatoptions |= (FM_FAT32);
     formatoptions |= (FM_SFD);
 
     timer = get_tmr_s();
-    gfx_printf("Getting free cluster info from 1st partition");
 
-    if (res = f_getfree("sd:", &fre_clust, &fs))
-        gfx_printf("%kGetfree failed! errcode %d", COLOR_ORANGE, res);
-    else {
-        tot_sect = (fs->n_fatent - 2) * fs->csize;
-        temp_sect = tot_sect;
-        temp_sect -= 61145089;
-        gfx_printf("Total sectors: %d\nFree after emummc: %d\n\n", tot_sect, temp_sect);
-        if (temp_sect < 0)
-            gfx_printf("%kNot enough space free!\n", COLOR_ORANGE);
-        else {
-            gfx_printf("Partitioning sd...\nPartition1 size: %d\nPartition2 size: %d\n", plist[0], plist[1]);
-            plist[0] = temp_sect;
-            if (res = f_fdisk(0, plist, &work))
-                gfx_printf("Partitioning failed! errcode %d\n", res);
-            else {
-                gfx_printf("\nFormatting FAT32 Partition:\n");
-                if (res = f_mkfs("0:", formatoptions, sectsize, &work, sizeof work))
-                    gfx_printf("%kFormat failed! errcode %d\n", res);
-                else {
-                    gfx_printf("Smells like a formatted SD\n\n");
-                }
-            } 
-        }
+    totalsectors = sd_storage.csd.capacity;
+
+    if (totalsectors < 61145088){
+        gfx_printf("%k\nNot enough free space for emummc!", COLOR_RED);
+        fatalerror = true;
     }
 
-    if (!res){
-        sd_unmount();
+    if (!fatalerror){
+        plist[0] = totalsectors - 61145088;
+        gfx_printf("\nStarting SD partitioning:\nTotalSectors:        %d\nPartition1 (SD):     %d\nPartition2 (EMUMMC): %d\n", totalsectors, plist[0], plist[1]);
+        gfx_printf("\nPartitioning SD...\n");
+        res = f_fdisk(0, plist, &work);
+
+        if (res){
+            gfx_printf("%kf_fdisk returned %d!\n", COLOR_RED, res);
+            fatalerror = true;
+        }
+        else
+            gfx_printf("Done!\n");
+    }
+
+    if (!fatalerror){
+        gfx_printf("\n\nFormatting Partition1...\n");
+        res = f_mkfs("0:", formatoptions, clustsize, &work, sizeof work);
+
+        if (res){
+            gfx_printf("%kf_mkfs returned %d!\n", COLOR_RED, res);
+            fatalerror = true;
+        }
+        else
+            gfx_printf("Smells like a formatted SD\n\n");
+    }
+
+    sd_unmount();
+
+    if (!fatalerror){
         if (!sd_mount())
             gfx_printf("%kSd failed to mount!\n", COLOR_ORANGE);
         else {
@@ -115,20 +125,4 @@ void format(){
 
     gfx_printf("\nPress any button to return%k\nTotal time taken: %ds", COLOR_WHITE, (get_tmr_s() - timer));
     btn_wait();
-
-    /*
-    res = f_fdisk(0, plist, &work);
-    gfx_printf("f_fdisk partdrive: %d\n", res);
-
-    if (!res){
-        res = f_mkfs("0:", muhoptions, sectsize, &work, sizeof work);
-        gfx_printf("f_mkfs0 res: %d\n", res);
-    }
-
-    sd_unmount();
-    res = sd_mount();
-
-    gfx_printf("sd_mount res: %s", (res ? "1" : "0"));
-    btn_wait();
-    */
 }

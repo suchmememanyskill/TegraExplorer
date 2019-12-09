@@ -11,6 +11,8 @@
 
 #define OPERATION (1 << 1)
 
+#define BUFSIZE 32768
+
 /* Bit table for property:
 0000 0001: Directory bit
 0000 0010: Archive bit

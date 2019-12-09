@@ -115,7 +115,7 @@ void viewbytes(char *path){
     clearscreen();
     res = f_open(&in, path, FA_READ | FA_OPEN_EXISTING);
     if (res != FR_OK){
-        message("fuck", COLOR_RED);
+        message("File Opening Failed", COLOR_RED);
         return;
     }
 
@@ -126,7 +126,8 @@ void viewbytes(char *path){
 
         res = f_read(&in, &print, 2048 * sizeof(u8), &size);
         if (res != FR_OK){
-            message("ohgod", COLOR_RED);
+            message("Reading Failed", COLOR_RED);
+            return;
         }
 
         printbytes(print, size, offset * 16);
@@ -143,6 +144,47 @@ void viewbytes(char *path){
             break;
     }
     f_close(&in);
+}
+
+int copyfile(const char *locin, const char *locout, bool print){
+    FIL in, out;
+    u64 sizeoffile, sizecopied = 0;
+    UINT temp1, temp2;
+    u8 *buff;
+
+    if (!strcmp(locin, locout)){
+        return 3;
+    }
+
+    if (f_open(&in, locin, FA_READ | FA_OPEN_EXISTING)){
+        return 1;
+    }
+
+    if (f_open(&out, locout, FA_CREATE_ALWAYS | FA_WRITE)){
+        return 2;
+    }
+
+    buff = malloc (BUFSIZE);
+    sizeoffile = f_size(&in);
+
+    while (sizeoffile > BUFSIZE){
+        if (f_read(&in, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp1))
+            return 3;
+        if (f_write(&in, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp2))
+            return 4;
+
+        if (temp1 != temp2)
+            return 5;
+
+        sizeoffile -= temp1;
+        sizecopied += temp1;
+    }
+
+    f_close(&in);
+    f_close(&out);
+    free(buff);
+
+    return 0;
 }
 
 void addobject(char* name, int spot, bool isfol, bool isarc){

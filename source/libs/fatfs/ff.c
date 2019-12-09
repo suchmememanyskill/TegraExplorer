@@ -6122,7 +6122,6 @@ FRESULT f_fdisk (
 	e_hd = (BYTE)(n - 1);
 	sz_cyl = 63 * n;
 	tot_cyl = sz_disk / sz_cyl;
-	gfx_printf("tot_cyl: %d\nsz_disk: %d\nsz_cyl: %d\n", tot_cyl, sz_disk, sz_cyl);
 
 	/* Create partition table */
 	mem_set(buf, 0, FF_MAX_SS);
