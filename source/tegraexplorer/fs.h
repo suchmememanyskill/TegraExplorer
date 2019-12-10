@@ -9,7 +9,8 @@
 #define ISKB (1 << 5)
 #define ISB  (1 << 4)
 
-#define OPERATION (1 << 1)
+#define OPERATIONCOPY (1 << 1)
+#define OPERATIONMOVE (1 << 2)
 
 #define BUFSIZE 32768
 

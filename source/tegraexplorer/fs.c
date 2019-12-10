@@ -1,5 +1,5 @@
 #include <string.h>
-#include <stdlib.h>
+#include "../mem/heap.h"
 #include "gfx.h"
 #include "fs.h"
 #include "../utils/types.h"
@@ -40,19 +40,20 @@ void writecurpath(const char *in){
    strcpy(currentpath, in);
 }
 
-void writeclipboard(const char *in, bool operation, bool folder){
+void writeclipboard(const char *in, bool move, bool folder){
     if (clipboard != NULL)
         free(clipboard);
 
     clipboardhelper = 0;
     
-    if (operation)
-        clipboardhelper |= (OPERATION);
+    if (move)
+        clipboardhelper |= (OPERATIONMOVE);
+    else
+        clipboardhelper |= (OPERATIONCOPY);
 
     if (folder)
         clipboardhelper |= (ISDIR);
 
-    
     size_t len = strlen(in) + 1;
     clipboard = (char*) malloc (len);
     strcpy(clipboard, in);
@@ -145,11 +146,14 @@ void viewbytes(char *path){
     f_close(&in);
 }
 
-int copyfile(const char *locin, const char *locout, bool print){
+int copy(const char *locin, const char *locout, bool print){
     FIL in, out;
-    u64 sizeoffile, sizecopied = 0;
+    u64 sizeoffile, sizecopied = 0, totalsize;
     UINT temp1, temp2;
     u8 *buff;
+    unsigned int x, y, i = 0;
+
+    gfx_con_getpos(&x, &y);
 
     if (!strcmp(locin, locout)){
         return 3;
@@ -165,11 +169,12 @@ int copyfile(const char *locin, const char *locout, bool print){
 
     buff = malloc (BUFSIZE);
     sizeoffile = f_size(&in);
+    totalsize = sizeoffile;
 
-    while (sizeoffile > BUFSIZE){
+    while (sizeoffile > 0){
         if (f_read(&in, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp1))
             return 3;
-        if (f_write(&in, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp2))
+        if (f_write(&out, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp2))
             return 4;
 
         if (temp1 != temp2)
@@ -177,6 +182,18 @@ int copyfile(const char *locin, const char *locout, bool print){
 
         sizeoffile -= temp1;
         sizecopied += temp1;
+
+        if (print && 10 > i++){
+            gfx_printf("%k[%d%%/100%%]%k", COLOR_GREEN, ((sizecopied * 100) / totalsize) ,COLOR_WHITE);
+            gfx_con_setpos(x, y);
+
+            i = 0;
+
+            if (btn_read() & BTN_VOL_DOWN){
+                f_unlink(locout);
+                break;
+            }
+        }
     }
 
     f_close(&in);
@@ -184,6 +201,43 @@ int copyfile(const char *locin, const char *locout, bool print){
     free(buff);
 
     return 0;
+}
+
+void copyfile(const char *path, const char *outfolder){
+    char *filename = strrchr(path, '/');
+    char *outstring;
+    size_t outstringsize = strlen(filename) + strlen(outfolder) + 2;
+    int res;
+
+    clearscreen();
+
+    outstring = (char*) malloc (outstringsize);
+
+    if (strcmp(rootpath, outfolder))
+        sprintf(outstring, "%s/%s", outfolder, filename + 1);
+    else
+        sprintf(outstring, "%s%s", outfolder, filename + 1);
+
+    gfx_printf("Note:\nTo stop the transfer hold Vol-\n\n%s\nProgress: ", outstring);
+
+    if (clipboardhelper & OPERATIONMOVE){
+        f_rename(path, outstring);
+    }
+    
+    else if (clipboardhelper & OPERATIONCOPY) {
+        res = copy(path, outstring, true);
+        if (res){
+            gfx_printf("\n\n%kSomething went wrong while copying!\n\nErrcode: %d%k", COLOR_RED, res, COLOR_WHITE);
+            btn_wait();
+        }
+    }
+
+    else {
+        message("\nClipboard is empty!", COLOR_RED);
+    }
+
+    free (outstring);
+    clipboardhelper = 0;
 }
 
 u64 getfilesize(char *path){
@@ -246,6 +300,33 @@ int readfolder(const char *path){
     return folderamount;
 }
 
+int delfile(const char *path, const char *filename){
+    clearscreen();
+    int res;
+    int amount = -1;
+    u32 start = get_tmr_s();
+
+    gfx_printf("Are you sure you want to delete:\n%s\n\nPress vol+/- to cancel\n", filename);
+    while(1){
+        res = btn_read();
+        if (res & BTN_VOL_UP || res & BTN_VOL_DOWN)
+            break;
+        
+        if (start + 3 > get_tmr_s()){
+            gfx_printf("\r<Wait %d seconds>", 3 + start - get_tmr_s());
+        }
+        else if (res & BTN_POWER){
+            f_unlink(path);
+            amount = readfolder(currentpath);
+            break;
+        }  
+        else {
+            gfx_printf("\r%kPress power to delete%k", COLOR_RED, COLOR_WHITE);
+        }
+    }
+    return amount;
+}
+
 void filemenu(const char *startpath){
     int amount, res, tempint;
     char temp[100];
@@ -265,7 +346,8 @@ void filemenu(const char *startpath){
                 }
             }
             if (res == -1){
-                break;
+                copyfile(clipboard, currentpath);
+                amount = readfolder(currentpath);
             }
                 
             if (res == 0)
@@ -301,13 +383,8 @@ void filemenu(const char *startpath){
                         writeclipboard(getnextloc(currentpath, fileobjects[res - 1].name), true, false);
                         break;
                     case DELETE:
-                        msleep(100);
-                        sprintf(temp, "Do you want to delete:\n%s\n\nPress Power to confirm\nPress Vol+/- to cancel", fileobjects[res - 1].name);
-                        tempint = message(temp, COLOR_RED);
-                        if (tempint & BTN_POWER){
-                            f_unlink(getnextloc(currentpath, fileobjects[res - 1].name));
-                            amount = readfolder(currentpath);
-                        }
+                        if ((tempint = delfile(getnextloc(currentpath, fileobjects[res - 1].name), fileobjects[res - 1].name)) != -1)
+                                amount = tempint;
                         break;
                     case PAYLOAD:
                         launch_payload(getnextloc(currentpath, fileobjects[res - 1].name));
