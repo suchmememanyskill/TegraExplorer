@@ -39,3 +39,4 @@ enum filemenuoptions {
 int readfolder(const char *path);
 void filemenu();
 bool checkfile(char* path);
+u64 getfilesize(char *path);

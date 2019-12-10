@@ -46,7 +46,7 @@ sdmmc_t sd_sdmmc;
 sdmmc_storage_t sd_storage;
 __attribute__ ((aligned (16))) FATFS sd_fs;
 static bool sd_mounted;
-
+volatile nyx_storage_t *nyx_str = (nyx_storage_t *)NYX_STORAGE_ADDR;
 hekate_config h_cfg;
 boot_cfg_t __attribute__((section ("._boot_cfg"))) b_cfg;
 
@@ -422,7 +422,7 @@ void ipl_main()
 	display_backlight_pwm_init();
 	display_backlight_brightness(100, 1000);
 
-	bpmp_clk_rate_set(BPMP_CLK_SUPER_BOOST);
+	bpmp_clk_rate_set(BPMP_CLK_DEFAULT_BOOST);
 
 	/*
 	h_cfg.emummc_force_disable = emummc_load_cfg();

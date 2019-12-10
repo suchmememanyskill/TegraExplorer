@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (C) 2018 CTCaer
+ * Copyright (c) 2018 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,9 +18,8 @@
 #ifndef _DI_H_
 #define _DI_H_
 
+#include "../../common/memory_map.h"
 #include "../utils/types.h"
-
-#define FB_ADDRESS 0xC0000000
 
 /*! Display registers. */
 #define _DIREG(reg) ((reg) * 4)

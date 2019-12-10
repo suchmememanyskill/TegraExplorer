@@ -1,9 +1,9 @@
 /*
  * Fuel gauge driver for Nintendo Switch's Maxim 17050
  *
- * Copyright (C) 2011 Samsung Electronics
+ * Copyright (c) 2011 Samsung Electronics
  * MyungJoo Ham <myungjoo.ham@samsung.com>
- * Copyright (C) 2018 CTCaer
+ * Copyright (c) 2018 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,6 +42,9 @@
 #define VFSOC0_UNLOCK 0x0080
 
 #define MAX17050_VMAX_TOLERANCE 50 /* 50 mV */
+
+#pragma GCC push_options
+#pragma GCC optimize ("Os")
 
 int max17050_get_property(enum MAX17050_reg reg, int *value)
 {
@@ -264,3 +267,5 @@ int max17050_fix_configuration()
 
 	return 0;
 }
+
+#pragma GCC pop_options

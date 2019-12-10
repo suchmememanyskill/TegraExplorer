@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (C) 2018 CTCaer
+ * Copyright (c) 2018 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,6 +20,9 @@
 
 #include "types.h"
 #include "../mem/minerva.h"
+
+#define NYX_CFG_DUMP    (1 << 7)
+#define NYX_CFG_MINERVA (1 << 8)
 
 #define byte_swap_32(num) (((num >> 24) & 0xff) | ((num << 8) & 0xff0000) | \
 						((num >> 8 )& 0xff00) | ((num << 24) & 0xff000000))

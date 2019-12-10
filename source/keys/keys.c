@@ -150,7 +150,7 @@ void dump_keys() {
     emummc_storage_read(&storage, 0x100000 / NX_EMMC_BLOCKSIZE, 0x40000 / NX_EMMC_BLOCKSIZE, pkg1);
     const pkg1_id_t *pkg1_id = pkg1_identify(pkg1);
     if (!pkg1_id) {
-        EPRINTF("Unknown pkg1 version.");
+        EPRINTF("Unknown pkg1 version.\n Make sure you have the latest Lockpick_RCM.\n If a new firmware version just came out,\n Lockpick_RCM must be updated.\n Check Github for new release.");
         goto out_wait;
     }
 
@@ -483,9 +483,10 @@ get_tsec: ;
         }
     }
 pkg2_done:
-    free(ki->kip1);
+    if (ki) {
+        free(ki);
+    }
     free(pkg2);
-    free(ki);
 
     u8 *rights_ids = NULL, *titlekeys = NULL;
 
@@ -652,7 +653,14 @@ pkg2_done:
         TPRINTFARGS("%kSSL keys...     ", colors[(color_idx++) % 6]);
     }
 
-    if (f_open(&fp, "sd:/Nintendo/Contents/private", FA_READ | FA_OPEN_EXISTING)) {
+    char private_path[200] = "sd:/";
+    if (emu_cfg.nintendo_path && (emu_cfg.enabled || !h_cfg.emummc_force_disable)) {
+        strcat(private_path, emu_cfg.nintendo_path);
+    } else {
+        strcat(private_path, "Nintendo");
+    }
+    strcat(private_path, "/Contents/private");
+    if (f_open(&fp, private_path, FA_READ | FA_OPEN_EXISTING)) {
         EPRINTF("Unable to open SD seed vector. Skipping.");
         goto get_titlekeys;
     }

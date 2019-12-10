@@ -19,6 +19,7 @@
 #include "bpmp.h"
 #include "clock.h"
 #include "t210.h"
+#include "../../common/memory_map.h"
 #include "../utils/util.h"
 
 #define BPMP_CACHE_CONFIG               0x0
@@ -74,13 +75,13 @@
 
 bpmp_mmu_entry_t mmu_entries[] =
 {
-	{ 0x80000000,    0xFFFFFFFF, MMU_EN_READ | MMU_EN_WRITE | MMU_EN_EXEC | MMU_EN_CACHED, true },
-	{ IPL_LOAD_ADDR, 0x40040000, MMU_EN_READ | MMU_EN_WRITE | MMU_EN_EXEC | MMU_EN_CACHED, true }
+	{ DRAM_START, 0xFFFFFFFF, MMU_EN_READ | MMU_EN_WRITE | MMU_EN_EXEC | MMU_EN_CACHED, true },
+	{ IRAM_BASE,  0x4003FFFF, MMU_EN_READ | MMU_EN_WRITE | MMU_EN_EXEC | MMU_EN_CACHED, true }
 };
 
-void bpmp_mmu_maintenance(u32 op)
+void bpmp_mmu_maintenance(u32 op, bool force)
 {
-	if (!(BPMP_CACHE_CTRL(BPMP_CACHE_CONFIG) & CFG_ENABLE))
+	if (!force && !(BPMP_CACHE_CTRL(BPMP_CACHE_CONFIG) & CFG_ENABLE))
 		return;
 
 	BPMP_CACHE_CTRL(BPMP_CACHE_INT_CLEAR) = INT_CLR_MAINT_DONE;
@@ -132,13 +133,13 @@ void bpmp_mmu_enable()
 	BPMP_CACHE_CTRL(BPMP_CACHE_MMU_CMD) = MMU_CMD_COPY_SHADOW;
 
 	// Invalidate cache.
-	bpmp_mmu_maintenance(BPMP_MMU_MAINT_INVALID_WAY);
+	bpmp_mmu_maintenance(BPMP_MMU_MAINT_INVALID_WAY, true);
 
 	// Enable cache.
 	BPMP_CACHE_CTRL(BPMP_CACHE_CONFIG) = CFG_ENABLE | CFG_FORCE_WRITE_THROUGH | CFG_TAG_CHK_ABRT_ON_ERR;
 
 	// HW bug. Invalidate cache again.
-	bpmp_mmu_maintenance(BPMP_MMU_MAINT_INVALID_WAY);
+	bpmp_mmu_maintenance(BPMP_MMU_MAINT_INVALID_WAY, false);
 }
 
 void bpmp_mmu_disable()
@@ -147,21 +148,19 @@ void bpmp_mmu_disable()
 		return;
 
 	// Clean and invalidate cache.
-	bpmp_mmu_maintenance(BPMP_MMU_MAINT_CLN_INV_WAY);
+	bpmp_mmu_maintenance(BPMP_MMU_MAINT_CLN_INV_WAY, false);
 
 	// Disable cache.
 	BPMP_CACHE_CTRL(BPMP_CACHE_CONFIG) = 0;
-
-	// HW bug. Invalidate cache again.
-	bpmp_mmu_maintenance(BPMP_MMU_MAINT_INVALID_WAY);
 }
 
 const u8 pllc4_divn[] = {
 	0,   // BPMP_CLK_NORMAL:      408MHz  0% - 136MHz APB.
-	85,  // BPMP_CLK_LOW_BOOST:   544MHz 33% - 136MHz APB.
-	90,  // BPMP_CLK_MID_BOOST:   576MHz 41% - 144MHz APB.
-	94   // BPMP_CLK_SUPER_BOOST: 602MHz 48% - 150MHz APB.
-	//95   // BPMP_CLK_SUPER_BOOST: 608MHz 49% - 152MHz APB.
+	85,  // BPMP_CLK_HIGH_BOOST:  544MHz 33% - 136MHz APB.
+	90,  // BPMP_CLK_SUPER_BOOST: 576MHz 41% - 144MHz APB.
+	92   // BPMP_CLK_HYPER_BOOST: 589MHz 44% - 147MHz APB.
+	// Do not use for public releases!
+	//95   // BPMP_CLK_DEV_BOOST: 608MHz 49% - 152MHz APB.
 };
 
 bpmp_freq_t bpmp_clock_set = BPMP_CLK_NORMAL;

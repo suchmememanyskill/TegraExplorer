@@ -26,22 +26,28 @@
 #include "../soc/fuse.h"
 #include "../soc/t210.h"
 
-volatile nyx_storage_t *nyx_str = (nyx_storage_t *)0xED000000;
+extern volatile nyx_storage_t *nyx_str;
 
-void minerva_init()
+u32 minerva_init()
 {
 	u32 curr_ram_idx = 0;
 
 	mtc_config_t *mtc_cfg = (mtc_config_t *)&nyx_str->mtc_cfg;
 
-	// Set table to ram.
-	mtc_cfg->mtc_table = NULL;
+	// Set table to nyx storage.
+	mtc_cfg->mtc_table = (emc_table_t *)&nyx_str->mtc_table;
+
 	mtc_cfg->sdram_id = (fuse_read_odm(4) >> 3) & 0x1F;
+	mtc_cfg->init_done = MTC_NEW_MAGIC; // Initialize mtc table.
+	
 	u32 ep_addr = ianos_loader(false, "bootloader/sys/libsys_minerva.bso", DRAM_LIB, (void *)mtc_cfg);
-	minerva_cfg = (void *)ep_addr;
+
+	// Ensure that Minerva is new.
+	if (mtc_cfg->init_done == MTC_INIT_MAGIC)
+		minerva_cfg = (void *)ep_addr;
 
 	if (!minerva_cfg)
-		return;
+		return 1;
 
 	// Get current frequency
 	for (curr_ram_idx = 0; curr_ram_idx < 10; curr_ram_idx++)
@@ -58,6 +64,17 @@ void minerva_init()
 	minerva_cfg(mtc_cfg, NULL);
 	mtc_cfg->rate_to = 1600000;
 	minerva_cfg(mtc_cfg, NULL);
+
+	// FSP WAR.
+	mtc_cfg->train_mode = OP_SWITCH;
+	mtc_cfg->rate_to = 800000;
+	minerva_cfg(mtc_cfg, NULL);
+
+	// Switch to max.
+	mtc_cfg->rate_to = 1600000;
+	minerva_cfg(mtc_cfg, NULL);
+
+	return 0;
 }
 
 void minerva_change_freq(minerva_freq_t freq)
@@ -66,7 +83,7 @@ void minerva_change_freq(minerva_freq_t freq)
 		return;
 
 	mtc_config_t *mtc_cfg = (mtc_config_t *)&nyx_str->mtc_cfg;
-	if (minerva_cfg && (mtc_cfg->rate_from != freq))
+	if (mtc_cfg->rate_from != freq)
 	{
 		mtc_cfg->rate_to = freq;
 		mtc_cfg->train_mode = OP_SWITCH;
@@ -80,7 +97,7 @@ void minerva_periodic_training()
 		return;
 
 	mtc_config_t *mtc_cfg = (mtc_config_t *)&nyx_str->mtc_cfg;
-	if (minerva_cfg && mtc_cfg->rate_from == FREQ_1600)
+	if (mtc_cfg->rate_from == FREQ_1600)
 	{
 		mtc_cfg->train_mode = OP_PERIODIC_TRAIN;
 		minerva_cfg(mtc_cfg, NULL);

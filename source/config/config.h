@@ -46,5 +46,12 @@ typedef enum
 } hsysmodule_t;
 
 void set_default_configuration();
+int create_config_entry();
+void config_autoboot();
+void config_bootdelay();
+void config_verification();
+void config_backlight();
+void config_auto_hos_poweroff();
+void config_nogc();
 
 #endif /* _CONFIG_H_ */

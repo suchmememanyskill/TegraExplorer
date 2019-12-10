@@ -54,6 +54,7 @@
 #define FUSE_PRIVATE_KEY3 0x1B0
 #define FUSE_PRIVATE_KEY4 0x1B4
 #define FUSE_RESERVED_SW 0x1C0
+#define FUSE_SKU_DIRECT_CONFIG 0x1F4
 #define FUSE_OPT_VENDOR_CODE 0x200
 #define FUSE_OPT_FAB_CODE 0x204
 #define FUSE_OPT_LOT_CODE_0 0x208
@@ -74,5 +75,10 @@
 
 void fuse_disable_program();
 u32 fuse_read_odm(u32 idx);
+void fuse_wait_idle();
+int fuse_read_ipatch(void (*ipatch)(u32 offset, u32 value));
+int fuse_read_evp_thunk(u32 *iram_evp_thunks, u32 *iram_evp_thunks_len);
+void fuse_read_array(u32 *words);
+bool fuse_check_patched_rcm();
 
 #endif

@@ -1,6 +1,6 @@
 /*
 * Copyright (c) 2018 naehrwert
-* Copyright (C) 2018 CTCaer
+* Copyright (c) 2018 CTCaer
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -128,7 +128,7 @@ static const cfg_op_t _display_config_2[94] = {
 };
 
 //DSI Init config.
-static const cfg_op_t _display_config_3[61] = {
+static const cfg_op_t _display_config_3[61] = { 
 	{DSI_WR_DATA, 0},
 	{DSI_INT_ENABLE, 0},
 	{DSI_INT_STATUS, 0},
@@ -415,7 +415,7 @@ static const cfg_op_t _display_config_11[113] = {
 	{DC_DISP_SYNC_WIDTH,  0x10048},
 	{DC_DISP_BACK_PORCH,  0x90048},
 	{DC_DISP_ACTIVE,      0x50002D0},
-	{DC_DISP_FRONT_PORCH, 0xA0088}, // Sources say that this should be above the DC_DISP_ACTIVE cmd.
+	{DC_DISP_FRONT_PORCH, 0xA0088},   // Sources say that this should be above the DC_DISP_ACTIVE cmd.
 	/* End of Display timings */
 	{DC_DISP_SHIFT_CLOCK_OPTIONS, SC1_H_QUALIFIER_NONE | SC0_H_QUALIFIER_NONE},
 	{DC_COM_PIN_OUTPUT_ENABLE(1), 0},
@@ -548,7 +548,7 @@ static const cfg_op_t cfg_display_framebuffer[32] = {
 	{DC_WIN_LINE_STRIDE, UV_LINE_STRIDE(720 * 2) | LINE_STRIDE(720 * 4)}, //768*2x768*4 (= 0x600 x 0xC00) bytes, see TRM for alignment requirements.
 	{DC_WIN_BUFFER_CONTROL, 0},
 	{DC_WINBUF_SURFACE_KIND, 0}, //Regular surface.
-	{DC_WINBUF_START_ADDR, FB_ADDRESS}, //Framebuffer address.
+	{DC_WINBUF_START_ADDR, IPL_FB_ADDRESS}, // Framebuffer address.
 	{DC_WINBUF_ADDR_H_OFFSET, 0},
 	{DC_WINBUF_ADDR_V_OFFSET, 0},
 	{DC_WIN_WIN_OPTIONS, 0},

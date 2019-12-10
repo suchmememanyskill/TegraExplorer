@@ -11,8 +11,8 @@
 
 fs_entry fileobjects[500];
 char rootpath[10] = "";
-char currentpath[300] = "";
-char clipboard[300] = "";
+char *currentpath = "";
+char *clipboard = "";
 u8 clipboardhelper = 0;
 extern const char sizevalues[4][3];
 extern int launch_payload(char *path);
@@ -30,20 +30,19 @@ menu_item explfilemenu[9] = {
 };
 
 void writecurpath(const char *in){
-    /*
     if (currentpath != NULL)
         free(currentpath);
 
     size_t len = strlen(in) + 1;
     currentpath = (char*) malloc (len);
     strcpy(currentpath, in);
-    */
+
    strcpy(currentpath, in);
 }
 
 void writeclipboard(const char *in, bool operation, bool folder){
-    //if (clipboard != NULL)
-    //    free(clipboard);
+    if (clipboard != NULL)
+        free(clipboard);
 
     clipboardhelper = 0;
     
@@ -53,11 +52,11 @@ void writeclipboard(const char *in, bool operation, bool folder){
     if (folder)
         clipboardhelper |= (ISDIR);
 
-    /*
+    
     size_t len = strlen(in) + 1;
     clipboard = (char*) malloc (len);
     strcpy(clipboard, in);
-    */
+    
    strcpy(clipboard, in);
 }
 
@@ -187,8 +186,16 @@ int copyfile(const char *locin, const char *locout, bool print){
     return 0;
 }
 
+u64 getfilesize(char *path){
+    FILINFO fno;
+    f_stat(path, &fno);
+    return fno.fsize;
+}
+
 void addobject(char* name, int spot, bool isfol, bool isarc){
-    size_t size = strlen(name) + 1;
+    size_t length = strlen(name) + 1;
+    u64 size = 0;
+    int sizes = 0;
     fileobjects[spot].property = 0;
 
     if (fileobjects[spot].name != NULL){
@@ -196,18 +203,13 @@ void addobject(char* name, int spot, bool isfol, bool isarc){
         fileobjects[spot].name = NULL;
     }
 
-    fileobjects[spot].name = (char*) malloc (size);
-    strlcpy(fileobjects[spot].name, name, size);
+    fileobjects[spot].name = (char*) malloc (length);
+    strlcpy(fileobjects[spot].name, name, length);
 
     if (isfol)
         fileobjects[spot].property |= (ISDIR);
     else {
-        unsigned long size = 0;
-        int sizes = 0;
-        FILINFO fno;
-        f_stat(getnextloc(currentpath, name), &fno);
-            
-        size = fno.fsize;
+        size = getfilesize(getnextloc(currentpath, name));
         
         while (size > 1024){
             size /= 1024;

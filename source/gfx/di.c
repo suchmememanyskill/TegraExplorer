@@ -262,11 +262,12 @@ void display_color_screen(u32 color)
 u32 *display_init_framebuffer()
 {
 	// Sanitize framebuffer area.
-	memset((u32 *)FB_ADDRESS, 0, 0x3C0000);
+	memset((u32 *)IPL_FB_ADDRESS, 0, 0x3C0000);
+
 	// This configures the framebuffer @ IPL_FB_ADDRESS with a resolution of 1280x720 (line stride 720).
 	exec_cfg((u32 *)DISPLAY_A_BASE, cfg_display_framebuffer, 32);
 	usleep(35000);
 
-	return (u32 *)FB_ADDRESS;
+	return (u32 *)IPL_FB_ADDRESS;
 }
 

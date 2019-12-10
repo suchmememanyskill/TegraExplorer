@@ -17,7 +17,21 @@
 #include "../soc/kfuse.h"
 #include "../soc/clock.h"
 #include "../soc/t210.h"
-#include "../utils/util.h"
+
+#pragma GCC push_options
+#pragma GCC optimize ("Os")
+
+int kfuse_wait_ready()
+{
+	// Wait for KFUSE to finish init and verification of data.
+	while (!(KFUSE(KFUSE_STATE) & KFUSE_STATE_DONE))
+		;
+
+	if (!(KFUSE(KFUSE_STATE) & KFUSE_STATE_CRCPASS))
+		return 0;
+
+	return 1;
+}
 
 int kfuse_read(u32 *buf)
 {
@@ -25,10 +39,7 @@ int kfuse_read(u32 *buf)
 
 	clock_enable_kfuse();
 
-	while (!(KFUSE(KFUSE_STATE) & KFUSE_STATE_DONE))
-		;
-
-	if (!(KFUSE(KFUSE_STATE) & KFUSE_STATE_CRCPASS))
+	if (!kfuse_wait_ready())
 		goto out;
 
 	KFUSE(KFUSE_KEYADDR) = KFUSE_KEYADDR_AUTOINC;
@@ -42,16 +53,4 @@ out:;
 	return res;
 }
 
-int kfuse_wait_ready()
-{
-    // Wait for KFUSE to finish init and verification of data.
-    while (!(KFUSE(KFUSE_STATE) & KFUSE_STATE_DONE))
-    {
-        usleep(500);
-    }
-
-    if (!(KFUSE(KFUSE_STATE) & KFUSE_STATE_CRCPASS))
-        return 0;
-
-    return 1;
-}
+#pragma GCC pop_options

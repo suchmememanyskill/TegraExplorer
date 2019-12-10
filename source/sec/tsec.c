@@ -23,6 +23,7 @@
 #include "../sec/se_t210.h"
 #include "../soc/bpmp.h"
 #include "../soc/clock.h"
+#include "../soc/kfuse.h"
 #include "../soc/smmu.h"
 #include "../soc/t210.h"
 #include "../mem/heap.h"
@@ -76,6 +77,8 @@ int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 	clock_enable_sor0();
 	clock_enable_sor1();
 	clock_enable_kfuse();
+
+	kfuse_wait_ready();
 
 	//Configure Falcon.
 	TSEC(TSEC_DMACTL) = 0;
@@ -208,7 +211,7 @@ int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 			res = -6;
 			smmu_deinit_for_tsec();
 
-			goto out;
+			goto out_free;
 		}
 
 		// Give some extra time to make sure PKG1.1 is decrypted.
@@ -278,7 +281,7 @@ out:;
 	clock_disable_sor_safe();
 	clock_disable_tsec();
 	bpmp_mmu_enable();
-	bpmp_clk_rate_set(BPMP_CLK_SUPER_BOOST);
+	bpmp_clk_rate_set(BPMP_CLK_DEFAULT_BOOST);
 
 	return res;
 }

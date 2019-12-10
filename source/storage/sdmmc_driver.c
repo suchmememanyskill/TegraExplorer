@@ -252,7 +252,7 @@ int sdmmc_setup_clock(sdmmc_t *sdmmc, u32 type)
 
 	u32 tmp;
 	u16 divisor;
-	clock_sdmmc_get_params(&tmp, &divisor, type);
+	clock_sdmmc_get_card_clock_div(&tmp, &divisor, type);
 	clock_sdmmc_config_clock_source(&tmp, sdmmc->id, tmp);
 	sdmmc->divisor = (tmp + divisor - 1) / divisor;
 
@@ -722,7 +722,7 @@ static int _sdmmc_check_mask_interrupt(sdmmc_t *sdmmc, u16 *pout, u16 mask)
 		sdmmc->regs->norintsts = norintsts & mask;
 		return SDMMC_MASKINT_MASKED;
 	}
-	
+
 	return SDMMC_MASKINT_NOERROR;
 }
 
@@ -767,7 +767,7 @@ static int _sdmmc_stop_transmission_inner(sdmmc_t *sdmmc, u32 *rsp)
 
 	if (!res)
 		return 0;
-	
+
 	_sdmmc_cache_rsp(sdmmc, rsp, 4, SDMMC_RSP_TYPE_1);
 
 	return _sdmmc_wait_prnsts_type1(sdmmc);
@@ -830,7 +830,7 @@ static int _sdmmc_config_dma(sdmmc_t *sdmmc, u32 *blkcnt_out, sdmmc_req_t *req)
 		trnmode |= TEGRA_MMC_TRNMOD_DATA_XFER_DIR_SEL_READ;
 	if (req->is_auto_cmd12)
 		trnmode = (trnmode & 0xFFF3) | TEGRA_MMC_TRNMOD_AUTO_CMD12;
-	bpmp_mmu_maintenance(BPMP_MMU_MAINT_CLN_INV_WAY);
+	bpmp_mmu_maintenance(BPMP_MMU_MAINT_CLN_INV_WAY, false);
 	sdmmc->regs->trnmod = trnmode;
 
 	return 1;
@@ -855,7 +855,7 @@ static int _sdmmc_update_dma(sdmmc_t *sdmmc)
 					break;
 				if (intr & TEGRA_MMC_NORINTSTS_XFER_COMPLETE)
 				{
-					bpmp_mmu_maintenance(BPMP_MMU_MAINT_CLN_INV_WAY);
+					bpmp_mmu_maintenance(BPMP_MMU_MAINT_CLN_INV_WAY, false);
 					return 1; // Transfer complete.
 				}
 				if (intr & TEGRA_MMC_NORINTSTS_DMA_INTERRUPT)
@@ -901,7 +901,7 @@ static int _sdmmc_execute_cmd_inner(sdmmc_t *sdmmc, sdmmc_cmd_t *cmd, sdmmc_req_
 	_sdmmc_parse_cmdbuf(sdmmc, cmd, is_data_present);
 
 	int res = _sdmmc_wait_request(sdmmc);
-	DPRINTF("rsp(%d): %08X, %08X, %08X, %08X\n", res, 
+	DPRINTF("rsp(%d): %08X, %08X, %08X, %08X\n", res,
 		sdmmc->regs->rspreg0, sdmmc->regs->rspreg1, sdmmc->regs->rspreg2, sdmmc->regs->rspreg3);
 	if (res)
 	{
@@ -943,7 +943,7 @@ static int _sdmmc_config_sdmmc1()
 	gpio_output_enable(GPIO_PORT_Z, GPIO_PIN_1, GPIO_OUTPUT_DISABLE);
 	usleep(100);
 
-	// Check if SD card is inserted. 
+	// Check if SD card is inserted.
 	if(!!gpio_read(GPIO_PORT_Z, GPIO_PIN_1))
 		return 0;
 
@@ -1015,7 +1015,7 @@ int sdmmc_init(sdmmc_t *sdmmc, u32 id, u32 power, u32 bus_width, u32 type, int n
 
 	u32 clock;
 	u16 divisor;
-	clock_sdmmc_get_params(&clock, &divisor, type);
+	clock_sdmmc_get_card_clock_div(&clock, &divisor, type);
 	clock_sdmmc_enable(id, clock);
 
 	sdmmc->clock_stopped = 0;
@@ -1055,7 +1055,7 @@ void sdmmc_end(sdmmc_t *sdmmc)
 	if (!sdmmc->clock_stopped)
 	{
 		_sdmmc_sd_clock_disable(sdmmc);
-		// Disable SDMMC power. 
+		// Disable SDMMC power.
 		_sdmmc_set_voltage(sdmmc, SDMMC_POWER_OFF);
 
 		// Disable SD card power.
@@ -1134,7 +1134,7 @@ int sdmmc_enable_low_voltage(sdmmc_t *sdmmc)
 	_sdmmc_set_voltage(sdmmc, SDMMC_POWER_1_8);
 	_sdmmc_get_clkcon(sdmmc);
 	msleep(5);
-	
+
 	if (sdmmc->regs->hostctl2 & SDHCI_CTRL_VDD_180)
 	{
 		sdmmc->regs->clkcon |= TEGRA_MMC_CLKCON_SD_CLOCK_ENABLE;

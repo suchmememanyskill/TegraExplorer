@@ -219,7 +219,7 @@ void _config_regulators()
 {
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_CNFGBBC, MAX77620_CNFGBBC_RESISTOR_1K);
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_ONOFFCNFG1,
-		(1 << 6) | (1 << MAX77620_ONOFFCNFG1_MRT_SHIFT)); // PWR delay for forced shutdown off.
+		(1 << 6) | (3 << MAX77620_ONOFFCNFG1_MRT_SHIFT)); // PWR delay for forced shutdown off.
 
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_FPS_CFG0,
 		(7 << MAX77620_FPS_TIME_PERIOD_SHIFT));
@@ -257,7 +257,7 @@ void _config_regulators()
 		MAX77621_T_JUNCTION_120 | MAX77621_FT_ENABLE | MAX77621_CKKADV_TRIP_75mV_PER_US_HIST_DIS |
 		MAX77621_CKKADV_TRIP_150mV_PER_US | MAX77621_INDUCTOR_NOMINAL);
 
-	// Disable low battery shutdown monitor.
+	// Enable low battery shutdown monitor for < 2800mV.
 	max77620_low_battery_monitor_config();
 }
 
@@ -274,6 +274,7 @@ void config_hw()
 
 	// Enable fuse clock.
 	clock_enable_fuse(true);
+
 	// Disable fuse programming.
 	fuse_disable_program();
 
