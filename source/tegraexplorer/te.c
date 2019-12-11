@@ -5,6 +5,8 @@
 #include "../utils/util.h"
 #include "tools.h"
 #include "fs.h"
+#include "../utils/btn.h"
+#include "emmc.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
@@ -13,9 +15,10 @@ bool sd_mounted;
 
 menu_item mainmenu[MAINMENU_AMOUNT] = {
     {"[SD:/] SD CARD", COLOR_GREEN, SD_CARD, 1},
-    {"[EMMC:/] ?", COLOR_GREEN, EMMC, 1},
+    {"[SYSTEM:/] EMMC", COLOR_GREEN, EMMC_SYS, 1},
     {"\nMount/Unmount SD", COLOR_WHITE, MOUNT_SD, 1},
     {"Tools", COLOR_VIOLET, TOOLS, 1},
+    {"SD format", COLOR_VIOLET, SD_FORMAT, 1},
     {"\nCredits", COLOR_WHITE, CREDITS, 1},
     {"Exit", COLOR_WHITE, EXIT, 1}
 };
@@ -59,12 +62,21 @@ void fillmainmenu(){
                     strcpy(mainmenu[i].name, "\nMount SD");
                 }
                 break;
+            case 5:
+                if (sd_mounted)
+                    mainmenu[i].property = 1;
+                else
+                    mainmenu[i].property = -1;
+                break;
         }
     }
 }
 
 void te_main(){
     int res;
+
+    dump_biskeys();
+    mount_emmc("SYSTEM", 2);
 
     sd_mounted = sd_mount();
 
@@ -76,8 +88,16 @@ void te_main(){
             case SD_CARD:
                 filemenu("SD:/");
                 break;
-            case EMMC:
+            case EMMC_SYS:
+                if (makewaitmenu("You're about to enter EMMC\nModifying anything here\n        can result in a BRICK!\n\nPlease only continue\n    if you know what you're doing\n\nPress Vol+/- to return\n", "Press Power to enter", 4))
+                    filemenu("emmc:/");
                 break;
+                /*
+            case EMMC_USR:
+                mount_emmc("USER", 2);
+                filemenu("emmc:/");
+                break;
+                */
             case MOUNT_SD:
                 if (sd_mounted){
                     sd_mounted = false;

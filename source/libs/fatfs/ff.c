@@ -48,11 +48,17 @@
    Module Private Definitions
 
 ---------------------------------------------------------------------------*/
+/*
+PARTITION VolToPart[] = {
+	{0, 1},
+	{1, 8},
+	{1, 9}
+};
+*/
 
 PARTITION VolToPart[] = {
 	{0, 1},
-	{1, 1},
-	{1, 2}
+	{1, 0}
 };
 
 #if FF_DEFINED != 86604	/* Revision ID */

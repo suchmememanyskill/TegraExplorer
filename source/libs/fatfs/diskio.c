@@ -179,7 +179,7 @@ DRESULT disk_read (
                 secindex++;
             }
         }
-
+        //system_part (pdrv == 1) ? system_part_sys : system_part_usr
         if (nx_emmc_part_read(&storage, system_part, sector, count, buff)) {
             u32 tweak_exp = 0;
             bool regen_tweak = true;

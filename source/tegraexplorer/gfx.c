@@ -12,7 +12,7 @@
 const char fixedoptions[3][50] = {
     "Folder -> previous folder                  ",
     "Clipboard -> Current folder                ",
-    "Folder options                             "
+    "Return to main menu                        "
 };
 
 const char sizevalues[4][3] = {
@@ -83,6 +83,30 @@ int makemenu(menu_item menu[], int menuamount){
 void printbytes(u8 print[], u32 size, u32 offset){
     gfx_con_setpos(0, 31);
     gfx_hexdump(offset, print, size * sizeof(u8));
+}
+
+int makewaitmenu(char *initialmessage, char *hiddenmessage, int timer){
+    clearscreen();
+    int res;
+    u32 start = get_tmr_s();
+
+    gfx_printf(initialmessage);
+
+    while(1){
+        res = btn_read();
+
+        if (res & BTN_VOL_DOWN || res & BTN_VOL_UP)
+            return 0;
+
+        if (start + timer > get_tmr_s())
+            gfx_printf("\r<Wait %d seconds>", timer + start - get_tmr_s());
+
+        else if (res & BTN_POWER)
+            return 1;
+
+        else 
+            gfx_printf("\r%k%s%k", COLOR_RED, hiddenmessage, COLOR_WHITE);
+    }
 }
 
 void printfsentry(fs_entry file, bool highlight, bool refresh){

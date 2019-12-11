@@ -221,7 +221,10 @@ void copyfile(const char *path, const char *outfolder){
     gfx_printf("Note:\nTo stop the transfer hold Vol-\n\n%s\nProgress: ", outstring);
 
     if (clipboardhelper & OPERATIONMOVE){
-        f_rename(path, outstring);
+        if (strcmp(rootpath, "emmc:/"))
+            f_rename(path, outstring);
+        else
+            message("\nMoving in emummc is not allowed!", COLOR_RED);
     }
     
     else if (clipboardhelper & OPERATIONCOPY) {
@@ -301,30 +304,17 @@ int readfolder(const char *path){
 }
 
 int delfile(const char *path, const char *filename){
-    clearscreen();
-    int res;
-    int amount = -1;
-    u32 start = get_tmr_s();
+    char *tempmessage;
+    size_t tempmessagesize = strlen(filename) + 65;
+    tempmessage = (char*) malloc (tempmessagesize);
 
-    gfx_printf("Are you sure you want to delete:\n%s\n\nPress vol+/- to cancel\n", filename);
-    while(1){
-        res = btn_read();
-        if (res & BTN_VOL_UP || res & BTN_VOL_DOWN)
-            break;
-        
-        if (start + 3 > get_tmr_s()){
-            gfx_printf("\r<Wait %d seconds>", 3 + start - get_tmr_s());
-        }
-        else if (res & BTN_POWER){
-            f_unlink(path);
-            amount = readfolder(currentpath);
-            break;
-        }  
-        else {
-            gfx_printf("\r%kPress power to delete%k", COLOR_RED, COLOR_WHITE);
-        }
+    sprintf(tempmessage, "Are you sure you want to delete:\n%s\n\nPress vol+/- to cancel\n", filename);
+    if (makewaitmenu(tempmessage, "Press power to delete", 3)){
+        f_unlink(path);
+        return readfolder(currentpath);
     }
-    return amount;
+    else
+        return -1;
 }
 
 void filemenu(const char *startpath){
@@ -333,6 +323,11 @@ void filemenu(const char *startpath){
     strcpy(rootpath, startpath);
     writecurpath(startpath);
     amount = readfolder(currentpath);
+
+    if (strcmp(rootpath, "emmc:/"))
+        explfilemenu[5].property = 1;
+    else
+        explfilemenu[5].property = -1;
 
     while (1){
         res = makefilemenu(fileobjects, amount, currentpath);

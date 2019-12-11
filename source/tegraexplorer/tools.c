@@ -8,6 +8,7 @@
 #include "../utils/types.h"
 #include "../libs/fatfs/diskio.h"
 #include "../storage/sdmmc.h"
+#include "emmc.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
@@ -16,31 +17,34 @@ extern sdmmc_storage_t sd_storage;
 void displayinfo(){
     clearscreen();
 
+
+
     FATFS *fs;
-    DWORD fre_clust, fre_sect, tot_sect, temp_sect, sz_disk;
-    s64 capacity;
+    DWORD fre_clust, fre_sect, tot_sect;
+    u32 capacity;
     int res;
 
-    gfx_printf("Getting storage info: please wait...");
+    gfx_printf("Biskeys:\n");
+    print_biskeys();
 
-    res = f_getfree("sd:", &fre_clust, &fs);
-    gfx_printf("\nResult getfree: %d\n\n", res);
+    if (!sd_mount()){
+        gfx_printf("SD mount failed!\nFailed to display SD info\n");
+    }
+    else {
+        gfx_printf("Getting storage info: please wait...");
 
-    tot_sect = (fs->n_fatent - 2) * fs->csize;
-    fre_sect = fre_clust * fs->csize;
+        res = f_getfree("sd:", &fre_clust, &fs);
+        gfx_printf("\nResult getfree: %d\n\n", res);
 
-    gfx_printf("%d KiB total\n%d KiB free\n\nPress any key to continue\n", tot_sect / 2, fre_sect / 2);
+        tot_sect = (fs->n_fatent - 2) * fs->csize;
+        fre_sect = fre_clust * fs->csize;
+        capacity = sd_storage.csd.capacity;
 
-    temp_sect = tot_sect;
-    temp_sect -= 61145088;
+        gfx_printf("Entire sd:\nSectors: %d\nSpace total: %d MB\n\n", capacity, capacity / 2048);
+        gfx_printf("First partition on SD:\nSectors: %d\nSpace total: %d MB\nSpace free: %d MB\n\n", tot_sect, tot_sect / 2048, fre_sect / 2048);
+    }
 
-    gfx_printf("\n%k1st part: %d\n2nd part: 61145088\n\n%k", COLOR_RED, temp_sect, COLOR_WHITE);
-
-    capacity = sd_storage.csd.capacity;
-    capacity -= 61145088;
-
-    gfx_printf("\n%k1st part: %d\n2nd part: 61145088\n\n%k", COLOR_RED, capacity, COLOR_WHITE);
-
+    gfx_printf("Press any key to continue");
     btn_wait();
 }
 
@@ -76,7 +80,7 @@ void format(){
     DWORD clustsize = 16 * 512;
     BYTE formatoptions = 0;
     formatoptions |= (FM_FAT32);
-    formatoptions |= (FM_SFD);
+    //formatoptions |= (FM_SFD);
 
     timer = get_tmr_s();
 
