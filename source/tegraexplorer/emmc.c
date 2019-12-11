@@ -70,6 +70,14 @@ int mount_emmc(char *partition, int biskeynumb){
     return 0;
 }
 
+short returnpkg1ver(){
+    return pkg1ver;
+}
+
+void disconnect_emmc(){
+    sdmmc_storage_end(&storage);
+}
+
 int dump_biskeys(){
 	u8 temp_key[0x10], device_key[0x10] = {0};
     tsec_ctxt_t tsec_ctxt;

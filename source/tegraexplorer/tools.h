@@ -2,4 +2,5 @@
 
 void displayinfo();
 void displaygpio();
-void format();
+void format(int mode);
+int dumpfirmware();

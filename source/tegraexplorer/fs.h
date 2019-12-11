@@ -41,3 +41,4 @@ int readfolder(const char *path);
 void filemenu();
 bool checkfile(char* path);
 u64 getfilesize(char *path);
+int copy(const char *locin, const char *locout, bool print);

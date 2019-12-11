@@ -295,7 +295,7 @@ int readfolder(const char *path){
         message(errmes, COLOR_RED);
     }
 
-    while (!f_readdir(&dir, &fno) && fno.fname[0]){
+    while (!f_readdir(&dir, &fno) && fno.fname[0] && folderamount < 500){
         addobject(fno.fname, folderamount++, (fno.fattrib & AM_DIR), (fno.fattrib & AM_ARC));
     }
 

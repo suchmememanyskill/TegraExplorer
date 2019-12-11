@@ -33,7 +33,12 @@ enum shutdownmenu_return {
 enum toolsmenu_return {
     DISPLAY_INFO = 1,
     DISPLAY_GPIO,
-    FORMATFAT32
+    DUMPFIRMWARE
+};
+
+enum formatmenu_return {
+    FORMAT_ALL_FAT32,
+    FORMAT_EMUMMC
 };
 
 //menu_item mainmenu[MAINMENU_AMOUNT];

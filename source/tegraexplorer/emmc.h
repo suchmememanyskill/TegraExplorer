@@ -4,6 +4,8 @@
 int dump_biskeys();
 void print_biskeys();
 int mount_emmc(char *partition, int biskeynumb);
+short returnpkg1ver();
+void disconnect_emmc();
 
 static const u8 zeros[0x10] = {0};
 

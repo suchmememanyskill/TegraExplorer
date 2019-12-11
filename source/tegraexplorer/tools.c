@@ -8,7 +8,9 @@
 #include "../utils/types.h"
 #include "../libs/fatfs/diskio.h"
 #include "../storage/sdmmc.h"
+#include "../utils/sprintf.h"
 #include "emmc.h"
+#include "fs.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
@@ -16,8 +18,6 @@ extern sdmmc_storage_t sd_storage;
 
 void displayinfo(){
     clearscreen();
-
-
 
     FATFS *fs;
     DWORD fre_clust, fre_sect, tot_sect;
@@ -69,31 +69,95 @@ void displaygpio(){
     }
 }
 
-void format(){
+int dumpfirmware(){
+    DIR dir;
+    FILINFO fno;
+    bool fail = false;
+    int ret, amount = 0;
+    char path[100] = "emmc:/Contents/registered";
+    char sdfolderpath[100] = "";
+    char syspath[100] = "";
+    char sdpath[100] = "";
+    short pkg1ver = returnpkg1ver();
+    u32 timer = get_tmr_s();
+
+    clearscreen();
+
+    gfx_printf("PKG1 version: %d\n", pkg1ver);
+
+    ret = f_mkdir("sd:/tegraexplorer");
+    gfx_printf("Creating making sd:/tegraexplorer %d\n", ret);
+
+    ret = f_mkdir("sd:/tegraexplorer/Firmware");
+    gfx_printf("Creating sd:/tegraexplorer/Firmware %d\n", ret);
+
+    sprintf(sdfolderpath, "sd:/tegraexplorer/Firmware/%d", pkg1ver);
+    ret = f_mkdir(sdfolderpath);
+    gfx_printf("Creating %s %d\n", sdfolderpath, ret);
+
+    ret = f_opendir(&dir, path);
+    gfx_printf("Result opening system:/ %d\n\n%k", ret, COLOR_GREEN);
+
+    while(!f_readdir(&dir, &fno) && fno.fname[0] && !fail){
+        sprintf(sdpath, "%s/%s", sdfolderpath, fno.fname);
+
+        if (fno.fattrib & AM_DIR)
+            sprintf(syspath, "%s/%s/00", path, fno.fname);
+        else
+            sprintf(syspath, "%s/%s", path, fno.fname);
+
+        ret = copy(syspath, sdpath, false);
+
+        gfx_printf("%d %s\r", ++amount, fno.fname);
+
+        if (ret != 0)
+            fail = true;
+    }
+
+    if (fail)
+        gfx_printf("%k\n\nDump failed! Aborting (%d)", COLOR_RED, ret);
+
+    gfx_printf("%k\n\nPress any button to continue...\nTime taken: %ds", COLOR_WHITE, get_tmr_s() - timer);
+
+    btn_wait();
+
+    return fail;
+}
+
+void format(int mode){
     clearscreen();
     int res;
     bool fatalerror = false;
-
+    DWORD plist[] = {666, 61145088};
     u32 timer, totalsectors;
     BYTE work[FF_MAX_SS];
-    DWORD plist[] = {666, 61145088};
     DWORD clustsize = 16 * 512;
     BYTE formatoptions = 0;
     formatoptions |= (FM_FAT32);
     //formatoptions |= (FM_SFD);
 
-    timer = get_tmr_s();
+    disconnect_emmc();
 
+    timer = get_tmr_s();
     totalsectors = sd_storage.csd.capacity;
 
-    if (totalsectors < 61145088){
-        gfx_printf("%k\nNot enough free space for emummc!", COLOR_RED);
-        fatalerror = true;
+    if (mode == 0){
+        if (totalsectors < 61145088){
+            gfx_printf("%k\nNot enough free space for emummc!", COLOR_RED);
+            fatalerror = true;
+        }
+
+        if (!fatalerror){
+            plist[0] = totalsectors - 61145088;
+            gfx_printf("\nStarting SD partitioning:\nTotalSectors:        %d\nPartition1 (SD):     %d\nPartition2 (EMUMMC): %d\n", totalsectors, plist[0], plist[1]);
+        }
+    }
+    else {
+        plist[0] = totalsectors;
+        plist[1] = 0;
     }
 
     if (!fatalerror){
-        plist[0] = totalsectors - 61145088;
-        gfx_printf("\nStarting SD partitioning:\nTotalSectors:        %d\nPartition1 (SD):     %d\nPartition2 (EMUMMC): %d\n", totalsectors, plist[0], plist[1]);
         gfx_printf("\nPartitioning SD...\n");
         res = f_fdisk(0, plist, &work);
 
@@ -126,6 +190,9 @@ void format(){
             gfx_printf("Sd mounted!\n");
         }
     }
+
+    dump_biskeys();
+    mount_emmc("SYSTEM", 2);
 
     gfx_printf("\nPress any button to return%k\nTotal time taken: %ds", COLOR_WHITE, (get_tmr_s() - timer));
     btn_wait();

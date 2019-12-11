@@ -37,8 +37,15 @@ menu_item toolsmenu[5] = {
     {"-- TOOLS --\n", COLOR_VIOLET, -1, 0},
     {"Back", COLOR_WHITE, -1, 1},
     {"\nDisplay Console Info", COLOR_GREEN, DISPLAY_INFO, 1},
-    {"Display GPIO pins [DEV]", COLOR_RED, DISPLAY_GPIO, 1},
-    {"FORMAT TEST", COLOR_RED, FORMATFAT32, 1}
+    {"Display GPIO pins", COLOR_VIOLET, DISPLAY_GPIO, 1},
+    {"Dump Firmware", COLOR_BLUE, DUMPFIRMWARE, 1}
+};
+
+menu_item formatmenu[4] = {
+    {"-- FORMAT SD --\n", COLOR_RED, -1, 0},
+    {"Back\n", COLOR_WHITE, -1, 1},
+    {"Format to FAT32", COLOR_RED, FORMAT_ALL_FAT32, 1},
+    {"Format for EmuMMC setup", COLOR_RED, FORMAT_EMUMMC, 1}
 };
 
 void fillmainmenu(){
@@ -111,17 +118,34 @@ void te_main(){
             case TOOLS:
                 res = makemenu(toolsmenu, 5);
 
-                if (res == DISPLAY_INFO)
-                    displayinfo();
-
-                if (res == DISPLAY_GPIO)
-                    displaygpio();
-                
-                if (res == FORMATFAT32)
-                    format();
-
+                switch(res){
+                    case DISPLAY_INFO:
+                        displayinfo();
+                        break;
+                    case DISPLAY_GPIO:
+                        displaygpio();
+                        break;
+                    case DUMPFIRMWARE:
+                        dumpfirmware();
+                        break;
+                }
                 break;
             
+            case SD_FORMAT:
+                res = makemenu(formatmenu, 4);
+
+                switch(res){
+                    case FORMAT_ALL_FAT32:
+                        if (makewaitmenu("Are you sure you want to format your sd?\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10))
+                            format(1);
+                        break;
+                    case FORMAT_EMUMMC:
+                        if (makewaitmenu("Are you sure you want to format your sd?\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10))
+                            format(0);
+                        break;
+                }
+                break;
+
             case CREDITS:
                 message(CREDITS_MESSAGE, COLOR_WHITE);
                 break;

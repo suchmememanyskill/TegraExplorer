@@ -99,7 +99,7 @@ int makewaitmenu(char *initialmessage, char *hiddenmessage, int timer){
             return 0;
 
         if (start + timer > get_tmr_s())
-            gfx_printf("\r<Wait %d seconds>", timer + start - get_tmr_s());
+            gfx_printf("\r<Wait %d seconds> ", timer + start - get_tmr_s());
 
         else if (res & BTN_POWER)
             return 1;
