@@ -86,7 +86,7 @@ int dumpfirmware(){
     gfx_printf("PKG1 version: %d\n", pkg1ver);
 
     ret = f_mkdir("sd:/tegraexplorer");
-    gfx_printf("Creating making sd:/tegraexplorer %d\n", ret);
+    gfx_printf("Creating sd:/tegraexplorer %d\n", ret);
 
     ret = f_mkdir("sd:/tegraexplorer/Firmware");
     gfx_printf("Creating sd:/tegraexplorer/Firmware %d\n", ret);
@@ -124,7 +124,7 @@ int dumpfirmware(){
     return fail;
 }
 
-void format(int mode){
+int format(int mode){
     clearscreen();
     int res;
     bool fatalerror = false;
@@ -196,4 +196,5 @@ void format(int mode){
 
     gfx_printf("\nPress any button to return%k\nTotal time taken: %ds", COLOR_WHITE, (get_tmr_s() - timer));
     btn_wait();
+    return fatalerror;
 }

@@ -136,12 +136,18 @@ void te_main(){
 
                 switch(res){
                     case FORMAT_ALL_FAT32:
-                        if (makewaitmenu("Are you sure you want to format your sd?\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10))
-                            format(1);
+                        if (makewaitmenu("Are you sure you want to format your sd?\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10)){
+                            if (format(1))
+                                sd_mounted = false;
+                        }
+                            
                         break;
                     case FORMAT_EMUMMC:
-                        if (makewaitmenu("Are you sure you want to format your sd?\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10))
-                            format(0);
+                        if (makewaitmenu("Are you sure you want to format your sd?\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10)){
+                            if (format(0))
+                                sd_mounted = false;
+                        }
+                            
                         break;
                 }
                 break;
