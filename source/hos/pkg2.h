@@ -26,7 +26,11 @@
 #define PKG2_SEC_KERNEL 0
 #define PKG2_SEC_INI1 1
 
-#define PKG2_NEWKERN_INI1_START 0x168
+#define PKG2_NEWKERN_GET_INI1 0x44
+
+u32 pkg2_newkern_ini1_val;
+u32 pkg2_newkern_ini1_start;
+u32 pkg2_newkern_ini1_end;
 
 typedef struct _pkg2_hdr_t
 {
@@ -83,7 +87,7 @@ typedef struct _pkg2_kip1_info_t
 	link_t link;
 } pkg2_kip1_info_t;
 
-void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2);
+void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2, bool *new_pkg2);
 int pkg2_decompress_kip(pkg2_kip1_info_t* ki, u32 sectsToDecomp);
 pkg2_hdr_t *pkg2_decrypt(void *data);
 

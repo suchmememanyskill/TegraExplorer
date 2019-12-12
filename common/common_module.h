@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019 shchmue
+ * Common Module Header
+ * Copyright (C) 2018 M4xw
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -12,11 +13,27 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
-#ifndef _KEYS_H_
-#define _KEYS_H_
+#pragma once
+#include <stddef.h>
+//TODO: Move it to BDK
+#include "common_gfx.h"
+#include "common_heap.h"
 
-void dump_keys();
+// Module Callback
+typedef void (*cbMainModule_t)(const char *s);
+typedef void (*memcpy_t)(void *, void *, size_t);
+typedef void (*memset_t)(void *, int, size_t);
 
-#endif
+typedef struct _bdkParams_t
+{
+	gfx_con_t *gfxCon;
+	gfx_ctxt_t *gfxCtx;
+	heap_t *sharedHeap;
+	memcpy_t memcpy;
+	memset_t memset;
+} *bdkParams_t;
+
+// Module Entrypoint
+typedef void (*moduleEntrypoint_t)(void *, bdkParams_t);

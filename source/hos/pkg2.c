@@ -39,14 +39,25 @@ static u32 _pkg2_calc_kip1_size(pkg2_kip1_t *kip1)
 	return size;
 }
 
-void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2)
+void pkg2_get_newkern_info(u8 *kern_data)
+{
+	u32 info_op = *(u32 *)(kern_data + PKG2_NEWKERN_GET_INI1);
+	pkg2_newkern_ini1_val = ((info_op & 0xFFFF) >> 3) + PKG2_NEWKERN_GET_INI1; // Parse ADR and PC.
+
+	pkg2_newkern_ini1_start = *(u32 *)(kern_data + pkg2_newkern_ini1_val);
+	pkg2_newkern_ini1_end   = *(u32 *)(kern_data + pkg2_newkern_ini1_val + 0x8);
+}
+
+void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2, bool *new_pkg2)
 {
 	u8 *ptr;
 	// Check for new pkg2 type.
 	if (!pkg2->sec_size[PKG2_SEC_INI1])
 	{
-		u32 kernel_ini1_off = *(u32 *)(pkg2->data + PKG2_NEWKERN_INI1_START);
-		ptr = pkg2->data + kernel_ini1_off;
+		pkg2_get_newkern_info(pkg2->data);
+
+		ptr = pkg2->data + pkg2_newkern_ini1_start;
+		*new_pkg2 = true;
 	}
 	else
 		ptr = pkg2->data + pkg2->sec_size[PKG2_SEC_KERNEL];
@@ -74,19 +85,19 @@ int pkg2_decompress_kip(pkg2_kip1_info_t* ki, u32 sectsToDecomp)
 
 	pkg2_kip1_t hdr;
 	memcpy(&hdr, ki->kip1, sizeof(hdr));
-	
+
 	unsigned int newKipSize = sizeof(hdr);
 	for (u32 sectIdx = 0; sectIdx < KIP1_NUM_SECTIONS; sectIdx++)
 	{
 		u32 sectCompBit = 1u << sectIdx;
 		// For compressed, cant get actual decompressed size without doing it, so use safe "output size".
-		if (sectIdx < 3 && (sectsToDecomp & sectCompBit) && (hdr.flags & sectCompBit)) 
+		if (sectIdx < 3 && (sectsToDecomp & sectCompBit) && (hdr.flags & sectCompBit))
 			newKipSize += hdr.sections[sectIdx].size_decomp;
 		else
 			newKipSize += hdr.sections[sectIdx].size_comp;
 	}
 
-	pkg2_kip1_t* newKip = malloc(newKipSize);	
+	pkg2_kip1_t* newKip = malloc(newKipSize);
 	unsigned char* dstDataPtr = newKip->data;
 	const unsigned char* srcDataPtr = ki->kip1->data;
 	for (u32 sectIdx = 0; sectIdx < KIP1_NUM_SECTIONS; sectIdx++)
@@ -110,7 +121,7 @@ int pkg2_decompress_kip(pkg2_kip1_info_t* ki, u32 sectsToDecomp)
 		//gfx_printf("Decomping %s KIP1 sect %d of size %d...\n", (const char*)hdr.name, sectIdx, compSize);
 		if (blz_uncompress_srcdest(srcDataPtr, compSize, dstDataPtr, outputSize) == 0)
 		{
-			gfx_printf("%kERROR decomping sect %d of %s KIP!%k\n", 0xFFFF0000, sectIdx, (char*)hdr.name, 0xFFCCCCCC);			
+			gfx_printf("%kERROR decomping sect %d of %s KIP!%k\n", 0xFFFF0000, sectIdx, (char*)hdr.name, 0xFFCCCCCC);
 			free(newKip);
 
 			return 1;
@@ -138,7 +149,7 @@ int pkg2_decompress_kip(pkg2_kip1_info_t* ki, u32 sectsToDecomp)
 pkg2_hdr_t *pkg2_decrypt(void *data)
 {
 	u8 *pdata = (u8 *)data;
-	
+
 	// Skip signature.
 	pdata += 0x100;
 

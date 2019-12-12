@@ -20,6 +20,7 @@
 #include "../gfx/di.h"
 #include "../libs/fatfs/ff.h"
 #include "../mem/heap.h"
+#include "../soc/hw_init.h"
 #include "../soc/pmc.h"
 #include "../soc/t210.h"
 #include "../storage/nx_emmc.h"
@@ -38,7 +39,7 @@ u8 warmboot_reboot[] = {
 	0x14, 0x00, 0x9F, 0xE5, // LDR R0, =0x7000E450
 	0x01, 0x10, 0xB0, 0xE3, // MOVS R1, #1
 	0x00, 0x10, 0x80, 0xE5, // STR R1, [R0]
-	0x0C, 0x00, 0x9F, 0xE5, // LDR R0, =0x7000E400 
+	0x0C, 0x00, 0x9F, 0xE5, // LDR R0, =0x7000E400
 	0x10, 0x10, 0xB0, 0xE3, // MOVS R1, #0x10
 	0x00, 0x10, 0x80, 0xE5, // STR R1, [R0]
 	0xFE, 0xFF, 0xFF, 0xEA, // LOOP
@@ -55,6 +56,7 @@ u8 warmboot_reboot[] = {
 #define SEPT_STG2_ADDR  (SEPT_PK1T_ADDR + 0x60E0)
 #define SEPT_PKG_SZ     (0x2F100 + WB_RST_SIZE)
 
+extern u32 color_idx;
 extern boot_cfg_t b_cfg;
 extern void sd_unmount();
 extern void reloc_patcher(u32 payload_dst, u32 payload_src, u32 payload_size);
@@ -80,10 +82,17 @@ int reboot_to_sept(const u8 *tsec_fw, const u32 tsec_size, const u32 kb)
 	f_close(&fp);
 
 	// Copy sept-secondary.
-	if ((kb == 7) && f_open(&fp, "sd:/sept/sept-secondary.enc", FA_READ) && f_open(&fp, "sd:/sept/sept-secondary_00.enc", FA_READ))
-		goto error;
-	else if ((kb == 8) && f_open(&fp, "sd:/sept/sept-secondary_01.enc", FA_READ))
-		goto error;
+	if (kb < KB_FIRMWARE_VERSION_810)
+	{
+		if (f_open(&fp, "sd:/sept/sept-secondary_00.enc", FA_READ))
+			if (f_open(&fp, "sd:/sept/sept-secondary.enc", FA_READ)) // Try the deprecated version.
+				goto error;
+	}
+	else
+	{
+		if (f_open(&fp, "sd:/sept/sept-secondary_01.enc", FA_READ))
+			goto error;
+	}
 
 	if (f_read(&fp, (u8 *)SEPT_STG2_ADDR, f_size(&fp), NULL))
 	{
@@ -98,8 +107,10 @@ int reboot_to_sept(const u8 *tsec_fw, const u32 tsec_size, const u32 kb)
 
 	tmp_cfg->boot_cfg |= BOOT_CFG_SEPT_RUN;
 
-	if (f_open(&fp, "sd:/sept/payload.bin", FA_READ | FA_WRITE))
+	if (f_open(&fp, "sd:/sept/payload.bin", FA_READ | FA_WRITE)) {
+		free(tmp_cfg);
 		goto error;
+	}
 
 	f_lseek(&fp, PATCHED_RELOC_SZ);
 	f_write(&fp, tmp_cfg, sizeof(boot_cfg_t), NULL);
@@ -107,8 +118,7 @@ int reboot_to_sept(const u8 *tsec_fw, const u32 tsec_size, const u32 kb)
 	f_close(&fp);
 
 	sd_unmount();
-	gfx_printf("\n%kPress Power or Vol +/-\n%k   to Reboot to Sept...", COLOR_BLUE, COLOR_VIOLET);
-	btn_wait();
+	gfx_printf("\n%kPress Power or Vol +/-\n   to Reboot to Sept...", colors[(color_idx++) % 6]);
 
 	u32 pk1t_sept = SEPT_PK1T_ADDR - (ALIGN(PATCHED_RELOC_SZ, 0x10) + WB_RST_SIZE);
 
@@ -123,12 +133,12 @@ int reboot_to_sept(const u8 *tsec_fw, const u32 tsec_size, const u32 kb)
 	PMC(APBDEV_PMC_SCRATCH33) = SEPT_PRI_ADDR;
 	PMC(APBDEV_PMC_SCRATCH40) = 0x6000F208;
 
-	display_end();
+	reconfig_hw_workaround(false, 0);
 
 	(*sept)();
 
 error:
-	EPRINTF("Sept files not found in sd:/sept!\nPlace appropriate files and try again.");
+	EPRINTF("\nSept files not found in sd:/sept!\nPlace appropriate files and try again.");
 	display_backlight_brightness(100, 1000);
 
 	btn_wait();

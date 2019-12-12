@@ -19,7 +19,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include "gfx.h"
-//#include "../utils/types.h"
 
 static const u8 _gfx_font[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Char 032 ( )
@@ -129,12 +128,12 @@ void gfx_init_ctxt(u32 *fb, u32 width, u32 height, u32 stride)
 
 void gfx_clear_grey(u8 color)
 {
-	memset(gfx_ctxt.fb, color, 0x3C0000);
+	memset(gfx_ctxt.fb, color, gfx_ctxt.width * gfx_ctxt.height * 4);
 }
 
 void gfx_clear_color(u32 color)
 {
-	for (u32 i = 0; i < gfx_ctxt.height * gfx_ctxt.stride; i++)
+	for (u32 i = 0; i < gfx_ctxt.width * gfx_ctxt.height; i++)
 		gfx_ctxt.fb[i] = color;
 }
 
@@ -153,8 +152,7 @@ void gfx_con_init()
 	gfx_con.savedy = 0;
 	gfx_con.fgcol = 0xFFCCCCCC;
 	gfx_con.fillbg = 1;
-	//gfx_con.bgcol = 0xFF1B1B1B;
-	gfx_con.bgcol = 0xFF009600;
+	gfx_con.bgcol = 0xFF1B1B1B;
 	gfx_con.mute = 0;
 }
 
@@ -217,7 +215,7 @@ void gfx_putc(char c)
 				}
 			}
 			gfx_con.x += 16;
-			if (gfx_con.x >= gfx_ctxt.width - 8) {
+			if (gfx_con.x >= gfx_ctxt.width - 16) {
 				gfx_con.x = 0;
 				gfx_con.y += 16;
 			}
@@ -229,9 +227,13 @@ void gfx_putc(char c)
 			if (gfx_con.y > gfx_ctxt.height - 16)
 				gfx_con.y = 0;
 		}
-		else if (c == '\r'){
+		else if (c == '\e')
+			gfx_con.x = 672;
+		else if (c == '\a')
+			gfx_con.x = 608;
+		else if (c == '\r')
 			gfx_con.x = 0;
-		}
+
 		break;
 	case 8:
 	default:
@@ -266,9 +268,9 @@ void gfx_putc(char c)
 			if (gfx_con.y > gfx_ctxt.height - 8)
 				gfx_con.y = 0;
 		}
+
 		break;
 	}
-	
 }
 
 void gfx_puts(const char *s)
@@ -371,8 +373,6 @@ void gfx_printf(const char *fmt, ...)
 				_gfx_putn(va_arg(ap, u32), 10, fill, fcnt);
 				break;
 			case 'p':
-				gfx_con.bgcol = va_arg(ap, u32);
-				break;
 			case 'P':
 			case 'x':
 			case 'X':
@@ -495,14 +495,6 @@ void gfx_line(int x0, int y0, int x1, int y1, u32 color)
 	}
 }
 
-void gfx_box(int x0, int y0, int x1, int y1, u32 color){
-	int i = y0;
-	while(y1 >= i){
-		gfx_line(x0, i, x1, i, color);
-		i++;
-	}
-}
-
 void gfx_set_rect_grey(const u8 *buf, u32 size_x, u32 size_y, u32 pos_x, u32 pos_y)
 {
 	u32 pos = 0;
@@ -516,6 +508,13 @@ void gfx_set_rect_grey(const u8 *buf, u32 size_x, u32 size_y, u32 pos_x, u32 pos
 	}
 }
 
+void gfx_box(int x0, int y0, int x1, int y1, u32 color){
+	int i = y0;
+	while(y1 >= i){
+		gfx_line(x0, i, x1, i, color);
+		i++;
+	}
+}
 
 void gfx_set_rect_rgb(const u8 *buf, u32 size_x, u32 size_y, u32 pos_x, u32 pos_y)
 {

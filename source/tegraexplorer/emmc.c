@@ -1,97 +1,84 @@
-#include "external_utils.h"
 #include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include "../gfx/di.h"
-#include "../gfx/gfx.h"
-#include "../utils/btn.h"
-#include "../utils/util.h"
-#include "utils.h"
-#include "../libs/fatfs/ff.h"
-#include "../storage/sdmmc.h"
-#include "graphics.h"
-#include "../soc/hw_init.h"
-#include "../mem/emc.h"
-#include "../mem/sdram.h"
-#include "../soc/t210.h"
-#include "../sec/se.h"
+#include "../mem/heap.h"
+#include "gfx.h"
+#include "fs.h"
+#include "emmc.h"
 #include "../utils/types.h"
+#include "../libs/fatfs/ff.h"
+#include "../utils/sprintf.h"
+#include "../utils/btn.h"
+#include "../gfx/gfx.h"
+#include "../utils/util.h"
 #include "../hos/pkg1.h"
+#include "../storage/sdmmc.h"
 #include "../storage/nx_emmc.h"
 #include "../sec/tsec.h"
 #include "../soc/t210.h"
 #include "../soc/fuse.h"
 #include "../mem/mc.h"
-
-extern void reloc_patcher(u32 payload_dst, u32 payload_src, u32 payload_size);
-extern boot_cfg_t b_cfg;
-extern bool sd_mount();
-extern void sd_unmount();
-static bool   _key_exists(const void *data) { return memcmp(data, zeros, 0x10); };
-static void   _generate_kek(u32 ks, const void *key_source, void *master_key, const void *kek_seed, const void *key_seed);
+#include "../sec/se.h"
+#include "../soc/hw_init.h"
+#include "../mem/emc.h"
+#include "../mem/sdram.h"
 
 sdmmc_storage_t storage;
 emmc_part_t *system_part;
 sdmmc_t sdmmc;
+__attribute__ ((aligned (16))) FATFS emmc;
+LIST_INIT(gpt);
 
-int launch_payload(char *path, bool update){
-	if (!update) gfx_clear_grey(0x1B);
-	gfx_con_setpos(0, 0);
-	if (!path)
-		return 1;
+u8 bis_key[4][32];
+short pkg1ver;
 
-	if (sd_mount()){
-		FIL fp;
-		if (f_open(&fp, path, FA_READ)){
-			EPRINTF("Payload missing!\n");
-			return 2;
-		}
+static bool  _key_exists(const void *data) { return memcmp(data, zeros, 0x10); };
 
-		void *buf;
-		u32 size = f_size(&fp);
+static void _generate_kek(u32 ks, const void *key_source, void *master_key, const void *kek_seed, const void *key_seed) {
+    if (!_key_exists(key_source) || !_key_exists(master_key) || !_key_exists(kek_seed))
+        return;
 
-		if (size < 0x30000)
-			buf = (void *)RCM_PAYLOAD_ADDR;
-		else
-			buf = (void *)COREBOOT_ADDR;
-
-		if (f_read(&fp, buf, size, NULL)){
-			f_close(&fp);
-
-			return 3;
-		}
-
-		f_close(&fp);
-
-		sd_unmount();
-
-		if (size < 0x30000){
-			reloc_patcher(PATCHED_RELOC_ENTRY, EXT_PAYLOAD_ADDR, ALIGN(size, 0x10));
-
-			reconfig_hw_workaround(false, byte_swap_32(*(u32 *)(buf + size - sizeof(u32))));
-		}
-		else {
-			reloc_patcher(PATCHED_RELOC_ENTRY, EXT_PAYLOAD_ADDR, 0x7000);
-			reconfig_hw_workaround(true, 0);
-		}
-
-		void (*ext_payload_ptr)() = (void *)EXT_PAYLOAD_ADDR;
-		void (*update_ptr)() = (void *)RCM_PAYLOAD_ADDR;
-
-		msleep(100);
-
-		if (!update)
-			(*ext_payload_ptr)();
-		else {
-			EMC(EMC_SCRATCH0) |= EMC_HEKA_UPD;
-			(*update_ptr)();
-		}
-	}
-
-	return 4;
+    se_aes_key_set(ks, master_key, 0x10);
+    se_aes_unwrap_key(ks, ks, kek_seed);
+    se_aes_unwrap_key(ks, ks, key_source);
+    if (key_seed && _key_exists(key_seed))
+        se_aes_unwrap_key(ks, ks, key_seed);
 }
 
-int dump_biskeys(u8 bis_key[4][32]){
+void print_biskeys(){
+    gfx_printf("\n");
+    gfx_hexdump(0, bis_key[0], 32);
+    gfx_hexdump(0, bis_key[1], 32);
+    gfx_hexdump(0, bis_key[2], 32);
+}
+
+int mount_emmc(char *partition, int biskeynumb){
+    f_unmount("emmc:");
+
+    se_aes_key_set(8, bis_key[biskeynumb] + 0x00, 0x10);
+    se_aes_key_set(9, bis_key[biskeynumb] + 0x10, 0x10);
+
+    system_part = nx_emmc_part_find(&gpt, partition);
+    if (!system_part) {
+        gfx_printf("Failed to locate %s partition.", partition);
+        return -1;
+    }
+
+    if (f_mount(&emmc, "emmc:", 1)) {
+        gfx_printf("Mount failed of %s.", partition);
+        return -1;
+    } 
+
+    return 0;
+}
+
+short returnpkg1ver(){
+    return pkg1ver;
+}
+
+void disconnect_emmc(){
+    sdmmc_storage_end(&storage);
+}
+
+int dump_biskeys(){
 	u8 temp_key[0x10], device_key[0x10] = {0};
     tsec_ctxt_t tsec_ctxt;
 
@@ -181,9 +168,7 @@ int dump_biskeys(u8 bis_key[4][32]){
 
     sdmmc_storage_set_mmc_partition(&storage, 0);
     // Parse eMMC GPT.
-    LIST_INIT(gpt);
     nx_emmc_gpt_parse(&gpt, &storage);
-
     /*
     char part_name[37] = "SYSTEM";
 
@@ -206,27 +191,19 @@ int dump_biskeys(u8 bis_key[4][32]){
     se_aes_key_set(8, bis_key[2] + 0x00, 0x10);
     se_aes_key_set(9, bis_key[2] + 0x10, 0x10);
 
+    /*
     system_part = nx_emmc_part_find(&gpt, "SYSTEM");
     if (!system_part) {
         gfx_printf("Failed to locate SYSTEM partition.");
         return -1;
     }
 
-    __attribute__ ((aligned (16))) FATFS emmc_fs;
-    if (f_mount(&emmc_fs, "emmc:", 1)) {
-        gfx_printf("Mount failed.");
+    if (f_mount(&emmc_sys, "system:", 1)) {
+        gfx_printf("Mount failed of SYSTEM.");
         return -1;
     }
-    return pkg1_id->kb;
-}
+    */
 
-static void _generate_kek(u32 ks, const void *key_source, void *master_key, const void *kek_seed, const void *key_seed) {
-    if (!_key_exists(key_source) || !_key_exists(master_key) || !_key_exists(kek_seed))
-        return;
-
-    se_aes_key_set(ks, master_key, 0x10);
-    se_aes_unwrap_key(ks, ks, kek_seed);
-    se_aes_unwrap_key(ks, ks, key_source);
-    if (key_seed && _key_exists(key_seed))
-        se_aes_unwrap_key(ks, ks, key_seed);
+    pkg1ver = pkg1_id->kb;
+    return 0;
 }

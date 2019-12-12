@@ -17,6 +17,8 @@
 #ifndef _SPRINTF_H_
 #define _SPRINTF_H_
 
+#include "types.h"
+
 u32 sprintf(char *buffer, const char *fmt, ...);
 
 #endif

@@ -1,10 +1,25 @@
+/*
+ * Copyright (c) 2018 naehrwert
+ * Copyright (c) 2018-2019 CTCaer
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 /*----------------------------------------------------------------------------/
-/  FatFs - Generic FAT Filesystem Module  R0.13c (p3)                         /
+/  FatFs - Generic FAT Filesystem Module  R0.13c (p4)                         /
 /-----------------------------------------------------------------------------/
 /
 / Copyright (C) 2018, ChaN, all right reserved.
-/ Copyright (c) 2018 naehrwert
-/ Copyright (C) 2018-2019 CTCaer
 /
 / FatFs module is an open source software. Redistribution and use of FatFs in
 / source and binary forms, with or without modification, are permitted provided
@@ -33,6 +48,18 @@
    Module Private Definitions
 
 ---------------------------------------------------------------------------*/
+/*
+PARTITION VolToPart[] = {
+	{0, 1},
+	{1, 8},
+	{1, 9}
+};
+*/
+
+PARTITION VolToPart[] = {
+	{0, 1},
+	{1, 0}
+};
 
 #if FF_DEFINED != 86604	/* Revision ID */
 #error Wrong include file (ff.h).
@@ -3472,7 +3499,7 @@ static FRESULT find_volume (	/* FR_OK(0): successful, !=0: an error occurred */
 #if FF_USE_LFN == 1
 	fs->lfnbuf = LfnBuf;	/* Static LFN working buffer */
 #if FF_FS_EXFAT
-	fs->dirbuf = DirBuf;	/* Static directory block scratchpad buuffer */
+	fs->dirbuf = DirBuf;	/* Static directory block scratchpad buffer */
 #endif
 #endif
 #if FF_FS_RPATH != 0
@@ -4243,9 +4270,9 @@ FRESULT f_getcwd (
 	TCHAR *tp = buff;
 #if FF_VOLUMES >= 2
 	UINT vl;
-#endif
 #if FF_STR_VOLUME_ID
 	const char *vp;
+#endif
 #endif
 	FILINFO fno;
 	DEF_NAMBUF
@@ -4726,7 +4753,7 @@ FRESULT f_getfree (
 	/* Get logical drive */
 	res = find_volume(&path, &fs, 0);
 	if (res == FR_OK) {
-		*fatfs = fs;				/* Return ptr to the fs object */
+		if (fatfs) *fatfs = fs;	/* Return ptr to the fs object */
 		/* If free_clst is valid, return it without full FAT scan */
 		if (fs->free_clst <= fs->n_fatent - 2) {
 			*nclst = fs->free_clst;
@@ -6024,7 +6051,7 @@ FRESULT f_mkfs (
 		sys = 0x07;			/* HPFS/NTFS/exFAT */
 	} else {
 		if (fmt == FS_FAT32) {
-			sys = 0x0C;		/* FAT32X */
+			sys = 0x0B;		/* FAT32X */
 		} else {
 			if (sz_vol >= 0x10000) {
 				sys = 0x06;	/* FAT12/16 (large) */
@@ -6107,18 +6134,19 @@ FRESULT f_fdisk (
 	mem_set(buf, 0, FF_MAX_SS);
 	p = buf + MBR_Table; b_cyl = 0;
 	for (i = 0; i < 4; i++, p += SZ_PTE) {
-		p_cyl = (szt[i] <= 100U) ? (DWORD)tot_cyl * szt[i] / 100 : szt[i] / sz_cyl;	/* Number of cylinders */
+		p_cyl = (szt[i] <= 100U) ? (DWORD)tot_cyl * (szt[i] / 100) : szt[i] / sz_cyl;	/* Number of cylinders */
 		if (p_cyl == 0) continue;
 		s_part = (DWORD)sz_cyl * b_cyl;
 		sz_part = (DWORD)sz_cyl * p_cyl;
 		if (i == 0) {	/* Exclude first track of cylinder 0 */
 			s_hd = 1;
-			s_part += 63; sz_part -= 63;
+			s_part += 32768; sz_part -= 32768;
 		} else {
 			s_hd = 0;
 		}
 		e_cyl = b_cyl + p_cyl - 1;	/* End cylinder */
 		if (e_cyl >= tot_cyl) LEAVE_MKFS(FR_INVALID_PARAMETER);
+
 
 		/* Set partition table */
 		p[1] = s_hd;						/* Start head */
@@ -6130,7 +6158,6 @@ FRESULT f_fdisk (
 		p[7] = (BYTE)e_cyl;					/* End cylinder */
 		st_dword(p + 8, s_part);			/* Start sector in LBA */
 		st_dword(p + 12, sz_part);			/* Number of sectors */
-
 		/* Next partition */
 		b_cyl += p_cyl;
 	}
@@ -6632,4 +6659,3 @@ FRESULT f_setcp (
 	return FR_OK;
 }
 #endif	/* FF_CODE_PAGE == 0 */
-

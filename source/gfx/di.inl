@@ -1,6 +1,6 @@
 /*
 * Copyright (c) 2018 naehrwert
-* Copyright (C) 2018 CTCaer
+* Copyright (c) 2018 CTCaer
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -122,7 +122,7 @@ static const cfg_op_t _display_config_2[94] = {
 	{DC_CMD_DISPLAY_WINDOW_HEADER, WINDOW_C_SELECT},
 	{DC_WIN_WIN_OPTIONS, 0},
 	{DC_DISP_DISP_WIN_OPTIONS, 0},
-	{DC_CMD_DISPLAY_COMMAND, 0},
+	{DC_CMD_DISPLAY_COMMAND, DISP_CTRL_MODE_STOP},
 	{DC_CMD_STATE_CONTROL, GENERAL_UPDATE | WIN_A_UPDATE | WIN_B_UPDATE | WIN_C_UPDATE},
 	{DC_CMD_STATE_CONTROL, GENERAL_ACT_REQ | WIN_A_ACT_REQ | WIN_B_ACT_REQ | WIN_C_ACT_REQ}
 };
@@ -405,7 +405,7 @@ static const cfg_op_t _display_config_11[113] = {
 	{DC_CMD_DISPLAY_WINDOW_HEADER, WINDOW_C_SELECT},
 	{DC_WIN_WIN_OPTIONS, 0},
 	{DC_DISP_DISP_WIN_OPTIONS, 0},
-	{DC_CMD_DISPLAY_COMMAND, 0},
+	{DC_CMD_DISPLAY_COMMAND, DISP_CTRL_MODE_STOP},
 	{DC_CMD_STATE_CONTROL, GENERAL_UPDATE | WIN_A_UPDATE | WIN_B_UPDATE | WIN_C_UPDATE},
 	{DC_CMD_STATE_CONTROL, GENERAL_ACT_REQ | WIN_A_ACT_REQ | WIN_B_ACT_REQ | WIN_C_ACT_REQ},
 	{DC_CMD_STATE_ACCESS, 0},
@@ -415,7 +415,7 @@ static const cfg_op_t _display_config_11[113] = {
 	{DC_DISP_SYNC_WIDTH,  0x10048},
 	{DC_DISP_BACK_PORCH,  0x90048},
 	{DC_DISP_ACTIVE,      0x50002D0},
-	{DC_DISP_FRONT_PORCH, 0xA0088}, // Sources say that this should be above the DC_DISP_ACTIVE cmd.
+	{DC_DISP_FRONT_PORCH, 0xA0088},   // Sources say that this should be above the DC_DISP_ACTIVE cmd.
 	/* End of Display timings */
 	{DC_DISP_SHIFT_CLOCK_OPTIONS, SC1_H_QUALIFIER_NONE | SC0_H_QUALIFIER_NONE},
 	{DC_COM_PIN_OUTPUT_ENABLE(1), 0},
@@ -455,7 +455,7 @@ static const cfg_op_t _display_config_12[17] = {
 	{DC_CMD_STATE_ACCESS, 0},
 	{DC_CMD_INT_ENABLE, 0},
 	{DC_CMD_CONT_SYNCPT_VSYNC, 0},
-	{DC_CMD_DISPLAY_COMMAND, 0},
+	{DC_CMD_DISPLAY_COMMAND, DISP_CTRL_MODE_STOP},
 	{DC_CMD_STATE_CONTROL, GENERAL_UPDATE},
 	{DC_CMD_STATE_CONTROL, GENERAL_ACT_REQ},
 	{DC_CMD_STATE_CONTROL, GENERAL_UPDATE},
@@ -548,7 +548,7 @@ static const cfg_op_t cfg_display_framebuffer[32] = {
 	{DC_WIN_LINE_STRIDE, UV_LINE_STRIDE(720 * 2) | LINE_STRIDE(720 * 4)}, //768*2x768*4 (= 0x600 x 0xC00) bytes, see TRM for alignment requirements.
 	{DC_WIN_BUFFER_CONTROL, 0},
 	{DC_WINBUF_SURFACE_KIND, 0}, //Regular surface.
-	{DC_WINBUF_START_ADDR, 0xC0000000}, //Framebuffer address.
+	{DC_WINBUF_START_ADDR, IPL_FB_ADDRESS}, // Framebuffer address.
 	{DC_WINBUF_ADDR_H_OFFSET, 0},
 	{DC_WINBUF_ADDR_V_OFFSET, 0},
 	{DC_WIN_WIN_OPTIONS, 0},

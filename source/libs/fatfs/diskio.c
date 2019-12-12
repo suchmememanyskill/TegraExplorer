@@ -24,14 +24,14 @@
 /*-----------------------------------------------------------------------*/
 
 #include <string.h>
+
+#include "../../../common/memory_map.h"
+
 #include "diskio.h"		/* FatFs lower layer API */
 #include "../../mem/heap.h"
 #include "../../sec/se.h"
 #include "../../storage/nx_emmc.h"
 #include "../../storage/sdmmc.h"
-
-#define SDMMC_UPPER_BUFFER 0xB8000000
-#define DRAM_START         0x80000000
 
 extern sdmmc_storage_t sd_storage;
 extern sdmmc_storage_t storage;
@@ -42,11 +42,13 @@ typedef struct {
     u32 visit_count;
     u8  tweak[0x10];
     u8  cached_sector[0x200];
+    u8  align[8];
 } sector_cache_t;
- 
+
 #define MAX_SEC_CACHE_ENTRIES 64
-static sector_cache_t *sector_cache = (sector_cache_t*)0x40020000;
+static sector_cache_t *sector_cache = NULL;
 static u32 secindex = 0;
+bool clear_sector_cache = false;
 
 DSTATUS disk_status (
     BYTE pdrv /* Physical drive number to identify the drive */
@@ -105,7 +107,7 @@ static inline int _emmc_xts(u32 ks1, u32 ks2, u32 enc, u8 *tweak, bool regen_twe
         pdst += 0x10;
     }
 
-    se_aes_crypt_ecb(ks2, 0, dst, secsize, src, secsize);
+    se_aes_crypt_ecb(ks2, enc, dst, secsize, src, secsize);
 
     pdst = (u8 *)dst;
 
@@ -134,14 +136,28 @@ DRESULT disk_read (
     switch (pdrv)
     {
     case 0:
-        return sdmmc_storage_read(&sd_storage, sector, count, buff) ? RES_OK : RES_ERROR;
+        if (((u32)buff >= DRAM_START) && !((u32)buff % 8))
+            return sdmmc_storage_read(&sd_storage, sector, count, buff) ? RES_OK : RES_ERROR;
+        u8 *buf = (u8 *)SDMMC_UPPER_BUFFER;
+        if (sdmmc_storage_read(&sd_storage, sector, count, buf))
+        {
+            memcpy(buff, buf, 512 * count);
+            return RES_OK;
+        }
+        return RES_ERROR;
 
     case 1:;
         __attribute__ ((aligned (16))) static u8 tweak[0x10];
         __attribute__ ((aligned (16))) static u64 prev_cluster = -1;
         __attribute__ ((aligned (16))) static u32 prev_sector = 0;
-        u32 tweak_exp = 0;
-        bool regen_tweak = true, cache_sector = false;
+        bool needs_cache_sector = false;
+
+        if (secindex == 0 || clear_sector_cache) {
+            if (!sector_cache)
+                sector_cache = (sector_cache_t *)malloc(sizeof(sector_cache_t) * MAX_SEC_CACHE_ENTRIES);
+            clear_sector_cache = false;
+            secindex = 0;
+        }
 
         u32 s = 0;
         if (count == 1) {
@@ -159,12 +175,14 @@ DRESULT disk_read (
             if (s == secindex && s < MAX_SEC_CACHE_ENTRIES) {
                 sector_cache[s].sector = sector;
                 sector_cache[s].visit_count++;
-                cache_sector = true;
+                needs_cache_sector = true;
                 secindex++;
             }
         }
-
+        //system_part (pdrv == 1) ? system_part_sys : system_part_usr
         if (nx_emmc_part_read(&storage, system_part, sector, count, buff)) {
+            u32 tweak_exp = 0;
+            bool regen_tweak = true;
             if (prev_cluster != sector / 0x20) { // sector in different cluster than last read
                 prev_cluster = sector / 0x20;
                 tweak_exp = sector % 0x20;
@@ -177,7 +195,7 @@ DRESULT disk_read (
 
             // fatfs will never pull more than a cluster
             _emmc_xts(9, 8, 0, tweak, regen_tweak, tweak_exp, prev_cluster, buff, buff, count * 0x200);
-            if (cache_sector) {
+            if (needs_cache_sector) {
                 memcpy(sector_cache[s].cached_sector, buff, 0x200);
                 memcpy(sector_cache[s].tweak, tweak, 0x10);
             }
@@ -198,7 +216,14 @@ DRESULT disk_write (
 {
     if (pdrv == 1)
         return RES_WRPRT;
-    return sdmmc_storage_write(&sd_storage, sector, count, (void *)buff) ? RES_OK : RES_ERROR;
+
+    if (((u32)buff >= DRAM_START) && !((u32)buff % 8))
+        return sdmmc_storage_write(&sd_storage, sector, count, (void *)buff) ? RES_OK : RES_ERROR;
+    u8 *buf = (u8 *)SDMMC_UPPER_BUFFER; //TODO: define this somewhere.
+    memcpy(buf, buff, 512 * count);
+    if (sdmmc_storage_write(&sd_storage, sector, count, buf))
+        return RES_OK;
+    return RES_ERROR;
 }
 
 DRESULT disk_ioctl (
