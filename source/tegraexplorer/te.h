@@ -37,8 +37,8 @@ enum toolsmenu_return {
 };
 
 enum formatmenu_return {
-    FORMAT_ALL_FAT32,
-    FORMAT_EMUMMC
+    FORMAT_EMUMMC = 0,
+    FORMAT_ALL_FAT32
 };
 
 //menu_item mainmenu[MAINMENU_AMOUNT];

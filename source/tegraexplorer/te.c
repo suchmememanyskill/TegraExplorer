@@ -54,6 +54,7 @@ void fillmainmenu(){
     for (i = 0; i < MAINMENU_AMOUNT; i++){
         switch (i + 1) {
             case 1:
+            case 5:
                 if (sd_mounted)
                     mainmenu[i].property = 1;
                 else
@@ -68,12 +69,6 @@ void fillmainmenu(){
                     mainmenu[i].property = 1;
                     strcpy(mainmenu[i].name, "\nMount SD");
                 }
-                break;
-            case 5:
-                if (sd_mounted)
-                    mainmenu[i].property = 1;
-                else
-                    mainmenu[i].property = -1;
                 break;
         }
     }
@@ -134,22 +129,15 @@ void te_main(){
             case SD_FORMAT:
                 res = makemenu(formatmenu, 4);
 
-                switch(res){
-                    case FORMAT_ALL_FAT32:
-                        if (makewaitmenu("Are you sure you want to format your sd?\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10)){
-                            if (format(1))
-                                sd_mounted = false;
+                if (res >= 0){
+                    if(makewaitmenu("Are you sure you want to format your sd?\nThis will delete everything on your SD card\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10)){
+                        if (format(res)){
+                            sd_unmount();
+                            sd_mounted = false;
                         }
-                            
-                        break;
-                    case FORMAT_EMUMMC:
-                        if (makewaitmenu("Are you sure you want to format your sd?\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10)){
-                            if (format(0))
-                                sd_mounted = false;
-                        }
-                            
-                        break;
+                    }
                 }
+
                 break;
 
             case CREDITS:
