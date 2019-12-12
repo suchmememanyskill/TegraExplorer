@@ -10,12 +10,12 @@ Navigate around the menu's using the vol+, vol- and power buttons
 ## Functions
 - Navigate the SD card
 - Navigate the System partition of your sysnand
-- Deleting, copying or moving files
-- Launching payloads
+- Interact with files
+	- Deleting, copying or moving files
+	- Launching payloads files
+	- Viewing the hex data of a file
 - Dumping your current firmware to sd
-
-## Screenshot 
-![screenshot](example.png)
+- Formatting the sd card
 
 # Credits
 Based on [Lockpick_RCM](https://github.com/shchmue/Lockpick_RCM), and thus based on [Hekate](https://github.com/CTCaer/hekate)
