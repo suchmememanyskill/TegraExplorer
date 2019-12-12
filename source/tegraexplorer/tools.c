@@ -131,7 +131,7 @@ int format(int mode){
     DWORD plist[] = {666, 61145088};
     u32 timer, totalsectors;
     BYTE work[FF_MAX_SS];
-    DWORD clustsize = 16 * 512;
+    DWORD clustsize = 32768;
     BYTE formatoptions = 0;
     formatoptions |= (FM_FAT32);
     //formatoptions |= (FM_SFD);
