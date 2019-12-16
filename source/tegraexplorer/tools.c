@@ -9,6 +9,7 @@
 #include "../libs/fatfs/diskio.h"
 #include "../storage/sdmmc.h"
 #include "../utils/sprintf.h"
+#include "../soc/fuse.h"
 #include "emmc.h"
 #include "fs.h"
 
@@ -22,10 +23,23 @@ void displayinfo(){
     FATFS *fs;
     DWORD fre_clust, fre_sect, tot_sect;
     u32 capacity;
+    u8 fuse_count = 0;
     int res;
 
-    gfx_printf("Biskeys:\n");
+    for (u32 i = 0; i < 32; i++){
+        if ((fuse_read_odm(7) >> i) & 1)
+            fuse_count++;
+    }
+
+    SWAPCOLOR(COLOR_ORANGE);
+
+    gfx_printf("Fuse count: %d\nPKG1 version: %d\n\n", fuse_count, returnpkg1ver());
     print_biskeys();
+
+    RESETCOLOR;
+    gfx_printf("\n-----\n\n");
+
+    SWAPCOLOR(COLOR_BLUE);
 
     if (!sd_mount()){
         gfx_printf("SD mount failed!\nFailed to display SD info\n");
@@ -44,6 +58,7 @@ void displayinfo(){
         gfx_printf("First partition on SD:\nSectors: %d\nSpace total: %d MB\nSpace free: %d MB\n\n", tot_sect, tot_sect / 2048, fre_sect / 2048);
     }
 
+    RESETCOLOR;
     gfx_printf("Press any key to continue");
     btn_wait();
 }
@@ -140,6 +155,8 @@ int format(int mode){
 
     timer = get_tmr_s();
     totalsectors = sd_storage.csd.capacity;
+
+    // 32gb sd card size is 67108864‬?
 
     if (mode == 0){
         if (totalsectors < 61145088){

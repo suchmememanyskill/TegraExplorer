@@ -28,7 +28,7 @@ __attribute__ ((aligned (16))) FATFS emmc;
 LIST_INIT(gpt);
 
 u8 bis_key[4][32];
-short pkg1ver;
+short pkg1ver = -1;
 
 static bool  _key_exists(const void *data) { return memcmp(data, zeros, 0x10); };
 
@@ -44,9 +44,11 @@ static void _generate_kek(u32 ks, const void *key_source, void *master_key, cons
 }
 
 void print_biskeys(){
-    gfx_printf("\n");
+    gfx_printf("Bis_Key_00\n");
     gfx_hexdump(0, bis_key[0], 32);
+    gfx_printf("Bis_Key_01\n");
     gfx_hexdump(0, bis_key[1], 32);
+    gfx_printf("Bis_Key_02 & 03\n");
     gfx_hexdump(0, bis_key[2], 32);
 }
 
