@@ -156,15 +156,12 @@ int format(int mode){
     timer = get_tmr_s();
     totalsectors = sd_storage.csd.capacity;
 
-    // 32gb sd card size is 67108864‬?
-
     if (mode == 0){
-        if (totalsectors < 61145088){
-            gfx_printf("%k\nNot enough free space for emummc!", COLOR_RED);
+        if (totalsectors < 83886080){
+            gfx_printf("%kYou seem to be running this on a <32GB SD\nNot enough free space for emummc!", COLOR_RED);
             fatalerror = true;
         }
-
-        if (!fatalerror){
+        else {
             plist[0] = totalsectors - 61145088;
             gfx_printf("\nStarting SD partitioning:\nTotalSectors:        %d\nPartition1 (SD):     %d\nPartition2 (EMUMMC): %d\n", totalsectors, plist[0], plist[1]);
         }
