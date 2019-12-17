@@ -26,7 +26,7 @@ void clearscreen(){
     gfx_clear_grey(0x1B);
     gfx_box(0, 0, 719, 15, COLOR_WHITE);
     gfx_con_setpos(0, 0);
-    gfx_printf("%k%KTegraexplorer%k%K\n", COLOR_DEFAULT, COLOR_WHITE, COLOR_WHITE, COLOR_DEFAULT);
+    gfx_printf("%k%KTegraexplorer v1.0.2%k%K\n", COLOR_DEFAULT, COLOR_WHITE, COLOR_WHITE, COLOR_DEFAULT);
 }
 
 int message(char* message, u32 color){

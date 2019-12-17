@@ -363,8 +363,9 @@ void filemenu(const char *startpath){
                 sprintf(temp, "\nSize: %d %s", fileobjects[res - 1].size, sizevalues[tempint - 4]);
                 strcpy(explfilemenu[2].name, temp);
 
-                if (strstr(fileobjects[res - 1].name, ".bin") != NULL)
+                if (strstr(fileobjects[res - 1].name, ".bin") != NULL && fileobjects[res - 1].size & ISKB){
                     explfilemenu[7].property = 1;
+                }
                 else
                     explfilemenu[7].property = -1;
 

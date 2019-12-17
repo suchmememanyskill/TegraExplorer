@@ -77,9 +77,14 @@ void fillmainmenu(){
 void te_main(){
     int res;
 
-    dump_biskeys();
-    mount_emmc("SYSTEM", 2);
-
+    if (dump_biskeys() == -1){
+        message("Biskeys failed to dump!\nEmmc will not be mounted!", COLOR_RED);
+        mainmenu[1].property = -1;
+    }
+    else {
+        mount_emmc("SYSTEM", 2);
+    }
+    
     sd_mounted = sd_mount();
 
     while (1){
