@@ -17,6 +17,12 @@ Navigate around the menu's using the vol+, vol- and power buttons
 - Dumping your current firmware to sd
 - Formatting the sd card
 
+## Support
+
+For general CFW support, go to the [Nintendo Homebrew](https://discord.gg/C29hYvh) discord
+
+For question specifically for TegraExplorer, go to [my discord](https://discord.gg/aH9rsuP)
+
 # Credits
 Based on [Lockpick_RCM](https://github.com/shchmue/Lockpick_RCM), and thus based on [Hekate](https://github.com/CTCaer/hekate)
 
