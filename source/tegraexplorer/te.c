@@ -44,8 +44,8 @@ menu_item toolsmenu[5] = {
 menu_item formatmenu[4] = {
     {"-- FORMAT SD --\n", COLOR_RED, -1, 0},
     {"Back\n", COLOR_WHITE, -1, 1},
-    {"Format to FAT32", COLOR_RED, FORMAT_ALL_FAT32, 1},
-    {"Format for EmuMMC setup", COLOR_RED, FORMAT_EMUMMC, 1}
+    {"Format entire SD to FAT32", COLOR_RED, FORMAT_ALL_FAT32, 1},
+    {"Format for EmuMMC setup (FAT32/RAW)", COLOR_RED, FORMAT_EMUMMC, 1}
 };
 
 void fillmainmenu(){
