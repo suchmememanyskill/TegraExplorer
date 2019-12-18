@@ -66,7 +66,7 @@ void displayinfo(){
 void displaygpio(){
     int res;
     clearscreen();
-    gfx_printf("Updates gpio pins ever 50ms:\nPress power to exit");
+    gfx_printf("Updates gpio pins every 50ms:\nPress power to exit");
     msleep(200);
     while (1){
         msleep(10);
@@ -158,7 +158,7 @@ int format(int mode){
 
     if (mode == 0){
         if (totalsectors < 83886080){
-            gfx_printf("%kYou seem to be running this on a <32GB SD\nNot enough free space for emummc!", COLOR_RED);
+            gfx_printf("%kYou seem to be running this on a <=32GB SD\nNot enough free space for emummc!", COLOR_RED);
             fatalerror = true;
         }
         else {

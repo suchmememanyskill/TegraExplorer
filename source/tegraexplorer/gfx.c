@@ -127,17 +127,20 @@ void printfsentry(fs_entry file, bool highlight, bool refresh){
     if (highlight)
         gfx_printf("%K%k", COLOR_WHITE, COLOR_DEFAULT);
     else
-        gfx_printf("%K%k", COLOR_DEFAULT, COLOR_WHITE);
+        RESETCOLOR;
 
     if (file.property & ISDIR)
-        gfx_printf("%s\n", display);
+        gfx_printf("%s", display);
     else {
         for (size = 4; size < 8; size++)
             if ((file.property & (1 << size)))
                 break;
 
-        gfx_printf("%k%s%K", COLOR_VIOLET, display, COLOR_DEFAULT);
+        SWAPCOLOR(COLOR_VIOLET);
+        gfx_printf("%s", display);
     }
+
+    RESETCOLOR;
 
     if (refresh){
         length = strlen(display);
@@ -145,8 +148,12 @@ void printfsentry(fs_entry file, bool highlight, bool refresh){
             gfx_printf(" ");
     }
 
-    if (!(file.property & ISDIR))
+    if (file.property & ISDIR)
+        gfx_printf("\n");
+    else { 
+        SWAPCOLOR(COLOR_BLUE);
         gfx_printf("\a%d\e%s", file.size, sizevalues[size - 4]);
+    }
 
     free(display);
 }
