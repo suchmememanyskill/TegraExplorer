@@ -10,8 +10,8 @@
 
 extern bool sd_mount();
 extern void sd_unmount();
+extern bool return_sd_mounted(int value);
 extern int launch_payload(char *path);
-bool sd_mounted;
 
 menu_item mainmenu[MAINMENU_AMOUNT] = {
     {"[SD:/] SD CARD", COLOR_GREEN, SD_CARD, 1},
@@ -55,13 +55,13 @@ void fillmainmenu(){
         switch (i + 1) {
             case 1:
             case 5:
-                if (sd_mounted)
+                if (return_sd_mounted(i + 1))
                     mainmenu[i].property = 1;
                 else
                     mainmenu[i].property = -1;
                 break;
             case 3:
-                if (sd_mounted){
+                if (return_sd_mounted(1)){
                     mainmenu[i].property = 2;
                     strcpy(mainmenu[i].name, "\nUnmount SD");
                 }
@@ -84,8 +84,6 @@ void te_main(){
     else {
         mount_emmc("SYSTEM", 2);
     }
-    
-    sd_mounted = sd_mount();
 
     while (1){
         fillmainmenu();
@@ -106,12 +104,10 @@ void te_main(){
                 break;
                 */
             case MOUNT_SD:
-                if (sd_mounted){
-                    sd_mounted = false;
+                if (return_sd_mounted(1))
                     sd_unmount();
-                } 
                 else
-                    sd_mounted = sd_mount();
+                    sd_mount();
 
                 break;
 
@@ -138,7 +134,6 @@ void te_main(){
                     if(makewaitmenu("Are you sure you want to format your sd?\nThis will delete everything on your SD card\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10)){
                         if (format(res)){
                             sd_unmount();
-                            sd_mounted = false;
                         }
                     }
                 }
@@ -150,7 +145,7 @@ void te_main(){
                 break;
 
             case EXIT:
-                if (sd_mounted){  
+                if (return_sd_mounted(1)){  
                     if (checkfile("/bootloader/update.bin"))
                         shutdownmenu[5].property = 1;
                     else

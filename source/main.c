@@ -45,10 +45,19 @@
 sdmmc_t sd_sdmmc;
 sdmmc_storage_t sd_storage;
 __attribute__ ((aligned (16))) FATFS sd_fs;
-static bool sd_mounted;
+static bool sd_mounted, sd_inited;
 volatile nyx_storage_t *nyx_str = (nyx_storage_t *)NYX_STORAGE_ADDR;
 hekate_config h_cfg;
 boot_cfg_t __attribute__((section ("._boot_cfg"))) b_cfg;
+
+bool return_sd_mounted(int value){
+	switch(value){
+		case 1:
+			return sd_mounted;
+		case 5:
+			return sd_inited;
+	}
+}
 
 bool sd_mount()
 {
@@ -58,9 +67,11 @@ bool sd_mount()
 	if (!sdmmc_storage_init_sd(&sd_storage, &sd_sdmmc, SDMMC_1, SDMMC_BUS_WIDTH_4, 11))
 	{
 		EPRINTF("Failed to init SD card.\nMake sure that it is inserted.\nOr that SD reader is properly seated!");
+		sd_inited = false;
 	}
 	else
 	{
+		sd_inited = true;
 		int res = 0;
 		res = f_mount(&sd_fs, "sd:", 1);
 		if (res == FR_OK)
@@ -84,6 +95,7 @@ void sd_unmount()
 		f_mount(NULL, "sd:", 1);
 		sdmmc_storage_end(&sd_storage);
 		sd_mounted = false;
+		sd_inited = false;
 	}
 }
 
