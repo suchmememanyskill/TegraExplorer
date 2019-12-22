@@ -151,7 +151,7 @@ DRESULT disk_read (
         __attribute__ ((aligned (16))) static u64 prev_cluster = -1;
         __attribute__ ((aligned (16))) static u32 prev_sector = 0;
         bool needs_cache_sector = false;
-
+        /*
         if (secindex == 0 || clear_sector_cache) {
             if (!sector_cache)
                 sector_cache = (sector_cache_t *)malloc(sizeof(sector_cache_t) * MAX_SEC_CACHE_ENTRIES);
@@ -179,6 +179,7 @@ DRESULT disk_read (
                 secindex++;
             }
         }
+        */
         //system_part (pdrv == 1) ? system_part_sys : system_part_usr
         if (nx_emmc_part_read(&storage, system_part, sector, count, buff)) {
             u32 tweak_exp = 0;
@@ -195,10 +196,12 @@ DRESULT disk_read (
 
             // fatfs will never pull more than a cluster
             _emmc_xts(9, 8, 0, tweak, regen_tweak, tweak_exp, prev_cluster, buff, buff, count * 0x200);
+            /*
             if (needs_cache_sector) {
                 memcpy(sector_cache[s].cached_sector, buff, 0x200);
                 memcpy(sector_cache[s].tweak, tweak, 0x10);
             }
+            */
             prev_sector = sector + count - 1;
             return RES_OK;
         }

@@ -320,6 +320,10 @@ int delfile(const char *path, const char *filename){
 void filemenu(const char *startpath){
     int amount, res, tempint;
     char temp[100];
+
+    if (!strcmp(rootpath, "emmc:/") && !strcmp(startpath, "emmc:/"))
+        clipboardhelper = 0;
+
     strcpy(rootpath, startpath);
     writecurpath(startpath);
     amount = readfolder(currentpath);

@@ -54,7 +54,7 @@ bool return_sd_mounted(int value){
 	switch(value){
 		case 1:
 			return sd_mounted;
-		case 5:
+		case 7:
 			return sd_inited;
 	}
 }

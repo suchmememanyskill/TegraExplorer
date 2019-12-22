@@ -97,6 +97,7 @@ int dumpfirmware(){
     u32 timer = get_tmr_s();
 
     clearscreen();
+    mount_emmc("SYSTEM", 2);
 
     gfx_printf("PKG1 version: %d\n", pkg1ver);
 
