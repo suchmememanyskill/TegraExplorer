@@ -6105,10 +6105,10 @@ FRESULT f_fdisk (
 	void* work			/* Pointer to the working buffer (null: use heap memory) */
 )
 {
-	UINT i, n, sz_cyl, tot_cyl, b_cyl, e_cyl, p_cyl;
+	UINT i, n, sz_cyl, tot_cyl, e_cyl;
 	BYTE s_hd, e_hd, *p, *buf = (BYTE*)work;
 	DSTATUS stat;
-	DWORD sz_disk, sz_part, s_part;
+	DWORD sz_disk, sz_part, s_part, p_cyl, b_cyl;
 	FRESULT res;
 
 
@@ -6134,17 +6134,17 @@ FRESULT f_fdisk (
 	mem_set(buf, 0, FF_MAX_SS);
 	p = buf + MBR_Table; b_cyl = 0;
 	for (i = 0; i < 4; i++, p += SZ_PTE) {
-		p_cyl = (szt[i] <= 100U) ? (DWORD)tot_cyl * (szt[i] / 100) : szt[i] / sz_cyl;	/* Number of cylinders */
+		p_cyl = (szt[i] <= 100U) ? (DWORD)tot_cyl * (szt[i] / 100) : szt[i]; // sz_cyl;	/* Number of cylinders */
 		if (p_cyl == 0) continue;
-		s_part = (DWORD)sz_cyl * b_cyl;
-		sz_part = (DWORD)sz_cyl * p_cyl;
+		s_part = /*(DWORD)sz_cyl * */ b_cyl;
+		sz_part = /* (DWORD)sz_cyl * */ p_cyl;
 		if (i == 0) {	/* Exclude first track of cylinder 0 */
 			s_hd = 1;
 			s_part += 32768; sz_part -= 32768;
 		} else {
 			s_hd = 0;
 		}
-		e_cyl = b_cyl + p_cyl - 1;	/* End cylinder */
+		e_cyl = (b_cyl + p_cyl - 1) / sz_cyl;	/* End cylinder */
 		if (e_cyl >= tot_cyl) LEAVE_MKFS(FR_INVALID_PARAMETER);
 
 

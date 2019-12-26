@@ -77,6 +77,7 @@ short returnpkg1ver(){
 }
 
 void disconnect_emmc(){
+    f_unmount("emmc:");
     sdmmc_storage_end(&storage);
 }
 

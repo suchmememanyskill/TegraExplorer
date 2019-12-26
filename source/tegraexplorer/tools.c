@@ -145,7 +145,7 @@ int format(int mode){
     int res;
     bool fatalerror = false;
     DWORD plist[] = {666, 61145088};
-    u32 timer, totalsectors;
+    u32 timer, totalsectors, alignedsectors, extrasectors;
     BYTE work[FF_MAX_SS];
     DWORD clustsize = 32768;
     BYTE formatoptions = 0;
@@ -163,8 +163,12 @@ int format(int mode){
             fatalerror = true;
         }
         else {
-            plist[0] = totalsectors - 61145088;
-            gfx_printf("\nStarting SD partitioning:\nTotalSectors:        %d\nPartition1 (SD):     %d\nPartition2 (EMUMMC): %d\n", totalsectors, plist[0], plist[1]);
+            totalsectors -= plist[1];
+            alignedsectors = (totalsectors / 2048) * 2048;
+            extrasectors = totalsectors - alignedsectors;
+            plist[0] = alignedsectors;
+            plist[1] += extrasectors;
+            gfx_printf("\nStarting SD partitioning:\nTotalSectors:        %d\nPartition1 (SD):     %d\nPartition2 (EMUMMC): %d\n", plist[0] + plist[1], plist[0], plist[1]);
         }
     }
     else {
