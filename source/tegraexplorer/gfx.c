@@ -12,7 +12,7 @@
 const char fixedoptions[3][50] = {
     "Folder -> previous folder                  ",
     "Clipboard -> Current folder                ",
-    "Return to main menu                        "
+    "Current folder menu                        "
 };
 
 const char sizevalues[4][3] = {

@@ -37,8 +37,13 @@ enum filemenuoptions {
     HEXVIEW
 };
 
+enum foldermenuoptions {
+    EXITFOLDER = 1,
+    DELETEFOLDER
+};
+
 int readfolder(const char *path);
-void filemenu();
+void fileexplorer(const char *startpath);
 bool checkfile(char* path);
 u64 getfilesize(char *path);
 int copy(const char *locin, const char *locout, bool print);

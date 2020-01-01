@@ -29,6 +29,13 @@ menu_item explfilemenu[9] = {
     {"View Hex", COLOR_GREEN, HEXVIEW, 1}
 };
 
+menu_item explfoldermenu[4] = {
+    {"-- Folder Menu --\n", COLOR_BLUE, -1, 0},
+    {"Back", COLOR_WHITE, -1, 1},
+    {"Return to main menu\n", COLOR_BLUE, EXITFOLDER, 1},
+    {"Delete folder", COLOR_RED, DELETEFOLDER, 1}
+};
+
 void writecurpath(const char *in){
     if (currentpath != NULL)
         free(currentpath);
@@ -289,7 +296,7 @@ int readfolder(const char *path){
     FILINFO fno;
     int folderamount = 0, res;
     
-    if (res = f_opendir(&dir, path)){
+    if ((res = f_opendir(&dir, path))){
         char errmes[50] = "";
         sprintf(errmes, "Error during f_opendir: %d", res);
         message(errmes, COLOR_RED);
@@ -317,9 +324,107 @@ int delfile(const char *path, const char *filename){
         return -1;
 }
 
-void filemenu(const char *startpath){
+int del_recursive(char *path){
+    DIR dir;
+    FILINFO fno;
+    int res;
+
+    if ((res = f_opendir(&dir, path))){
+        char errmes[50] = "";
+        sprintf(errmes, "Error during f_opendir: %d", res);
+        message(errmes, COLOR_RED);
+        return -1;
+    }
+
+    while (!f_readdir(&dir, &fno) && fno.fname[0]){
+        /*
+        if (fno.fattrib & AM_DIR)
+            if ((res = del_recursive(getnextloc(path, fno.fname))))
+                return res;
+        */
+        if (fno.fattrib & AM_DIR)
+            del_recursive(getnextloc(path, fno.fname));
+
+        else if ((res = f_unlink(getnextloc(path, fno.fname))))
+            return res;
+    }
+
+    f_closedir(&dir);
+
+    if ((res = f_unlink(path))){
+        return res;
+    }
+
+    return 0;
+}
+
+int filemenu(fs_entry file){
+    int temp;
+    strlcpy(explfilemenu[1].name, file.name, 43);
+            
+    for (temp = 4; temp < 8; temp++)
+        if ((file.property & (1 << temp)))
+            break;
+
+    sprintf(explfilemenu[2].name, "\nSize: %d %s", file.size, sizevalues[temp - 4]);
+
+    if (strstr(file.name, ".bin") != NULL && file.size & ISKB){
+        explfilemenu[7].property = 1;
+    }
+    else
+        explfilemenu[7].property = -1;
+
+    temp = makemenu(explfilemenu, 9);
+
+    switch (temp){
+        case COPY:
+            writeclipboard(getnextloc(currentpath, file.name), false, false);
+            break;
+        case MOVE:
+            writeclipboard(getnextloc(currentpath, file.name), true, false);
+            break;
+        case DELETE:
+            if ((temp = delfile(getnextloc(currentpath, file.name), file.name)) != -1)
+                return temp + 1;
+        case PAYLOAD:
+            launch_payload(getnextloc(currentpath, file.name));
+            break;
+        case HEXVIEW:
+            viewbytes(getnextloc(currentpath, file.name));
+            break;
+    }
+
+    return 0;
+}
+
+int foldermenu(){
+    int res;
+    char temp[50] = "";
+
+    res = makemenu(explfoldermenu, 4);
+
+    switch (res){
+        case EXITFOLDER:
+            return -1;
+        case DELETEFOLDER:
+            if (makewaitmenu("Do you want to delete this folder?\nThe entire folder, with all subcontents\n     will be deleted!!!\n\nPress vol+/- to cancel\n", "Press power to contine...", 7)){
+                clearscreen();
+                gfx_printf("\nDeleting folder, please wait...");
+                if ((res = del_recursive(currentpath))){
+                    sprintf(temp, "Error during del_recursive()! %d", res);
+                    message(temp, COLOR_RED);
+                }
+                writecurpath(getprevloc(currentpath));
+                return readfolder(currentpath) + 1;
+            }
+            break;
+    }
+    return 0;
+}
+
+void fileexplorer(const char *startpath){
     int amount, res, tempint;
-    char temp[100];
+    bool breakfree = false;
 
     if (!strcmp(rootpath, "emmc:/") && !strcmp(startpath, "emmc:/"))
         clipboardhelper = 0;
@@ -336,21 +441,33 @@ void filemenu(const char *startpath){
     while (1){
         res = makefilemenu(fileobjects, amount, currentpath);
         if (res < 1){
-            if (res == -2){
-                if (!strcmp(rootpath, currentpath))
+            switch (res){
+                case -2:
+                    if (!strcmp(rootpath, currentpath))
+                        breakfree = true;
+                    else {
+                        writecurpath(getprevloc(currentpath));
+                        amount = readfolder(currentpath);
+                    }
+
                     break;
-                else {
-                    writecurpath(getprevloc(currentpath));
-                    amount = readfolder(currentpath);
-                }
-            }
-            if (res == -1){
-                copyfile(clipboard, currentpath);
-                amount = readfolder(currentpath);
-            }
                 
-            if (res == 0)
-                break;
+                case -1:
+                    copyfile(clipboard, currentpath);
+                    amount = readfolder(currentpath);
+                    break;
+
+                case 0:
+                    tempint = foldermenu();
+
+                    if (tempint < 0)
+                        breakfree = true;
+                    if (tempint > 0)
+                        amount = tempint - 1;
+
+                    break;
+                
+            }
         }
         else {
             if (fileobjects[res - 1].property & ISDIR){
@@ -358,42 +475,12 @@ void filemenu(const char *startpath){
                 amount = readfolder(currentpath);
             }
             else {
-                strlcpy(explfilemenu[1].name, fileobjects[res - 1].name, 43);
-            
-                for (tempint = 4; tempint < 8; tempint++)
-                    if ((fileobjects[res - 1].property & (1 << tempint)))
-                        break;
-
-                sprintf(temp, "\nSize: %d %s", fileobjects[res - 1].size, sizevalues[tempint - 4]);
-                strcpy(explfilemenu[2].name, temp);
-
-                if (strstr(fileobjects[res - 1].name, ".bin") != NULL && fileobjects[res - 1].size & ISKB){
-                    explfilemenu[7].property = 1;
-                }
-                else
-                    explfilemenu[7].property = -1;
-
-                tempint = makemenu(explfilemenu, 9);
-
-                switch (tempint){
-                    case COPY:
-                        writeclipboard(getnextloc(currentpath, fileobjects[res - 1].name), false, false);
-                        break;
-                    case MOVE:
-                        writeclipboard(getnextloc(currentpath, fileobjects[res - 1].name), true, false);
-                        break;
-                    case DELETE:
-                        if ((tempint = delfile(getnextloc(currentpath, fileobjects[res - 1].name), fileobjects[res - 1].name)) != -1)
-                                amount = tempint;
-                        break;
-                    case PAYLOAD:
-                        launch_payload(getnextloc(currentpath, fileobjects[res - 1].name));
-                        break;
-                    case HEXVIEW:
-                        viewbytes(getnextloc(currentpath, fileobjects[res - 1].name));
-                        break;
-                }
+                if ((tempint = filemenu(fileobjects[res - 1])))
+                    amount = tempint - 1;
             }
         }
+
+        if (breakfree)
+            break;
     }
 }

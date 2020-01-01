@@ -98,7 +98,7 @@ void te_main(){
 
         switch(res){
             case SD_CARD:
-                filemenu("SD:/");
+                fileexplorer("SD:/");
                 break;
             
             case EMMC_SAF:
@@ -107,7 +107,7 @@ void te_main(){
 
             if (makewaitmenu("You're about to enter EMMC\nModifying anything here\n        can result in a BRICK!\n\nPlease only continue\n    if you know what you're doing\n\nPress Vol+/- to return\n", "Press Power to enter", 4)){
                 if (!mount_emmc(emmc_entries[res - 2], res - 1)){
-                    filemenu("emmc:/");
+                    fileexplorer("emmc:/");
                 }
                 else
                     message("EMMC failed to mount!", COLOR_RED);
