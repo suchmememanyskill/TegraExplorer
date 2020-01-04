@@ -8,6 +8,7 @@
 #include "gfx.h"
 #include "fs.h"
 #include "../mem/minerva.h"
+#include <stdarg.h>
 
 const char fixedoptions[3][50] = {
     "Folder -> previous folder                  ",
@@ -29,9 +30,16 @@ void clearscreen(){
     gfx_printf("%k%KTegraexplorer v1.1.1%k%K\n", COLOR_DEFAULT, COLOR_WHITE, COLOR_WHITE, COLOR_DEFAULT);
 }
 
-int message(char* message, u32 color){
+int message(u32 color, const char* message, ...){
+    va_list ap;
+    va_start(ap, message);
+
     clearscreen();
-    gfx_printf("%k%s%k", color, message, COLOR_DEFAULT);
+    SWAPCOLOR(color);
+
+    gfx_vprintf(message, ap);
+
+    va_end(ap);
     return btn_wait();
 }
 
@@ -109,6 +117,22 @@ int makewaitmenu(char *initialmessage, char *hiddenmessage, int timer){
     }
 }
 
+void gfx_print_length(int size, char *toprint){
+    char *temp;
+    temp = (char*) malloc (size + 1);
+
+    if (strlen(toprint) > size){
+        strlcpy(temp, toprint, size);
+        memset(temp + size - 3, '.', 3);
+        memset(temp + size, '\0', 1);
+    }
+    else
+        strcpy(temp, toprint);
+
+    gfx_printf("%s", temp);
+    free(temp);
+}
+
 void printfsentry(fs_entry file, bool highlight, bool refresh){
     int size = 0;
     char *display;
@@ -123,6 +147,7 @@ void printfsentry(fs_entry file, bool highlight, bool refresh){
     }
     else
         strcpy(display, file.name);
+    
 
     if (highlight)
         gfx_printf("%K%k", COLOR_WHITE, COLOR_DEFAULT);
@@ -164,7 +189,7 @@ int makefilemenu(fs_entry *files, int amount, char *path){
     bool refresh = false;
     clearscreen();
     gfx_con_setpos(544, 0);
-    gfx_printf("%K%k%d\n%K%k%s%k\n\n", COLOR_WHITE, COLOR_DEFAULT, amount, COLOR_DEFAULT, COLOR_GREEN, path, COLOR_DEFAULT);
+    gfx_printf("%K%k%d files\n%K%k%s%k\n\n", COLOR_WHITE, COLOR_DEFAULT, amount, COLOR_DEFAULT, COLOR_GREEN, path, COLOR_DEFAULT);
     while (1){
         gfx_con_setpos(0, 47);
         timer = get_tmr_ms();

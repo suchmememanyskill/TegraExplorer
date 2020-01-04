@@ -329,15 +329,10 @@ void gfx_put_big_sep()
 	gfx_con.fntsz = prevFontSize;
 }
 
-void gfx_printf(const char *fmt, ...)
+void gfx_vprintf(const char *fmt, va_list ap)
 {
-	if (gfx_con.mute)
-		return;
-
-	va_list ap;
 	int fill, fcnt;
 
-	va_start(ap, fmt);
 	while(*fmt)
 	{
 		if(*fmt == '%')
@@ -389,7 +384,7 @@ void gfx_printf(const char *fmt, ...)
 				gfx_putc('%');
 				break;
 			case '\0':
-				goto out;
+				return;
 			default:
 				gfx_putc('%');
 				gfx_putc(*fmt);
@@ -400,8 +395,17 @@ void gfx_printf(const char *fmt, ...)
 			gfx_putc(*fmt);
 		fmt++;
 	}
+}
 
-	out:
+void gfx_printf(const char *fmt, ...)
+{
+	if (gfx_con.mute)
+		return;
+
+	va_list ap;
+	va_start(ap, fmt);
+	gfx_vprintf(fmt, ap);
+
 	va_end(ap);
 }
 

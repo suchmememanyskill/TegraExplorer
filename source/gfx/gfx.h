@@ -20,6 +20,7 @@
 #define _GFX_H_
 
 #include "../../common/common_gfx.h"
+#include <stdarg.h>
 
 #define EPRINTF(text) gfx_printf("%k"text"%k\n", 0xFFFF0000, 0xFFCCCCCC)
 #define EPRINTFARGS(text, args...) gfx_printf("%k"text"%k\n", 0xFFFF0000, args, 0xFFCCCCCC)
@@ -37,6 +38,7 @@ void gfx_con_setpos(u32 x, u32 y);
 void gfx_putc(char c);
 void gfx_puts(const char *s);
 void gfx_printf(const char *fmt, ...);
+void gfx_vprintf(const char *fmt, va_list ap);
 void gfx_hexdump(u32 base, const u8 *buf, u32 len);
 
 void gfx_set_pixel(u32 x, u32 y, u32 color);

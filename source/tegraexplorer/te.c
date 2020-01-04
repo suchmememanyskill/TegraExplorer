@@ -86,7 +86,7 @@ void te_main(){
     int res;
 
     if (dump_biskeys() == -1){
-        message("Biskeys failed to dump!\nEmmc will not be mounted!", COLOR_RED);
+        message(COLOR_RED, "Biskeys failed to dump!\nEmmc will not be mounted!");
         mainmenu[1].property = -1;
         mainmenu[2].property = -1;
         mainmenu[3].property = -1;
@@ -110,7 +110,7 @@ void te_main(){
                     fileexplorer("emmc:/");
                 }
                 else
-                    message("EMMC failed to mount!", COLOR_RED);
+                    message(COLOR_RED, "EMMC failed to mount!");
             }
 
             break;
@@ -153,7 +153,7 @@ void te_main(){
                 break;
 
             case CREDITS:
-                message(CREDITS_MESSAGE, COLOR_WHITE);
+                message(COLOR_WHITE, CREDITS_MESSAGE);
                 break;
 
             case EXIT:

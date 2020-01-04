@@ -122,7 +122,7 @@ int dumpfirmware(){
         else
             sprintf(syspath, "%s/%s", path, fno.fname);
 
-        ret = copy(syspath, sdpath, false);
+        ret = copy(syspath, sdpath, false, false);
 
         gfx_printf("%d %s\r", ++amount, fno.fname);
 
