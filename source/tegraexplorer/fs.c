@@ -9,7 +9,7 @@
 #include "../gfx/gfx.h"
 #include "../utils/util.h"
 
-fs_entry fileobjects[500];
+fs_entry *fileobjects;
 char rootpath[10] = "";
 char *currentpath = "";
 char *clipboard = "";
@@ -304,18 +304,54 @@ void addobject(char* name, int spot, bool isfol, bool isarc){
         fileobjects[spot].property |= (ISARC);
 }
 
+int getfolderentryamount(const char *path){
+    DIR dir;
+    FILINFO fno;
+    int folderamount = 0;
+
+    if ((f_opendir(&dir, path))){
+        return -1;
+    }
+
+    while (!f_readdir(&dir, &fno) && fno.fname[0]){
+        folderamount++;
+    }
+
+    f_closedir(&dir);
+    return folderamount;
+}
+
+void clearfileobjects(){
+    if (fileobjects != NULL){
+        for (int i = 0; fileobjects[i].name != NULL; i++){
+            free(fileobjects[i].name);
+            fileobjects[i].name = NULL;
+        }
+        free(fileobjects);
+        fileobjects = NULL;
+    }
+}
+
+void createfileobjects(int size){
+    fileobjects = calloc (size + 1, sizeof(fs_entry));
+    fileobjects[size].name = NULL;
+}
+
 int readfolder(const char *path){
     DIR dir;
     FILINFO fno;
     int folderamount = 0, res;
     
+    clearfileobjects();
+    createfileobjects(getfolderentryamount(path));
+
     if ((res = f_opendir(&dir, path))){
         char errmes[50] = "";
         sprintf(errmes, "Error during f_opendir: %d", res);
         message(errmes, COLOR_RED);
     }
 
-    while (!f_readdir(&dir, &fno) && fno.fname[0] && folderamount < 500){
+    while (!f_readdir(&dir, &fno) && fno.fname[0]){
         addobject(fno.fname, folderamount++, (fno.fattrib & AM_DIR), (fno.fattrib & AM_ARC));
     }
 

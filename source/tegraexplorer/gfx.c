@@ -164,7 +164,7 @@ int makefilemenu(fs_entry *files, int amount, char *path){
     bool refresh = false;
     clearscreen();
     gfx_con_setpos(544, 0);
-    gfx_printf("%K%k%d / 500\n%K%k%s%k\n\n", COLOR_WHITE, COLOR_DEFAULT, amount, COLOR_DEFAULT, COLOR_GREEN, path, COLOR_DEFAULT);
+    gfx_printf("%K%k%d\n%K%k%s%k\n\n", COLOR_WHITE, COLOR_DEFAULT, amount, COLOR_DEFAULT, COLOR_GREEN, path, COLOR_DEFAULT);
     while (1){
         gfx_con_setpos(0, 47);
         timer = get_tmr_ms();
