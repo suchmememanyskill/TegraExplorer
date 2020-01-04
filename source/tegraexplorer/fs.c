@@ -69,7 +69,13 @@ void writeclipboard(const char *in, bool move, bool folder){
 }
 
 char *getnextloc(char *current, char *add){
-    char *ret;
+    static char *ret;
+
+    if (ret != NULL){
+        free(ret);
+        ret = NULL;
+    }
+
     size_t size = strlen(current) + strlen(add) + 1;
     ret = (char*) malloc (size);
     if (!strcmp(rootpath, current))
@@ -81,7 +87,14 @@ char *getnextloc(char *current, char *add){
 }
 
 char *getprevloc(char *current){
-    char *ret, *temp;
+    static char *ret;
+    char *temp;
+
+    if (ret != NULL){
+        free(ret);
+        ret = NULL;
+    }
+
     size_t size = strlen(current) + 1;
 
     ret = (char*) malloc (size);
@@ -328,8 +341,11 @@ int del_recursive(char *path){
     DIR dir;
     FILINFO fno;
     int res;
+    char *localpath;
+    localpath = (char*) malloc (strlen(path) + 1);
+    strcpy(localpath, path);
 
-    if ((res = f_opendir(&dir, path))){
+    if ((res = f_opendir(&dir, localpath))){
         char errmes[50] = "";
         sprintf(errmes, "Error during f_opendir: %d", res);
         message(errmes, COLOR_RED);
@@ -337,23 +353,20 @@ int del_recursive(char *path){
     }
 
     while (!f_readdir(&dir, &fno) && fno.fname[0]){
-        /*
         if (fno.fattrib & AM_DIR)
-            if ((res = del_recursive(getnextloc(path, fno.fname))))
-                return res;
-        */
-        if (fno.fattrib & AM_DIR)
-            del_recursive(getnextloc(path, fno.fname));
+            del_recursive(getnextloc(localpath, fno.fname));
 
-        else if ((res = f_unlink(getnextloc(path, fno.fname))))
+        else if ((res = f_unlink(getnextloc(localpath, fno.fname))))
             return res;
     }
 
     f_closedir(&dir);
 
-    if ((res = f_unlink(path))){
+    if ((res = f_unlink(localpath))){
         return res;
     }
+
+    free(localpath);
 
     return 0;
 }
