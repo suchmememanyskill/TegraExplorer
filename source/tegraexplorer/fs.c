@@ -110,6 +110,15 @@ char *getprevloc(char *current){
     return ret;
 }
 
+int getfileobjamount(){
+    int amount = 0;
+
+    while (fileobjects[amount].name != NULL)
+        amount++;
+
+    return amount;
+}
+
 fs_entry getfileobj(int spot){
     return fileobjects[spot];
 }
@@ -179,18 +188,18 @@ int copy(const char *locin, const char *locout, bool print, bool canCancel){
     gfx_con_getpos(&x, &y);
 
     if (!strcmp(locin, locout)){
-        return -1;
+        return 21;
     }
 
     if (f_open(&in, locin, FA_READ | FA_OPEN_EXISTING)){
-        return -2;
+        return 22;
     }
 
     if (f_stat(locin, &in_info))
-        return -2;
+        return 22;
 
     if (f_open(&out, locout, FA_CREATE_ALWAYS | FA_WRITE)){
-        return -3;
+        return 23;
     }
 
     buff = malloc (BUFSIZE);
@@ -204,7 +213,7 @@ int copy(const char *locin, const char *locout, bool print, bool canCancel){
             return res;
 
         if (temp1 != temp2)
-            return -4;
+            return 24;
 
         sizeoffile -= temp1;
         sizecopied += temp1;
@@ -264,6 +273,7 @@ void copyfile(const char *path, const char *outfolder){
             gfx_printf("\n\n%kSomething went wrong while copying!\n\nErrcode: %d%k", COLOR_RED, res, COLOR_WHITE);
             btn_wait();
         }
+        readfolder(currentpath);
     }
 
     else {
@@ -377,7 +387,8 @@ int delfile(const char *path, const char *filename){
     sprintf(tempmessage, "Are you sure you want to delete:\n%s\n\nPress vol+/- to cancel\n", filename);
     if (makewaitmenu(tempmessage, "Press power to delete", 3)){
         f_unlink(path);
-        return readfolder(currentpath);
+        readfolder(currentpath);
+        return 0;
     }
     else
         return -1;
@@ -507,8 +518,8 @@ void copyfolder(char *in, char *out){
         gfx_printf("\nCopying folder, please wait\n");
         if ((res = copy_recursive(in, out)))
             message(COLOR_RED, "copy_recursive() failed!\nErrcode %d", res);
+        readfolder(currentpath);
     }
-
     clipboardhelper = 0;
 }
 
@@ -538,8 +549,8 @@ int filemenu(fs_entry file){
             writeclipboard(getnextloc(currentpath, file.name), true, false);
             break;
         case DELETE:
-            if ((temp = delfile(getnextloc(currentpath, file.name), file.name)) != -1)
-                return temp + 1;
+            delfile(getnextloc(currentpath, file.name), file.name);
+            break;
         case PAYLOAD:
             launch_payload(getnextloc(currentpath, file.name));
             break;
@@ -567,7 +578,7 @@ int foldermenu(){
                     message(COLOR_RED, "Error during del_recursive()! %d", res);
                 }
                 writecurpath(getprevloc(currentpath));
-                return readfolder(currentpath) + 1;
+                readfolder(currentpath);
             }
             break;
         case COPYFOLDER:
@@ -579,7 +590,7 @@ int foldermenu(){
 }
 
 void fileexplorer(const char *startpath){
-    int amount, res, tempint;
+    int res, tempint;
     bool breakfree = false;
 
     if (!strcmp(rootpath, "emmc:/") && !strcmp(startpath, "emmc:/"))
@@ -587,7 +598,7 @@ void fileexplorer(const char *startpath){
 
     strcpy(rootpath, startpath);
     writecurpath(startpath);
-    amount = readfolder(currentpath);
+    readfolder(currentpath);
 
     if (strcmp(rootpath, "emmc:/"))
         explfilemenu[5].property = 1;
@@ -595,7 +606,7 @@ void fileexplorer(const char *startpath){
         explfilemenu[5].property = -1;
 
     while (1){
-        res = makefilemenu(fileobjects, amount, currentpath);
+        res = makefilemenu(fileobjects, getfileobjamount(), currentpath);
         if (res < 1){
             switch (res){
                 case -2:
@@ -603,28 +614,23 @@ void fileexplorer(const char *startpath){
                         breakfree = true;
                     else {
                         writecurpath(getprevloc(currentpath));
-                        amount = readfolder(currentpath);
+                        readfolder(currentpath);
                     }
 
                     break;
                 
                 case -1:
-                    if (clipboardhelper & ISDIR){
+                    if (clipboardhelper & ISDIR)
                         copyfolder(clipboard, currentpath);
-                    }
-                    else {
+                    else
                         copyfile(clipboard, currentpath);
-                    }
-                    amount = readfolder(currentpath);
                     break;
 
                 case 0:
                     tempint = foldermenu();
 
-                    if (tempint < 0)
+                    if (tempint == -1)
                         breakfree = true;
-                    if (tempint > 0)
-                        amount = tempint - 1;
 
                     break;
                 
@@ -633,11 +639,10 @@ void fileexplorer(const char *startpath){
         else {
             if (fileobjects[res - 1].property & ISDIR){
                 writecurpath(getnextloc(currentpath, fileobjects[res - 1].name));
-                amount = readfolder(currentpath);
+                readfolder(currentpath);
             }
             else {
-                if ((tempint = filemenu(fileobjects[res - 1])))
-                    amount = tempint - 1;
+                filemenu(fileobjects[res - 1]);
             }
         }
 
