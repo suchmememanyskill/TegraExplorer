@@ -12,6 +12,7 @@
 #include "../soc/fuse.h"
 #include "emmc.h"
 #include "fs.h"
+#include "io.h"
 
 extern bool sd_mount();
 extern void sd_unmount();

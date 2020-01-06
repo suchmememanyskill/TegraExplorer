@@ -5,6 +5,7 @@
 #include "../utils/util.h"
 #include "tools.h"
 #include "fs.h"
+#include "io.h"
 #include "../utils/btn.h"
 #include "emmc.h"
 
