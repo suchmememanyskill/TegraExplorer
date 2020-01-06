@@ -188,7 +188,7 @@ void gfx_putc(char c)
 
 			for (u32 i = 0; i < 16; i+=2)
 			{
-				u8 v = *cbuf++;
+				u8 v = *cbuf;
 				for (u32 k = 0; k < 2; k++)
 				{
 					for (u32 j = 0; j < 8; j++)
@@ -213,6 +213,7 @@ void gfx_putc(char c)
 					fb += gfx_ctxt.stride - 16;
 					v = *cbuf;
 				}
+				cbuf++;
 			}
 			gfx_con.x += 16;
 			if (gfx_con.x >= gfx_ctxt.width - 16) {

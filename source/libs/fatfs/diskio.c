@@ -150,7 +150,7 @@ DRESULT disk_read (
         __attribute__ ((aligned (16))) static u8 tweak[0x10];
         __attribute__ ((aligned (16))) static u64 prev_cluster = -1;
         __attribute__ ((aligned (16))) static u32 prev_sector = 0;
-        bool needs_cache_sector = false;
+        //bool needs_cache_sector = false;
         /*
         if (secindex == 0 || clear_sector_cache) {
             if (!sector_cache)
@@ -212,20 +212,46 @@ DRESULT disk_read (
 
 DRESULT disk_write (
     BYTE pdrv,			/* Physical drive number to identify the drive */
-    const BYTE *buff,	/* Data to be written */
+    BYTE *buff,	        /* Data to be written */
     DWORD sector,		/* Start sector in LBA */
     UINT count			/* Number of sectors to write */
 )
 {
-    if (pdrv == 1)
-        return RES_WRPRT;
+    switch (pdrv){
+        case 0:
+            if (((u32)buff >= DRAM_START) && !((u32)buff % 8))
+                return sdmmc_storage_write(&sd_storage, sector, count, (void *)buff) ? RES_OK : RES_ERROR;
+            u8 *buf = (u8 *)SDMMC_UPPER_BUFFER; //TODO: define this somewhere.
+            memcpy(buf, buff, 512 * count);
+            if (sdmmc_storage_write(&sd_storage, sector, count, buf))
+                return RES_OK;
+            return RES_ERROR;
+        case 1:;
+            __attribute__ ((aligned (16))) static u8 tweak[0x10];
+            __attribute__ ((aligned (16))) static u64 prev_cluster = -1;
+            __attribute__ ((aligned (16))) static u32 prev_sector = 0;
+            u32 tweak_exp = 0;
+            bool regen_tweak = true;
 
-    if (((u32)buff >= DRAM_START) && !((u32)buff % 8))
-        return sdmmc_storage_write(&sd_storage, sector, count, (void *)buff) ? RES_OK : RES_ERROR;
-    u8 *buf = (u8 *)SDMMC_UPPER_BUFFER; //TODO: define this somewhere.
-    memcpy(buf, buff, 512 * count);
-    if (sdmmc_storage_write(&sd_storage, sector, count, buf))
-        return RES_OK;
+            if (prev_cluster != sector / 0x20) { // sector in different cluster than last read
+                prev_cluster = sector / 0x20;
+                tweak_exp = sector % 0x20;
+            } else if (sector > prev_sector) { // sector in same cluster and past last sector
+                tweak_exp = sector - prev_sector - 1;
+                regen_tweak = false;
+            } else { // sector in same cluster and before or same as last sector
+                tweak_exp = sector % 0x20;
+            }
+
+            if (_emmc_xts(9, 8, 1, tweak, regen_tweak, tweak_exp, prev_cluster, buff, buff, count * 0x200)){
+                if (nx_emmc_part_write(&storage, system_part, sector, count, buff)){
+                    prev_sector = sector + count - 1;
+                    return RES_OK;
+                }
+            }
+
+            return RES_ERROR;
+    }
     return RES_ERROR;
 }
 

@@ -174,22 +174,23 @@ int copy(const char *locin, const char *locout, bool print, bool canCancel){
     UINT temp1, temp2;
     u8 *buff;
     unsigned int x, y, i = 0;
+    int res;
 
     gfx_con_getpos(&x, &y);
 
     if (!strcmp(locin, locout)){
-        return 3;
+        return -1;
     }
 
     if (f_open(&in, locin, FA_READ | FA_OPEN_EXISTING)){
-        return 1;
+        return -2;
     }
 
     if (f_stat(locin, &in_info))
-        return 1;
+        return -2;
 
     if (f_open(&out, locout, FA_CREATE_ALWAYS | FA_WRITE)){
-        return 2;
+        return -3;
     }
 
     buff = malloc (BUFSIZE);
@@ -197,13 +198,13 @@ int copy(const char *locin, const char *locout, bool print, bool canCancel){
     totalsize = sizeoffile;
 
     while (sizeoffile > 0){
-        if (f_read(&in, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp1))
-            return 3;
-        if (f_write(&out, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp2))
-            return 4;
+        if ((res = f_read(&in, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp1)))
+            return res;
+        if ((res = f_write(&out, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp2)))
+            return res;
 
         if (temp1 != temp2)
-            return 5;
+            return -4;
 
         sizeoffile -= temp1;
         sizecopied += temp1;
@@ -487,12 +488,17 @@ void copyfolder(char *in, char *out){
     int res;
 
     if (!strcmp(in, rootpath)){
-        message(COLOR_RED, "In is root\nAborting!");
+        message(COLOR_RED, "\nIn is root\nAborting!");
         fatalerror = true;
     }
     
     if (strstr(out, in) != NULL  && !fatalerror){
-        message(COLOR_RED, "\nOut is a part of in!\nAborting");
+        message(COLOR_RED, "\nOut is a part of in!\nAborting!");
+        fatalerror = true;
+    }
+
+    if (!strcmp(in, out) && !fatalerror){
+        message(COLOR_RED, "\nIn is the same as out!\nAborting!");
         fatalerror = true;
     }
 
