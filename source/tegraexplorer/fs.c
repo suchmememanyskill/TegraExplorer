@@ -18,10 +18,11 @@ u8 clipboardhelper = 0;
 extern const char sizevalues[4][3];
 extern int launch_payload(char *path);
 
-menu_item explfilemenu[9] = {
+menu_item explfilemenu[10] = {
     {"-- File Menu --", COLOR_BLUE, -1, 0},
     {"FILE", COLOR_GREEN, -1, 0},
     {"\nSIZE", COLOR_VIOLET, -1, 0},
+    {"ATTRIB", COLOR_VIOLET, -1, 0},
     {"\n\n\nBack", COLOR_WHITE, -1, 1},
     {"\nCopy to clipboard", COLOR_BLUE, COPY, 1},
     {"Move to clipboard", COLOR_BLUE, MOVE, 1},
@@ -30,9 +31,10 @@ menu_item explfilemenu[9] = {
     {"View Hex", COLOR_GREEN, HEXVIEW, 1}
 };
 
-menu_item explfoldermenu[5] = {
+menu_item explfoldermenu[6] = {
     {"-- Folder Menu --\n", COLOR_BLUE, -1, 0},
-    {"Back", COLOR_WHITE, -1, 1},
+    {"ATTRIB", COLOR_VIOLET, -1, 0},
+    {"\n\nBack", COLOR_WHITE, -1, 1},
     {"Return to main menu\n", COLOR_BLUE, EXITFOLDER, 1},
     {"Copy to clipboard", COLOR_VIOLET, COPYFOLDER, 1},
     {"Delete folder", COLOR_RED, DELETEFOLDER, 1}
@@ -70,7 +72,7 @@ void writeclipboard(const char *in, bool move, bool folder){
    strcpy(clipboard, in);
 }
 
-char *getnextloc(char *current, char *add){
+char *getnextloc(const char *current, const char *add){
     static char *ret;
 
     if (ret != NULL){
@@ -125,25 +127,23 @@ fs_entry getfileobj(int spot){
 }
 
 void copyfile(const char *path, const char *outfolder){
-    char *filename = strrchr(path, '/');
+    char *filename = strrchr(path, '/') + 1;
     char *outstring;
-    size_t outstringsize = strlen(filename) + strlen(outfolder) + 2;
     int res;
 
     clearscreen();
-
-    outstring = (char*) malloc (outstringsize);
-
-    if (strcmp(rootpath, outfolder))
-        sprintf(outstring, "%s/%s", outfolder, filename + 1);
-    else
-        sprintf(outstring, "%s%s", outfolder, filename + 1);
+    makestring(getnextloc(outfolder, filename), &outstring);
 
     gfx_printf("Note:\nTo stop the transfer hold Vol-\n\n%s\nProgress: ", outstring);
 
-    if (clipboardhelper & OPERATIONMOVE){
-        if (strcmp(rootpath, "emmc:/"))
+    if (!strcmp(path, outstring)){
+        message(COLOR_RED, "\nIn and out are the same!");
+    }
+    else if (clipboardhelper & OPERATIONMOVE){
+        if (strcmp(rootpath, "emmc:/")){
             f_rename(path, outstring);
+            readfolder(currentpath);
+        }       
         else
             message(COLOR_RED, "\nMoving in emummc is not allowed!");
     }
@@ -283,6 +283,7 @@ void copyfolder(char *in, char *out){
 
 int filemenu(fs_entry file){
     int temp;
+    FILINFO attribs;
     strlcpy(explfilemenu[1].name, file.name, 43);
             
     for (temp = 4; temp < 8; temp++)
@@ -291,13 +292,24 @@ int filemenu(fs_entry file){
 
     sprintf(explfilemenu[2].name, "\nSize: %d %s", file.size, sizevalues[temp - 4]);
 
+    if (f_stat(getnextloc(currentpath, file.name), &attribs))
+        explfilemenu[3].property = -1;
+    else {
+        explfilemenu[3].property = 0;
+        sprintf(explfilemenu[3].name, "Attribs: %c%c%c%c",
+        (attribs.fattrib & AM_RDO) ? 'R' : '-',
+        (attribs.fattrib & AM_SYS) ? 'S' : '-',
+        (attribs.fattrib & AM_HID) ? 'H' : '-',
+        (attribs.fattrib & AM_ARC) ? 'A' : '-');
+    }
+
     if (strstr(file.name, ".bin") != NULL && file.size & ISKB){
-        explfilemenu[7].property = 1;
+        explfilemenu[8].property = 1;
     }
     else
-        explfilemenu[7].property = -1;
+        explfilemenu[8].property = -1;
 
-    temp = makemenu(explfilemenu, 9);
+    temp = makemenu(explfilemenu, 10);
 
     switch (temp){
         case COPY:
@@ -322,8 +334,29 @@ int filemenu(fs_entry file){
 
 int foldermenu(){
     int res;
+    FILINFO attribs;
 
-    res = makemenu(explfoldermenu, 5);
+    if (!strcmp(rootpath, currentpath)){
+        explfoldermenu[4].property = -1;
+        explfoldermenu[5].property = -1;
+    }
+    else {
+        explfoldermenu[4].property = 1;
+        explfoldermenu[5].property = 1;
+    }
+    
+    if (f_stat(currentpath, &attribs))
+        explfoldermenu[1].property = -1;
+    else {
+        explfoldermenu[1].property = 0;
+        sprintf(explfoldermenu[1].name, "Attribs: %c%c%c%c",
+        (attribs.fattrib & AM_RDO) ? 'R' : '-',
+        (attribs.fattrib & AM_SYS) ? 'S' : '-',
+        (attribs.fattrib & AM_HID) ? 'H' : '-',
+        (attribs.fattrib & AM_ARC) ? 'A' : '-');
+    }
+
+    res = makemenu(explfoldermenu, 6);
 
     switch (res){
         case EXITFOLDER:
@@ -359,9 +392,9 @@ void fileexplorer(const char *startpath){
     readfolder(currentpath);
 
     if (strcmp(rootpath, "emmc:/"))
-        explfilemenu[5].property = 1;
+        explfilemenu[6].property = 1;
     else
-        explfilemenu[5].property = -1;
+        explfilemenu[6].property = -1;
 
     while (1){
         res = makefilemenu(fileobjects, getfileobjamount(), currentpath);

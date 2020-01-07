@@ -45,4 +45,4 @@ enum foldermenuoptions {
 
 int readfolder(const char *path);
 void fileexplorer(const char *startpath);
-char *getnextloc(char *current, char *add);
+char *getnextloc(const char *current, const char *add);

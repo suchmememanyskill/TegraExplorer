@@ -86,9 +86,6 @@ int copy(const char *locin, const char *locout, bool print, bool canCancel){
         return 23;
     }
 
-    if ((res = f_chmod(locout, in_info.fattrib, 0x3F)))
-        return res;
-
     buff = malloc (BUFSIZE);
     sizeoffile = f_size(&in);
     totalsize = sizeoffile;
@@ -122,6 +119,9 @@ int copy(const char *locin, const char *locout, bool print, bool canCancel){
     f_close(&in);
     f_close(&out);
     free(buff);
+
+    if ((res = f_chmod(locout, in_info.fattrib, 0x3A)))
+        return res;
 
     return 0;
 }
@@ -216,9 +216,6 @@ int copy_recursive(char *path, char *dstpath){
     if (f_stat(startpath, &fno))
         return 22;
 
-    if ((res = f_chmod(destpath, fno.fattrib, 0x3F)))
-        return res;
-
     while (!f_readdir(&dir, &fno) && fno.fname[0]){
         if (fno.fattrib & AM_DIR){
             copy_recursive(getnextloc(startpath, fno.fname), destpath);
@@ -243,6 +240,9 @@ int copy_recursive(char *path, char *dstpath){
     free(startpath);
     free(destpath);
     free(destfoldername);
+
+    if ((res = f_chmod(destpath, fno.fattrib, 0x3A)))
+        return res;
 
     return 0;
 }
