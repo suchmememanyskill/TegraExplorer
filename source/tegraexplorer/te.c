@@ -36,12 +36,13 @@ menu_item shutdownmenu[7] = {
     {"Reboot to Atmosphere", COLOR_GREEN, AMS, -1}
 };
 
-menu_item toolsmenu[5] = {
+menu_item toolsmenu[6] = {
     {"-- TOOLS --\n", COLOR_VIOLET, -1, 0},
     {"Back", COLOR_WHITE, -1, 1},
     {"\nDisplay Console Info", COLOR_GREEN, DISPLAY_INFO, 1},
     {"Display GPIO pins", COLOR_VIOLET, DISPLAY_GPIO, 1},
-    {"Dump Firmware", COLOR_BLUE, DUMPFIRMWARE, 1}
+    {"Dump Firmware", COLOR_BLUE, DUMPFIRMWARE, 1},
+    {"Dump User Saves", COLOR_YELLOW, DUMPUSERSAVE, 1}
 };
 
 menu_item formatmenu[4] = {
@@ -125,7 +126,7 @@ void te_main(){
                 break;
 
             case TOOLS:
-                res = makemenu(toolsmenu, 5);
+                res = makemenu(toolsmenu, 6);
 
                 switch(res){
                     case DISPLAY_INFO:
@@ -136,6 +137,9 @@ void te_main(){
                         break;
                     case DUMPFIRMWARE:
                         dumpfirmware();
+                        break;
+                    case DUMPUSERSAVE:
+                        dumpusersaves();
                         break;
                 }
                 break;

@@ -141,6 +141,33 @@ int dumpfirmware(){
     return fail;
 }
 
+void dumpusersaves(){
+    int res;
+
+    mount_emmc("USER", 2);
+    clearscreen();
+
+    res = f_mkdir("sd:/tegraexplorer");
+    gfx_printf("Creating sd:/tegraexplorer, res: %d\nCopying:\n", res);
+
+    SWAPCOLOR(COLOR_GREEN);
+
+    res = copy_recursive("emmc:/save", "sd:/tegraexplorer");
+
+    SWAPCOLOR(COLOR_ORANGE);
+    gfx_printf("\rResult copy_recursive() %d\n\n", res);
+
+    if (res){
+        SWAPCOLOR(COLOR_RED);
+        gfx_printf("Dump failed!\n");
+    }
+    else
+        gfx_printf("Saves are located in SD:/tegraexplorer/save\n");
+
+    gfx_printf("Press any key to continue");
+    btn_wait();
+}
+
 int format(int mode){
     clearscreen();
     int res;

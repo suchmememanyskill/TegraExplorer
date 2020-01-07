@@ -34,7 +34,8 @@ enum shutdownmenu_return {
 enum toolsmenu_return {
     DISPLAY_INFO = 1,
     DISPLAY_GPIO,
-    DUMPFIRMWARE
+    DUMPFIRMWARE,
+    DUMPUSERSAVE
 };
 
 enum formatmenu_return {
