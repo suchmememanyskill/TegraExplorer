@@ -39,6 +39,8 @@
 #include "ff.h"			/* Declarations of FatFs API */
 #include "diskio.h"		/* Declarations of device I/O functions */
 #include "../../gfx/gfx.h"
+#include "../../storage/sdmmc.h"
+extern sdmmc_storage_t sd_storage;
 
 #define EFSPRINTF(text, ...) print_error(); gfx_printf("%k"text"%k\n", 0xFFFFFF00, 0xFFFFFFFF);
 //#define EFSPRINTF(...)
@@ -6108,14 +6110,14 @@ FRESULT f_fdisk (
 	UINT i, n, sz_cyl, tot_cyl, e_cyl;
 	BYTE s_hd, e_hd, *p, *buf = (BYTE*)work;
 	DSTATUS stat;
-	DWORD sz_disk, sz_part, s_part, p_cyl, b_cyl;
+	DWORD sz_disk, p_sect, b_cyl, b_sect;
 	FRESULT res;
 
 
 	stat = disk_initialize(pdrv);
 	if (stat & STA_NOINIT) return FR_NOT_READY;
 	if (stat & STA_PROTECT) return FR_WRITE_PROTECTED;
-	if (disk_ioctl(pdrv, GET_SECTOR_COUNT, &sz_disk)) return FR_DISK_ERR;
+	sz_disk = sd_storage.csd.capacity;
 
 	buf = (BYTE*)work;
 #if FF_USE_LFN == 3
@@ -6132,20 +6134,25 @@ FRESULT f_fdisk (
 
 	/* Create partition table */
 	mem_set(buf, 0, FF_MAX_SS);
-	p = buf + MBR_Table; b_cyl = 0;
+	p = buf + MBR_Table; b_cyl = 0, b_sect = 0;
 	for (i = 0; i < 4; i++, p += SZ_PTE) {
-		p_cyl = (szt[i] <= 100U) ? (DWORD)tot_cyl * (szt[i] / 100) : szt[i]; // sz_cyl;	/* Number of cylinders */
-		if (p_cyl == 0) continue;
-		s_part = /*(DWORD)sz_cyl * */ b_cyl;
-		sz_part = /* (DWORD)sz_cyl * */ p_cyl;
-		if (i == 0) {	/* Exclude first track of cylinder 0 */
+		p_sect = szt[i]; /* Number of sectors */
+
+		if (p_sect == 0) 
+			continue;
+		
+		if (i == 0) {	/* Exclude first 16MiB of sd */
 			s_hd = 1;
-			s_part += 32768; sz_part -= 32768;
-		} else {
+			b_sect += 32768; p_sect -= 32768;
+		} 
+		else
 			s_hd = 0;
-		}
-		e_cyl = (b_cyl + p_cyl - 1) / sz_cyl;	/* End cylinder */
-		if (e_cyl >= tot_cyl) LEAVE_MKFS(FR_INVALID_PARAMETER);
+		
+		b_cyl = b_sect / sz_cyl;
+		e_cyl = ((b_sect + p_sect) / sz_cyl) - 1;	/* End cylinder */
+
+		if (e_cyl >= tot_cyl)
+			LEAVE_MKFS(FR_INVALID_PARAMETER);
 
 
 		/* Set partition table */
@@ -6156,10 +6163,10 @@ FRESULT f_fdisk (
 		p[5] = e_hd;						/* End head */
 		p[6] = (BYTE)(((e_cyl >> 2) & 0xC0) | 63);	/* End sector */
 		p[7] = (BYTE)e_cyl;					/* End cylinder */
-		st_dword(p + 8, s_part);			/* Start sector in LBA */
-		st_dword(p + 12, sz_part);			/* Number of sectors */
+		st_dword(p + 8, b_sect);			/* Start sector in LBA */
+		st_dword(p + 12, p_sect);			/* Number of sectors */
 		/* Next partition */
-		b_cyl += p_cyl;
+		b_sect += p_sect;
 	}
 	st_word(p, 0xAA55);		/* MBR signature (always at offset 510) */
 
