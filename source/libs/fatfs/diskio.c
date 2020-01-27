@@ -32,6 +32,7 @@
 #include "../../sec/se.h"
 #include "../../storage/nx_emmc.h"
 #include "../../storage/sdmmc.h"
+#include "../../storage/emummc.h"
 
 extern sdmmc_storage_t sd_storage;
 extern sdmmc_storage_t storage;

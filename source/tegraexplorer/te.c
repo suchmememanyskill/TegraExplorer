@@ -8,6 +8,7 @@
 #include "io.h"
 #include "../utils/btn.h"
 #include "emmc.h"
+#include "../storage/emummc.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
@@ -19,6 +20,9 @@ menu_item mainmenu[MAINMENU_AMOUNT] = {
     {"[SYSTEM:/] EMMC", COLOR_ORANGE, EMMC_SYS, 1},
     {"[USER:/] EMMC", COLOR_ORANGE, EMMC_USR, 1},
     {"[SAFE:/] EMMC", COLOR_ORANGE, EMMC_SAF, 1},
+    {"\n[SYSTEM:/] EMUMMC", COLOR_BLUE, EMUMMC_SYS, 1},
+    {"[USER:/] EMUMMC", COLOR_BLUE, EMUMMC_USR, 1},
+    {"[SAFE:/] EMUMMC", COLOR_BLUE, EMUMMC_SAF, 1},
     {"\nMount/Unmount SD", COLOR_WHITE, MOUNT_SD, 1},
     {"Tools", COLOR_VIOLET, TOOLS, 1},
     {"SD format", COLOR_VIOLET, SD_FORMAT, 1},
@@ -63,14 +67,19 @@ void fillmainmenu(){
 
     for (i = 0; i < MAINMENU_AMOUNT; i++){
         switch (i + 1) {
-            case 1:
+            case 5:
+            case 6:
             case 7:
+                if (mainmenu[i].property == -2)
+                    continue;
+            case 1:
+            case 10:
                 if (return_sd_mounted(i + 1))
                     mainmenu[i].property = 1;
                 else
                     mainmenu[i].property = -1;
                 break;
-            case 5:
+            case 8:
                 if (return_sd_mounted(1)){
                     mainmenu[i].property = 2;
                     strcpy(mainmenu[i].name, "\nUnmount SD");
@@ -94,6 +103,12 @@ void te_main(){
         mainmenu[3].property = -1;
     }
 
+    if (emummc_load_cfg()){
+        mainmenu[4].property = -2;
+        mainmenu[5].property = -2;
+        mainmenu[6].property = -2;
+    }
+
     while (1){
         fillmainmenu();
         res = makemenu(mainmenu, MAINMENU_AMOUNT);
@@ -107,15 +122,29 @@ void te_main(){
             case EMMC_SYS:
             case EMMC_USR:
 
-            if (makewaitmenu("You're about to enter EMMC\nModifying anything here\n        can result in a BRICK!\n\nPlease only continue\n    if you know what you're doing\n\nPress Vol+/- to return\n", "Press Power to enter", 4)){
-                if (!mount_emmc(emmc_entries[res - 2], res - 1)){
+                if (makewaitmenu("You're about to enter EMMC\nModifying anything here\n        can result in a BRICK!\n\nPlease only continue\n    if you know what you're doing\n\nPress Vol+/- to return\n", "Press Power to enter", 4)){
+                    connect_mmc(SYSMMC);
+                    if (!mount_mmc(emmc_entries[res - 2], res - 1)){
+                        fileexplorer("emmc:/");
+                    }
+                    else
+                        message(COLOR_RED, "EMMC failed to mount!");
+                }
+    
+                break;
+
+            case EMUMMC_SAF:
+            case EMUMMC_SYS:
+            case EMUMMC_USR:
+
+                connect_mmc(EMUMMC);
+                if (!mount_mmc(emmc_entries[res - 5], res - 4)){
                     fileexplorer("emmc:/");
                 }
                 else
-                    message(COLOR_RED, "EMMC failed to mount!");
-            }
-
-            break;
+                    message(COLOR_RED, "EMUMMC failed to mount!");
+                
+                break;
 
             case MOUNT_SD:
                 if (return_sd_mounted(1))

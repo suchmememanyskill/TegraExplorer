@@ -52,10 +52,10 @@ boot_cfg_t __attribute__((section ("._boot_cfg"))) b_cfg;
 
 bool return_sd_mounted(int value){
 	switch(value){
-		case 1:
-			return sd_mounted;
-		case 7:
+		case 10:
 			return sd_inited;
+		default:
+			return sd_mounted;
 	}
 }
 

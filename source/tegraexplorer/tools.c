@@ -98,7 +98,8 @@ int dumpfirmware(){
     u32 timer = get_tmr_s();
 
     clearscreen();
-    mount_emmc("SYSTEM", 2);
+    connect_mmc(SYSMMC);
+    mount_mmc("SYSTEM", 2);
 
     gfx_printf("PKG1 version: %d\n", pkg1ver);
 
@@ -144,7 +145,8 @@ int dumpfirmware(){
 void dumpusersaves(){
     int res;
 
-    mount_emmc("USER", 2);
+    connect_mmc(SYSMMC);
+    mount_mmc("USER", 2);
     clearscreen();
 
     res = f_mkdir("sd:/tegraexplorer");
@@ -180,7 +182,7 @@ int format(int mode){
     formatoptions |= (FM_FAT32);
     //formatoptions |= (FM_SFD);
 
-    disconnect_emmc();
+    disconnect_mmc();
 
     timer = get_tmr_s();
     totalsectors = sd_storage.csd.capacity;
@@ -238,8 +240,7 @@ int format(int mode){
         }
     }
 
-    dump_biskeys();
-    mount_emmc("SYSTEM", 2);
+    connect_mmc(SYSMMC);
 
     gfx_printf("\nPress any button to return%k\nTotal time taken: %ds", COLOR_WHITE, (get_tmr_s() - timer));
     btn_wait();

@@ -74,5 +74,5 @@ int nx_emmc_part_write(sdmmc_storage_t *storage, emmc_part_t *part, u32 sector_o
 	// The last LBA is inclusive.
 	if (part->lba_start + sector_off > part->lba_end)
 		return 0;
-	return sdmmc_storage_write(storage, part->lba_start + sector_off, num_sectors, buf);
+	return emummc_storage_write(storage, part->lba_start + sector_off, num_sectors, buf);
 }

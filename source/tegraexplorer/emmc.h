@@ -3,9 +3,12 @@
 //int mount_emmc_partition(const char *part, int logicnumb);
 int dump_biskeys();
 void print_biskeys();
-int mount_emmc(char *partition, int biskeynumb);
 short returnpkg1ver();
-void disconnect_emmc();
+
+int mount_mmc(char *partition, int biskeynumb);
+void connect_mmc(short mmctype);
+void disconnect_mmc();
+
 
 static const u8 zeros[0x10] = {0};
 
@@ -40,4 +43,9 @@ static const u8 bis_key_source[3][0x20] = {
     {
         0x52, 0xC2, 0xE9, 0xEB, 0x09, 0xE3, 0xEE, 0x29, 0x32, 0xA1, 0x0C, 0x1F, 0xB6, 0xA0, 0x92, 0x6C,
         0x4D, 0x12, 0xE1, 0x4B, 0x2A, 0x47, 0x4C, 0x1C, 0x09, 0xCB, 0x03, 0x59, 0xF0, 0x15, 0xF4, 0xE4}
+};
+
+enum mmc_types {
+    SYSMMC = 0,
+    EMUMMC
 };

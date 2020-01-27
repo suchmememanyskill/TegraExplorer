@@ -139,7 +139,6 @@ out:
 
 int emummc_storage_end(sdmmc_storage_t *storage)
 {
-	sd_unmount();
 	sdmmc_storage_end(storage);
 
 	return 1;

@@ -1,7 +1,7 @@
 #pragma once
 #include "../utils/types.h"
 
-#define MAINMENU_AMOUNT 9
+#define MAINMENU_AMOUNT 12
 #define CREDITS_MESSAGE "\nTegraexplorer, made by:\nSuch Meme, Many Skill\n\nProject based on:\nLockpick_RCM\nHekate\n\nCool people:\nshchmue\ndennthecafebabe\nDax"
 
 typedef struct _menu_item {
@@ -16,6 +16,9 @@ enum mainmenu_return {
     EMMC_SAF,
     EMMC_SYS,
     EMMC_USR,
+    EMUMMC_SAF,
+    EMUMMC_SYS,
+    EMUMMC_USR,
     MOUNT_SD,
     TOOLS,
     SD_FORMAT,
