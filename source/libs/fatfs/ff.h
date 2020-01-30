@@ -321,6 +321,7 @@ DWORD ff_wtoupper (DWORD uni);			/* Unicode upper-case conversion */
 #endif
 #if FF_USE_LFN == 3						/* Dynamic memory allocation */
 void* ff_memalloc (UINT msize);			/* Allocate memory block */
+void* ff_memcalloc (UINT msize, UINT amount);
 void ff_memfree (void* mblock);			/* Free memory block */
 #endif
 

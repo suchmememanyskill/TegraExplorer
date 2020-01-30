@@ -1,11 +1,16 @@
 #pragma once
 
+typedef struct _pkg1_info {
+    short ver;
+    char id[16];
+} pkg1_info;
+
 //int mount_emmc_partition(const char *part, int logicnumb);
 int dump_biskeys();
 void print_biskeys();
-short returnpkg1ver();
+pkg1_info returnpkg1info();
 
-int mount_mmc(char *partition, int biskeynumb);
+int mount_mmc(const char *partition, const int biskeynumb);
 void connect_mmc(short mmctype);
 void disconnect_mmc();
 

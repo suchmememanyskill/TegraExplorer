@@ -23,6 +23,10 @@ void* ff_memalloc (	/* Returns pointer to the allocated memory block (null if no
 	return malloc(msize);	/* Allocate a new memory block with POSIX API */
 }
 
+void* ff_memcalloc (UINT msize, UINT amount){
+	return calloc(amount, msize);
+}
+
 
 /*------------------------------------------------------------------------*/
 /* Free a memory block                                                    */

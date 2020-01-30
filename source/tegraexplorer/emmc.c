@@ -29,7 +29,7 @@ __attribute__ ((aligned (16))) FATFS emmc;
 LIST_INIT(gpt);
 
 u8 bis_key[4][32];
-short pkg1ver = -1;
+pkg1_info pkg1inf = {-1, ""};
 short currentlyMounted = -1;
 
 
@@ -55,11 +55,11 @@ void print_biskeys(){
     gfx_hexdump(0, bis_key[2], 32);
 }
 
-short returnpkg1ver(){
-    return pkg1ver;
+pkg1_info returnpkg1info(){
+    return pkg1inf;
 }
 
-int mount_mmc(char *partition, int biskeynumb){
+int mount_mmc(const char *partition, const int biskeynumb){
     f_unmount("emmc:");
 
     se_aes_key_set(8, bis_key[biskeynumb] + 0x00, 0x10);
@@ -205,7 +205,8 @@ int dump_biskeys(){
 
     se_aes_key_set(8, bis_key[2] + 0x00, 0x10);
     se_aes_key_set(9, bis_key[2] + 0x10, 0x10);
-
-    pkg1ver = pkg1_id->kb;
+    
+    pkg1inf.ver = pkg1_id->kb;
+    strcpy(pkg1inf.id, pkg1_id->id);
     return 0;
 }

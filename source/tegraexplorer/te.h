@@ -46,6 +46,4 @@ enum formatmenu_return {
     FORMAT_ALL_FAT32
 };
 
-//menu_item mainmenu[MAINMENU_AMOUNT];
-
 void te_main();

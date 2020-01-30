@@ -25,6 +25,7 @@ void displayinfo(){
     DWORD fre_clust, fre_sect, tot_sect;
     u32 capacity;
     u8 fuse_count = 0;
+    pkg1_info pkg1 = returnpkg1info();
     int res;
 
     for (u32 i = 0; i < 32; i++){
@@ -34,7 +35,7 @@ void displayinfo(){
 
     SWAPCOLOR(COLOR_ORANGE);
 
-    gfx_printf("Fuse count: %d\nPKG1 version: %d\n\n", fuse_count, returnpkg1ver());
+    gfx_printf("Fuse count: %d\nPKG1 version: %d\nPKG1 id: %s\n\n", fuse_count, pkg1.ver, pkg1.id);
     print_biskeys();
 
     RESETCOLOR;
@@ -85,7 +86,7 @@ void displaygpio(){
     }
 }
 
-int dumpfirmware(){
+int dumpfirmware(int mmc){
     DIR dir;
     FILINFO fno;
     bool fail = false;
@@ -94,14 +95,14 @@ int dumpfirmware(){
     char sdfolderpath[100] = "";
     char syspath[100] = "";
     char sdpath[100] = "";
-    short pkg1ver = returnpkg1ver();
+    pkg1_info pkg1 = returnpkg1info();
     u32 timer = get_tmr_s();
 
     clearscreen();
-    connect_mmc(SYSMMC);
+    connect_mmc(mmc);
     mount_mmc("SYSTEM", 2);
 
-    gfx_printf("PKG1 version: %d\n", pkg1ver);
+    gfx_printf("PKG1 version: %d\n", pkg1.ver);
 
     ret = f_mkdir("sd:/tegraexplorer");
     gfx_printf("Creating sd:/tegraexplorer %d\n", ret);
@@ -109,7 +110,7 @@ int dumpfirmware(){
     ret = f_mkdir("sd:/tegraexplorer/Firmware");
     gfx_printf("Creating sd:/tegraexplorer/Firmware %d\n", ret);
 
-    sprintf(sdfolderpath, "sd:/tegraexplorer/Firmware/%d", pkg1ver);
+    sprintf(sdfolderpath, "sd:/tegraexplorer/Firmware/%d (%s)", pkg1.ver, pkg1.id);
     ret = f_mkdir(sdfolderpath);
     gfx_printf("Creating %s %d\n", sdfolderpath, ret);
 
@@ -142,10 +143,10 @@ int dumpfirmware(){
     return fail;
 }
 
-void dumpusersaves(){
+void dumpusersaves(int mmc){
     int res;
 
-    connect_mmc(SYSMMC);
+    connect_mmc(mmc);
     mount_mmc("USER", 2);
     clearscreen();
 

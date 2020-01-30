@@ -158,7 +158,10 @@ int del_recursive(char *path){
     DIR dir;
     FILINFO fno;
     int res;
+    u32 x, y;
     char *localpath = NULL;
+
+    gfx_con_getpos(&x, &y);
     makestring(path, &localpath);
 
     if ((res = f_opendir(&dir, localpath))){
@@ -171,7 +174,7 @@ int del_recursive(char *path){
             del_recursive(getnextloc(localpath, fno.fname));
 
         else {
-            gfx_box(0, 47, 719, 63, COLOR_DEFAULT);
+            gfx_box(0, y, 719, y + 16, COLOR_DEFAULT);
             SWAPCOLOR(COLOR_RED);
             gfx_printf("\r");
             gfx_print_length(37, fno.fname);
@@ -197,14 +200,16 @@ int copy_recursive(char *path, char *dstpath){
     DIR dir;
     FILINFO fno;
     int res;
+    u32 x, y;
     char *startpath = NULL, *destpath = NULL, *destfoldername = NULL, *temp = NULL;
+
+    gfx_con_getpos(&x, &y);
 
     makestring(path, &startpath);
     makestring(strrchr(path, '/') + 1, &destfoldername);
 
     destpath = (char*) malloc (strlen(dstpath) + strlen(destfoldername) + 2);
     sprintf(destpath, (dstpath[strlen(dstpath) - 1] == '/') ? "%s%s" : "%s/%s", dstpath, destfoldername);
-    
 
     if ((res = f_opendir(&dir, startpath))){
         message(COLOR_RED, "Error during f_opendir: %d", res);
@@ -213,15 +218,12 @@ int copy_recursive(char *path, char *dstpath){
 
     f_mkdir(destpath);
 
-    if (f_stat(startpath, &fno))
-        return 22;
-
     while (!f_readdir(&dir, &fno) && fno.fname[0]){
         if (fno.fattrib & AM_DIR){
             copy_recursive(getnextloc(startpath, fno.fname), destpath);
         }
         else {
-            gfx_box(0, 47, 719, 63, COLOR_DEFAULT);
+            gfx_box(0, y, 719, y + 16, COLOR_DEFAULT);
             SWAPCOLOR(COLOR_GREEN);
             gfx_printf("\r");
             gfx_print_length(37, fno.fname);
@@ -240,9 +242,13 @@ int copy_recursive(char *path, char *dstpath){
     free(startpath);
     free(destpath);
     free(destfoldername);
+    
+    if (f_stat(startpath, &fno))
+        return 22;
 
     if ((res = f_chmod(destpath, fno.fattrib, 0x3A)))
         return res;
+    
 
     return 0;
 }

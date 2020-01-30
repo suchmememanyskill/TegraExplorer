@@ -3,5 +3,5 @@
 void displayinfo();
 void displaygpio();
 int format(int mode);
-int dumpfirmware();
-void dumpusersaves();
+int dumpfirmware(int mmc);
+void dumpusersaves(int mmc);

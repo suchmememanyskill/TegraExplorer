@@ -56,6 +56,12 @@ menu_item formatmenu[4] = {
     {"Format for EmuMMC setup (FAT32/RAW)", COLOR_RED, FORMAT_EMUMMC, 1}
 };
 
+menu_item mmcChoice[3] = {
+    {"Back\n", COLOR_WHITE, -1, 1},
+    {"SysMMC", COLOR_ORANGE, SYSMMC, 1},
+    {"EmuMMC", COLOR_BLUE, EMUMMC, 1}
+};
+
 const char emmc_entries[3][8] = {
     "SAFE",
     "SYSTEM",
@@ -165,10 +171,28 @@ void te_main(){
                         displaygpio();
                         break;
                     case DUMPFIRMWARE:
-                        dumpfirmware();
+                        /*
+                        if (mainmenu[4].property >= 0){
+                            res = makemenu(mmcChoice, 3);
+
+                            if (res >= 0)
+                                dumpfirmware(res);
+                        }
+                        else
+                        */
+                        dumpfirmware(SYSMMC);
+
                         break;
                     case DUMPUSERSAVE:
-                        dumpusersaves();
+                        if (mainmenu[4].property >= 0){
+                            res = makemenu(mmcChoice, 3);
+
+                            if (res >= 0)
+                                dumpusersaves(res);
+                        }
+                        else
+                            dumpusersaves(SYSMMC);
+
                         break;
                 }
                 break;
