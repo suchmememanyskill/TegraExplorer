@@ -115,6 +115,8 @@ void te_main(){
         mainmenu[6].property = -2;
     }
 
+    disconnect_mmc();
+
     while (1){
         fillmainmenu();
         res = makemenu(mainmenu, MAINMENU_AMOUNT);

@@ -34,6 +34,7 @@ enum filemenuoptions {
     MOVE,
     DELETE,
     PAYLOAD,
+    SCRIPT,
     HEXVIEW
 };
 

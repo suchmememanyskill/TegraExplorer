@@ -102,13 +102,12 @@ void disconnect_mmc(){
     switch (currentlyMounted){
         case SYSMMC:
             sdmmc_storage_end(&storage);
-            currentlyMounted = -1;
             break;
         case EMUMMC:
             emummc_storage_end(&storage);
-            currentlyMounted = -1;
             break;
     }
+    currentlyMounted = -1;
 }
 
 int dump_biskeys(){

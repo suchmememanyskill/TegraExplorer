@@ -9,6 +9,7 @@
 #include "../gfx/gfx.h"
 #include "../utils/util.h"
 #include "io.h"
+#include "script.h"
 
 fs_entry *fileobjects;
 char rootpath[10] = "";
@@ -18,7 +19,7 @@ u8 clipboardhelper = 0;
 extern const char sizevalues[4][3];
 extern int launch_payload(char *path);
 
-menu_item explfilemenu[10] = {
+menu_item explfilemenu[11] = {
     {"-- File Menu --", COLOR_BLUE, -1, 0},
     {"FILE", COLOR_GREEN, -1, 0},
     {"\nSIZE", COLOR_VIOLET, -1, 0},
@@ -28,6 +29,7 @@ menu_item explfilemenu[10] = {
     {"Move to clipboard", COLOR_BLUE, MOVE, 1},
     {"\nDelete file\n", COLOR_RED, DELETE, 1},
     {"Launch Payload", COLOR_ORANGE, PAYLOAD, 1},
+    {"Launch Script", COLOR_BLUE, SCRIPT, 1},
     {"View Hex", COLOR_GREEN, HEXVIEW, 1}
 };
 
@@ -309,7 +311,12 @@ int filemenu(fs_entry file){
     else
         explfilemenu[8].property = -1;
 
-    temp = makemenu(explfilemenu, 10);
+    if (strstr(file.name, ".tegrascript") != NULL)
+        explfilemenu[9].property = 1;
+    else
+        explfilemenu[9].property = -1;
+
+    temp = makemenu(explfilemenu, 11);
 
     switch (temp){
         case COPY:
@@ -323,6 +330,9 @@ int filemenu(fs_entry file){
             break;
         case PAYLOAD:
             launch_payload(getnextloc(currentpath, file.name));
+            break;
+        case SCRIPT:
+            ParseScript(getnextloc(currentpath, file.name));
             break;
         case HEXVIEW:
             viewbytes(getnextloc(currentpath, file.name));
