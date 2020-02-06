@@ -70,8 +70,10 @@ int Part_Exit(){
     return 0;
 }
 
+u8 buttons_pressed = 0;
 int Part_WaitOnUser(){
-    return (btn_wait() & BTN_POWER);
+    buttons_pressed = btn_wait();
+    return (buttons_pressed & BTN_POWER);
 }
 
 int ParsePart(){
@@ -80,6 +82,7 @@ int ParsePart(){
         if (strcmpcheck(func, parts[i].name))
             return i;
     }
+    forceExit = true;
     return -1;
 }
 
@@ -140,7 +143,7 @@ void ParseScript(char* path){
 
                 res = ParsePart();
                 if (res == -1)
-                    return;
+                    break;
                 
                 for (int i = 0; i < parts[res].arg_amount; i++){
                     while (currentchar != 0x22)
@@ -170,12 +173,19 @@ void ParseScript(char* path){
                 func[strlength] = '\0';
 
                 if (strcmpcheck(func, "ERROR") || strcmpcheck(func, "TRUE")){
-                    if (res)
-                        inifstatement = true;
+                    inifstatement = (res);
                 }
                 else if (strcmpcheck(func, "NOERROR") || strcmpcheck(func, "FALSE")){
-                    if (!res)
-                        inifstatement = true;
+                    inifstatement = (!res);
+                }
+                else if (strcmpcheck(func, "BTN_POWER")){
+                    inifstatement = (buttons_pressed & BTN_POWER);
+                }
+                else if (strcmpcheck(func, "BTN_VOL+")){
+                    inifstatement = (buttons_pressed & BTN_VOL_UP);
+                }
+                else if (strcmpcheck(func, "BTN_VOL-")){
+                    inifstatement = (buttons_pressed & BTN_VOL_DOWN);
                 }
 
                 if (inifstatement)
