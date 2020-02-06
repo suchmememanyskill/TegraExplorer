@@ -110,7 +110,7 @@ void ParseScript(char* path){
         return;
     }
 
-    while (1){
+    while (!forceExit){
         currentchar = GetNextByte();
 
         if (endByte == 0 || currentchar == (char)EOF)
