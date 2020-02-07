@@ -75,7 +75,7 @@ int copy(const char *locin, const char *locout, bool print, bool canCancel){
         return 21;
     }
 
-    if (f_open(&in, locin, FA_READ | FA_OPEN_EXISTING)){
+    if ((res = f_open(&in, locin, FA_READ | FA_OPEN_EXISTING))){
         return 22;
     }
 
@@ -123,6 +123,7 @@ int copy(const char *locin, const char *locout, bool print, bool canCancel){
     if ((res = f_chmod(locout, in_info.fattrib, 0x3A)))
         return res;
 
+    f_stat(locin, &in_info); //somehow stops fatfs from being weird
     return 0;
 }
 

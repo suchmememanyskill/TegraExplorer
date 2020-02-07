@@ -14,26 +14,39 @@
 #include "script.h"
 
 char func[11] = "", args[2][128] = {"", ""};
-int res;
+int res, errcode;
+
+int Part_Move(){
+    errcode = f_rename(args[0], args[1]);
+    f_rename(args[0], args[1]);
+    return errcode;
+}
 
 int Part_Delete(){
-    return f_unlink(args[0]);
+    errcode = f_unlink(args[0]);
+    f_unlink(args[0]);
+    return errcode;
 }
 
 int Part_DeleteRecursive(){
-    return del_recursive(args[0]);
+    errcode = del_recursive(args[0]);
+    return errcode;
 }
 
 int Part_Copy(){
-    return copy(args[0], args[1], true, false);
+    errcode = copy(args[0], args[1], true, false); 
+    return errcode;
 }
 
 int Part_RecursiveCopy(){
-    return copy_recursive(args[0], args[1]);
+    errcode = copy_recursive(args[0], args[1]);
+    return errcode;
 }
 
 int Part_MakeFolder(){
-    return f_mkdir(args[0]);
+    errcode = f_mkdir(args[0]);
+    f_mkdir(args[0]);
+    return errcode;
 }
 
 int Part_ConnectMMC(){
@@ -46,7 +59,8 @@ int Part_ConnectMMC(){
 }
 
 int Part_MountMMC(){
-    return mount_mmc(args[0], 2);
+    errcode = mount_mmc(args[0], 2);
+    return errcode;
 }
 
 int Part_Print(){
@@ -57,7 +71,8 @@ int Part_Print(){
 }
 
 int Part_ErrorPrint(){
-    gfx_printf("Errorcode: %d\n", res);
+    RESETCOLOR;
+    gfx_printf("Errorcode: %d\n", errcode);
     return 0;
 }
 
@@ -85,6 +100,7 @@ script_parts parts[] = {
     {"PAUSE", Part_WaitOnUser, 0},
     {"DEL", Part_Delete, 1},
     {"DEL-R", Part_DeleteRecursive, 1},
+    {"MOVE", Part_Move, 2},
     {"NULL", NULL, -1}
 };
 
@@ -172,7 +188,7 @@ void ParseScript(char* path){
                     if (i < parts[res].arg_amount)
                         currentchar = GetNextByte();              
                 }
-                res = parts[res].handler();
+                parts[res].handler();
                 break;
             case '$':
                 strlength = 0;
@@ -185,10 +201,10 @@ void ParseScript(char* path){
                 func[strlength] = '\0';
 
                 if (strcmpcheck(func, "ERROR") || strcmpcheck(func, "TRUE")){
-                    inifstatement = (res);
+                    inifstatement = (errcode);
                 }
                 else if (strcmpcheck(func, "NOERROR") || strcmpcheck(func, "FALSE")){
-                    inifstatement = (!res);
+                    inifstatement = (!errcode);
                 }
                 else if (strcmpcheck(func, "BTN_POWER")){
                     inifstatement = (buttons_pressed & BTN_POWER);
