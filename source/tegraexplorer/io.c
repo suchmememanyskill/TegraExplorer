@@ -170,9 +170,9 @@ int del_recursive(char *path){
     }
 
     while (!f_readdir(&dir, &fno) && fno.fname[0]){
-        if (fno.fattrib & AM_DIR)
+        if (fno.fattrib & AM_DIR){
             del_recursive(getnextloc(localpath, fno.fname));
-
+        }
         else {
             gfx_box(0, y, 719, y + 16, COLOR_DEFAULT);
             SWAPCOLOR(COLOR_RED);

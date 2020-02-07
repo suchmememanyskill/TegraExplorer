@@ -21,10 +21,12 @@
 #include "../mem/emc.h"
 #include "../mem/sdram.h"
 #include "../storage/emummc.h"
+#include "../config/config.h"
 
 sdmmc_storage_t storage;
 emmc_part_t *system_part;
 sdmmc_t sdmmc;
+extern hekate_config h_cfg;
 __attribute__ ((aligned (16))) FATFS emmc;
 LIST_INIT(gpt);
 
@@ -85,12 +87,12 @@ void connect_mmc(short mmctype){
         switch (mmctype){
             case SYSMMC:
                 sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
-                emu_cfg.enabled = 0;
+                h_cfg.emummc_force_disable = 1;
                 currentlyMounted = SYSMMC;
                 break;
             case EMUMMC:
                 if (emummc_storage_init_mmc(&storage, &sdmmc)){
-                    emu_cfg.enabled = 1;
+                    h_cfg.emummc_force_disable = 0;
                     currentlyMounted = EMUMMC;
                 }
                 break;
