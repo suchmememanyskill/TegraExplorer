@@ -89,9 +89,10 @@ void connect_mmc(short mmctype){
                 currentlyMounted = SYSMMC;
                 break;
             case EMUMMC:
-                emummc_storage_init_mmc(&storage, &sdmmc);
-                emu_cfg.enabled = 1;
-                currentlyMounted = EMUMMC;
+                if (emummc_storage_init_mmc(&storage, &sdmmc)){
+                    emu_cfg.enabled = 1;
+                    currentlyMounted = EMUMMC;
+                }
                 break;
         }
     }

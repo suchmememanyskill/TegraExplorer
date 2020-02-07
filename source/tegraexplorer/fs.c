@@ -29,7 +29,7 @@ menu_item explfilemenu[11] = {
     {"Move to clipboard", COLOR_BLUE, MOVE, 1},
     {"\nDelete file\n", COLOR_RED, DELETE, 1},
     {"Launch Payload", COLOR_ORANGE, PAYLOAD, 1},
-    {"Launch Script", COLOR_BLUE, SCRIPT, 1},
+    {"Launch Script", COLOR_YELLOW, SCRIPT, 1},
     {"View Hex", COLOR_GREEN, HEXVIEW, 1}
 };
 

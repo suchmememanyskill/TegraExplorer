@@ -10,22 +10,19 @@
 #include "../utils/btn.h"
 #include "../gfx/gfx.h"
 #include "../utils/util.h"
+#include "../storage/emummc.h"
 #include "script.h"
 
 char func[11] = "", args[2][128] = {"", ""};
 int res;
-script_parts parts[] = {
-    {"COPY", Part_Copy, 2},
-    {"COPY-R", Part_RecursiveCopy, 2},
-    {"MKDIR", Part_MakeFolder, 1},
-    {"CON_MMC", Part_ConnectMMC, 1},
-    {"MNT_MMC", Part_MountMMC, 1},
-    {"PRINT", Part_Print, 1},
-    {"ERRPRINT", Part_ErrorPrint, 0},
-    {"EXIT", Part_Exit, 0},
-    {"PAUSE", Part_WaitOnUser, 0},
-    {"NULL", NULL, -1}
-};
+
+int Part_Delete(){
+    return f_unlink(args[0]);
+}
+
+int Part_DeleteRecursive(){
+    return del_recursive(args[0]);
+}
 
 int Part_Copy(){
     return copy(args[0], args[1], true, false);
@@ -75,6 +72,21 @@ int Part_WaitOnUser(){
     buttons_pressed = btn_wait();
     return (buttons_pressed & BTN_POWER);
 }
+
+script_parts parts[] = {
+    {"COPY", Part_Copy, 2},
+    {"COPY-R", Part_RecursiveCopy, 2},
+    {"MKDIR", Part_MakeFolder, 1},
+    {"CON_MMC", Part_ConnectMMC, 1},
+    {"MNT_MMC", Part_MountMMC, 1},
+    {"PRINT", Part_Print, 1},
+    {"ERRPRINT", Part_ErrorPrint, 0},
+    {"EXIT", Part_Exit, 0},
+    {"PAUSE", Part_WaitOnUser, 0},
+    {"DEL", Part_Delete, 1},
+    {"DEL-R", Part_DeleteRecursive, 1},
+    {"NULL", NULL, -1}
+};
 
 int ParsePart(){
     int i;
@@ -186,6 +198,12 @@ void ParseScript(char* path){
                 }
                 else if (strcmpcheck(func, "BTN_VOL-")){
                     inifstatement = (buttons_pressed & BTN_VOL_DOWN);
+                }
+                else if (strcmpcheck(func, "EMUMMC")){
+                    inifstatement = (emu_cfg.enabled);
+                }
+                else if (strcmpcheck(func, "NOEMUMMC")){
+                    inifstatement = (!emu_cfg.enabled);
                 }
 
                 if (inifstatement)
