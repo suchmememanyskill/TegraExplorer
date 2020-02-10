@@ -13,79 +13,115 @@
 #include "../storage/emummc.h"
 #include "script.h"
 
+#include <stdlib.h>
+
 char func[11] = "", args[2][128] = {"", ""};
 int res, errcode;
+const int scriptver = 131;
+bool forceExit = false;
+u32 currentcolor;
 
-int Part_Move(){
+void Part_SetColor(){
+    if (strcmpcheck(args[0], "RED"))
+        currentcolor = COLOR_RED;
+    else if (strcmpcheck(args[0], "ORANGE"))
+        currentcolor = COLOR_ORANGE;
+    else if (strcmpcheck(args[0], "YELLOW"))
+        currentcolor = COLOR_YELLOW;
+    else if (strcmpcheck(args[0], "GREEN"))
+        currentcolor = COLOR_GREEN;
+    else if (strcmpcheck(args[0], "BLUE"))
+        currentcolor = COLOR_BLUE;
+    else if (strcmpcheck(args[0], "VIOLET"))
+        currentcolor = COLOR_VIOLET;
+    else if (strcmpcheck(args[0], "WHITE"))
+        currentcolor = COLOR_WHITE;
+}
+
+void Part_Wait(){
+    int waitamount, begintime;
+    SWAPCOLOR(currentcolor);
+
+    waitamount = atoi(args[0]);
+    begintime = get_tmr_s();
+
+    while (begintime + waitamount > get_tmr_s()){
+        gfx_printf("\r<Wait %d seconds> ", (begintime + waitamount) - get_tmr_s());
+    }
+
+    gfx_printf("\r                 \r");
+}
+
+void Part_VersionCheck(){
+    int givenversion = atoi(args[0]);
+
+    if (givenversion > scriptver){
+        gfx_printf("Script required version is too high\nUpdate TegraExplorer!");
+        btn_wait();
+        forceExit = true;
+    }
+}
+
+void Part_Move(){
     errcode = f_rename(args[0], args[1]);
-    f_rename(args[0], args[1]);
-    return errcode;
+    if (errcode)
+        f_rename(args[0], args[1]);
 }
 
-int Part_Delete(){
+void Part_Delete(){
     errcode = f_unlink(args[0]);
-    f_unlink(args[0]);
-    return errcode;
+    if (errcode)
+        f_unlink(args[0]);
 }
 
-int Part_DeleteRecursive(){
+void Part_DeleteRecursive(){
     errcode = del_recursive(args[0]);
-    return errcode;
 }
 
-int Part_Copy(){
+void Part_Copy(){
     errcode = copy(args[0], args[1], true, false); 
-    return errcode;
 }
 
-int Part_RecursiveCopy(){
+void Part_RecursiveCopy(){
     errcode = copy_recursive(args[0], args[1]);
-    return errcode;
 }
 
-int Part_MakeFolder(){
+void Part_MakeFolder(){
     errcode = f_mkdir(args[0]);
-    f_mkdir(args[0]);
-    return errcode;
+    if (errcode)
+        f_mkdir(args[0]);
 }
 
-int Part_ConnectMMC(){
+void Part_ConnectMMC(){
     if (strcmpcheck(args[0], "SYSMMC"))
         connect_mmc(SYSMMC);
     if (strcmpcheck(args[0], "EMUMMC"))
         connect_mmc(EMUMMC);
-
-    return 0;
 }
 
-int Part_MountMMC(){
+void Part_MountMMC(){
     errcode = mount_mmc(args[0], 2);
-    return errcode;
 }
 
-int Part_Print(){
+void Part_Print(){
     RESETCOLOR;
-    gfx_printf(args[0]);
-    gfx_printf("\n");
-    return 0;
+    SWAPCOLOR(currentcolor);
+    gfx_printf("%s\n", args[0]);
 }
 
-int Part_ErrorPrint(){
+void Part_ErrorPrint(){
     RESETCOLOR;
+    SWAPCOLOR(COLOR_RED);
     gfx_printf("Errorcode: %d\n", errcode);
-    return 0;
 }
 
-bool forceExit = false;
-int Part_Exit(){
+void Part_Exit(){
     forceExit = true;
-    return 0;
 }
 
 u8 buttons_pressed = 0;
-int Part_WaitOnUser(){
+void Part_WaitOnUser(){
     buttons_pressed = btn_wait();
-    return (buttons_pressed & BTN_POWER);
 }
 
 script_parts parts[] = {
@@ -101,6 +137,9 @@ script_parts parts[] = {
     {"DEL", Part_Delete, 1},
     {"DEL-R", Part_DeleteRecursive, 1},
     {"MOVE", Part_Move, 2},
+    {"VERSION", Part_VersionCheck, 1},
+    {"WAIT", Part_Wait, 1},
+    {"COLOR", Part_SetColor, 1},
     {"NULL", NULL, -1}
 };
 
@@ -110,6 +149,8 @@ int ParsePart(){
         if (strcmpcheck(func, parts[i].name))
             return i;
     }
+    gfx_printf("Parsing error...\nPress any key to continue");
+    btn_wait();
     forceExit = true;
     return -1;
 }
@@ -132,6 +173,7 @@ void ParseScript(char* path){
     int strlength;
     bool inifstatement = false;
     forceExit = false;
+    currentcolor = COLOR_WHITE;
     
     clearscreen();
 
