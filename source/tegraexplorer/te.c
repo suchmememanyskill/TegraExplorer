@@ -9,6 +9,7 @@
 #include "../utils/btn.h"
 #include "emmc.h"
 #include "../storage/emummc.h"
+#include "script.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
@@ -68,6 +69,130 @@ const char emmc_entries[3][8] = {
     "USER"
 };
 
+int res = 0;
+
+void MainMenu_SDCard(){
+    fileexplorer("SD:/");
+}
+
+void MainMenu_EMMC(){
+    if (makewaitmenu("You're about to enter EMMC\nModifying anything here\n        can result in a BRICK!\n\nPlease only continue\n    if you know what you're doing\n\nPress Vol+/- to return\n", "Press Power to enter", 4)){
+        connect_mmc(SYSMMC);
+
+        if (!mount_mmc(emmc_entries[res - 2], res - 1))
+            fileexplorer("emmc:/");
+        else
+            message(COLOR_RED, "EMMC failed to mount!");
+    }
+}
+
+void MainMenu_EMUMMC(){
+    connect_mmc(EMUMMC);
+
+    if (!mount_mmc(emmc_entries[res - 5], res - 4))
+        fileexplorer("emmc:/");
+    else
+        message(COLOR_RED, "EMUMMC failed to mount!");
+}
+
+void MainMenu_MountSD(){
+    if (return_sd_mounted(1))
+        sd_unmount();
+    else
+        sd_mount();
+}
+
+void MainMenu_Tools(){
+    res = makemenu(toolsmenu, 6);
+
+    switch(res){
+        case DISPLAY_INFO:
+            displayinfo();
+            break;
+        case DISPLAY_GPIO:
+            displaygpio();
+            break;
+        case DUMPFIRMWARE:
+            dumpfirmware(SYSMMC);
+            break;
+        case DUMPUSERSAVE:
+            if (mainmenu[4].property >= 0){
+                if ((res = makemenu(mmcChoice, 3)) >= 0)
+                    dumpusersaves(res);
+            }
+            else
+                dumpusersaves(SYSMMC);
+
+            break;
+    }
+}
+
+void MainMenu_SDFormat(){
+    res = makemenu(formatmenu, 4);
+
+    if (res >= 0){
+        if(makewaitmenu("Are you sure you want to format your sd?\nThis will delete everything on your SD card\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10)){
+            if (format(res)){
+                sd_unmount();
+            }
+        }
+    }
+}
+
+void MainMenu_Credits(){
+    message(COLOR_WHITE, CREDITS_MESSAGE);
+}
+
+void MainMenu_Exit(){
+    if (return_sd_mounted(1)){ 
+        shutdownmenu[5].property = (checkfile("/bootloader/update.bin")) ? 1 : -1;
+        shutdownmenu[6].property = (checkfile("/atmosphere/reboot_payload.bin")) ? 1 : -1;
+    }
+    else {
+        shutdownmenu[5].property = -1;
+        shutdownmenu[6].property = -1;
+    }
+
+    res = makemenu(shutdownmenu, 7);
+
+    switch(res){
+        case REBOOT_RCM:
+            reboot_rcm();
+                    
+        case REBOOT_NORMAL:
+            reboot_normal();
+
+        case POWER_OFF:
+            power_off();
+
+        case HEKATE:
+            launch_payload("/bootloader/update.bin");
+                    
+        case AMS:
+            launch_payload("/atmosphere/reboot_payload.bin");
+    } //todo declock bpmp
+}
+
+part_handler mainmenu_functions[] = {
+    MainMenu_SDCard,
+    MainMenu_EMMC,
+    MainMenu_EMMC,
+    MainMenu_EMMC,
+    MainMenu_EMUMMC,
+    MainMenu_EMUMMC,
+    MainMenu_EMUMMC,
+    MainMenu_MountSD,
+    MainMenu_Tools,
+    MainMenu_SDFormat,
+    MainMenu_Credits,
+    MainMenu_Exit,
+};
+
+void RunMenuOption(int option){
+    if (option > 0)
+        mainmenu_functions[option - 1]();
+}
+
 void fillmainmenu(){
     int i;
 
@@ -100,7 +225,6 @@ void fillmainmenu(){
 }
 
 void te_main(){
-    int res;
 
     if (dump_biskeys() == -1){
         message(COLOR_RED, "Biskeys failed to dump!\nEmmc will not be mounted!");
@@ -120,139 +244,6 @@ void te_main(){
     while (1){
         fillmainmenu();
         res = makemenu(mainmenu, MAINMENU_AMOUNT);
-
-        switch(res){
-            case SD_CARD:
-                fileexplorer("SD:/");
-                break;
-            
-            case EMMC_SAF:
-            case EMMC_SYS:
-            case EMMC_USR:
-
-                if (makewaitmenu("You're about to enter EMMC\nModifying anything here\n        can result in a BRICK!\n\nPlease only continue\n    if you know what you're doing\n\nPress Vol+/- to return\n", "Press Power to enter", 4)){
-                    connect_mmc(SYSMMC);
-                    if (!mount_mmc(emmc_entries[res - 2], res - 1)){
-                        fileexplorer("emmc:/");
-                    }
-                    else
-                        message(COLOR_RED, "EMMC failed to mount!");
-                }
-    
-                break;
-
-            case EMUMMC_SAF:
-            case EMUMMC_SYS:
-            case EMUMMC_USR:
-
-                connect_mmc(EMUMMC);
-                if (!mount_mmc(emmc_entries[res - 5], res - 4)){
-                    fileexplorer("emmc:/");
-                }
-                else
-                    message(COLOR_RED, "EMUMMC failed to mount!");
-                
-                break;
-
-            case MOUNT_SD:
-                if (return_sd_mounted(1))
-                    sd_unmount();
-                else
-                    sd_mount();
-
-                break;
-
-            case TOOLS:
-                res = makemenu(toolsmenu, 6);
-
-                switch(res){
-                    case DISPLAY_INFO:
-                        displayinfo();
-                        break;
-                    case DISPLAY_GPIO:
-                        displaygpio();
-                        break;
-                    case DUMPFIRMWARE:
-                        /*
-                        if (mainmenu[4].property >= 0){
-                            res = makemenu(mmcChoice, 3);
-
-                            if (res >= 0)
-                                dumpfirmware(res);
-                        }
-                        else
-                        */
-                        dumpfirmware(SYSMMC);
-
-                        break;
-                    case DUMPUSERSAVE:
-                        if (mainmenu[4].property >= 0){
-                            res = makemenu(mmcChoice, 3);
-
-                            if (res >= 0)
-                                dumpusersaves(res);
-                        }
-                        else
-                            dumpusersaves(SYSMMC);
-
-                        break;
-                }
-                break;
-            
-            case SD_FORMAT:
-                res = makemenu(formatmenu, 4);
-
-                if (res >= 0){
-                    if(makewaitmenu("Are you sure you want to format your sd?\nThis will delete everything on your SD card\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10)){
-                        if (format(res)){
-                            sd_unmount();
-                        }
-                    }
-                }
-
-                break;
-
-            case CREDITS:
-                message(COLOR_WHITE, CREDITS_MESSAGE);
-                break;
-
-            case EXIT:
-                if (return_sd_mounted(1)){  
-                    if (checkfile("/bootloader/update.bin"))
-                        shutdownmenu[5].property = 1;
-                    else
-                        shutdownmenu[5].property = -1;
-
-                    if (checkfile("/atmosphere/reboot_payload.bin"))
-                        shutdownmenu[6].property = 1;
-                    else
-                        shutdownmenu[6].property = -1;
-                }
-                else {
-                    shutdownmenu[5].property = -1;
-                    shutdownmenu[6].property = -1;
-                }
-
-                res = makemenu(shutdownmenu, 7);
-
-                switch(res){
-                    case REBOOT_RCM:
-                        reboot_rcm();
-                    
-                    case REBOOT_NORMAL:
-                        reboot_normal();
-
-                    case POWER_OFF:
-                        power_off();
-
-                    case HEKATE:
-                        launch_payload("/bootloader/update.bin");
-                    
-                    case AMS:
-                        launch_payload("/atmosphere/reboot_payload.bin");
-                } //todo declock bpmp
-
-                break;
-        }
+        RunMenuOption(res);
     }
 }

@@ -166,7 +166,7 @@ int del_recursive(char *path){
     makestring(path, &localpath);
 
     if ((res = f_opendir(&dir, localpath))){
-        message(COLOR_RED, "Error during f_opendir: %d", res);
+        //message(COLOR_RED, "Error during f_opendir: %d", res);
         return -1;
     }
 
