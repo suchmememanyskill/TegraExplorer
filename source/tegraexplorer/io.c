@@ -240,9 +240,6 @@ int copy_recursive(char *path, char *dstpath){
     }
     
     f_closedir(&dir);
-    free(startpath);
-    free(destpath);
-    free(destfoldername);
     
     if (f_stat(startpath, &fno))
         return 22;
@@ -250,6 +247,9 @@ int copy_recursive(char *path, char *dstpath){
     if ((res = f_chmod(destpath, fno.fattrib, 0x3A)))
         return res;
     
+    free(startpath);
+    free(destpath);
+    free(destfoldername);
 
     return 0;
 }
