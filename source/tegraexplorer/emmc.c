@@ -84,6 +84,7 @@ int mount_mmc(const char *partition, const int biskeynumb){
 void connect_mmc(short mmctype){
     if (mmctype != currentlyMounted){
         disconnect_mmc();
+        h_cfg.emummc_force_disable = 0;
         switch (mmctype){
             case SYSMMC:
                 sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
