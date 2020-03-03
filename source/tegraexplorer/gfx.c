@@ -8,6 +8,7 @@
 #include "gfx.h"
 #include "fs.h"
 #include "../mem/minerva.h"
+#include "../power/max17050.h"
 #include <stdarg.h>
 
 const char fixedoptions[3][50] = {
@@ -24,10 +25,22 @@ const char sizevalues[4][3] = {
 };
 
 void clearscreen(){
+    int battery = 0;
+    max17050_get_property(MAX17050_RepSOC, &battery);
+
     gfx_clear_grey(0x1B);
+    SWAPCOLOR(COLOR_DEFAULT);
+    SWAPBGCOLOR(COLOR_WHITE);
+
+    gfx_box(0, 1263, 719, 1279, COLOR_WHITE);
+    gfx_con_setpos(0, 1263);
+    gfx_printf("Move: Vol+/- | Select: Pow | Battery: %3d%%", battery >> 8);
+
     gfx_box(0, 0, 719, 15, COLOR_WHITE);
     gfx_con_setpos(0, 0);
-    gfx_printf("%k%KTegraexplorer v1.3.1%k%K\n", COLOR_DEFAULT, COLOR_WHITE, COLOR_WHITE, COLOR_DEFAULT);
+    gfx_printf("Tegraexplorer v1.3.1\n");
+
+    RESETCOLOR;
 }
 
 int message(u32 color, const char* message, ...){
