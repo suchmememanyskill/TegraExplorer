@@ -21,6 +21,11 @@ const int scriptver = 131;
 bool forceExit = false;
 u32 currentcolor;
 
+void Part_CheckFile(){
+    FILINFO fno;
+    errcode = f_stat(args[0], &fno);
+}
+
 void Part_SetColor(){
     if (strcmpcheck(args[0], "RED"))
         currentcolor = COLOR_RED;
@@ -140,6 +145,7 @@ script_parts parts[] = {
     {"VERSION", Part_VersionCheck, 1},
     {"WAIT", Part_Wait, 1},
     {"COLOR", Part_SetColor, 1},
+    {"CHECKPATH", Part_CheckFile, 1},
     {"NULL", NULL, -1}
 };
 
