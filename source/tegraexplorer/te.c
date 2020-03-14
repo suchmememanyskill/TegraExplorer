@@ -41,13 +41,14 @@ menu_item shutdownmenu[7] = {
     {"Reboot to Atmosphere", COLOR_GREEN, AMS, -1}
 };
 
-menu_item toolsmenu[6] = {
+menu_item toolsmenu[7] = {
     {"-- TOOLS --\n", COLOR_VIOLET, -1, 0},
     {"Back", COLOR_WHITE, -1, 1},
     {"\nDisplay Console Info", COLOR_GREEN, DISPLAY_INFO, 1},
     {"Display GPIO pins", COLOR_VIOLET, DISPLAY_GPIO, 1},
     {"Dump Firmware", COLOR_BLUE, DUMPFIRMWARE, 1},
-    {"Dump User Saves", COLOR_YELLOW, DUMPUSERSAVE, 1}
+    {"Dump User Saves", COLOR_YELLOW, DUMPUSERSAVE, 1},
+    {"[DEBUG] Dump bis", COLOR_RED, DUMP_BOOT, 1}
 };
 
 menu_item formatmenu[4] = {
@@ -103,7 +104,7 @@ void MainMenu_MountSD(){
 }
 
 void MainMenu_Tools(){
-    res = makemenu(toolsmenu, 6);
+    res = makemenu(toolsmenu, 7);
 
     switch(res){
         case DISPLAY_INFO:
@@ -123,6 +124,9 @@ void MainMenu_Tools(){
             else
                 dumpusersaves(SYSMMC);
 
+            break;
+        case DUMP_BOOT:
+            dump_emmc_parts(PART_BOOT | PART_PKG2, SYSMMC);
             break;
     }
 }

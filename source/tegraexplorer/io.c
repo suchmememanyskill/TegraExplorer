@@ -9,6 +9,13 @@
 #include "../gfx/gfx.h"
 #include "../utils/util.h"
 #include "io.h"
+#include "emmc.h"
+#include "../storage/sdmmc.h"
+#include "../storage/nx_emmc.h"
+#include "../utils/types.h"
+
+extern sdmmc_storage_t storage;
+extern emmc_part_t *system_part;
 
 bool checkfile(char* path){
     FRESULT fr;
@@ -251,5 +258,100 @@ int copy_recursive(char *path, char *dstpath){
     free(destpath);
     free(destfoldername);
 
+    return 0;
+}
+
+int dump_emmc_part(char *path, sdmmc_storage_t *storage, emmc_part_t *part){
+    FIL fp;
+    u8 *buf;
+	u32 lba_curr = part->lba_start;
+	u32 bytesWritten = 0;
+    u32 totalSectors = part->lba_end - part->lba_start + 1;
+    u64 totalSize = (u64)((u64)totalSectors << 9);
+    u32 num = 0;
+    u32 pct = 0;
+    int res;
+
+    buf = calloc(16384, sizeof(u8));
+
+    if ((res = f_open(&fp, path, FA_CREATE_ALWAYS | FA_WRITE))){
+        message(COLOR_RED, "f_open() failed! err: %d", res);
+        return -1;
+    }
+
+    f_lseek(&fp, totalSize);
+    f_lseek(&fp, 0);
+
+    while (totalSectors > 0){
+        num = MIN(totalSectors, 32);
+        if (!sdmmc_storage_read(storage, lba_curr, num, buf)){
+            message(COLOR_RED, "eMMC read failed!");
+            return -1;
+        }
+        if ((res = f_write(&fp, buf, num * NX_EMMC_BLOCKSIZE, NULL))){
+            message(COLOR_RED, "f_write() failed! err: %d", res);
+            return -1;
+        }
+        pct = (u64)((u64)(lba_curr - part->lba_start) * 100u) / (u64)(part->lba_end - part->lba_start);
+        gfx_printf("Progress: %d%%\r", pct);
+
+        lba_curr += num;
+        totalSectors -= num;
+        bytesWritten += num * NX_EMMC_BLOCKSIZE;
+    }
+    gfx_printf("                \r");
+    f_close(&fp);
+    free(buf);
+    return 0;
+}
+
+int dump_emmc_parts(u16 parts, u8 mmctype){
+    char *path;
+    char basepath[] = "sd:/tegraexplorer/dumps";
+    f_mkdir("sd:/tegraexplorer");
+    f_mkdir("sd:/tegraexplorer/dumps");
+
+    connect_mmc(mmctype);
+    clearscreen();
+
+    if (parts & PART_BOOT){
+        emmc_part_t bootPart;
+        const u32 BOOT_PART_SIZE = storage.ext_csd.boot_mult << 17;
+        memset(&bootPart, 0, sizeof(bootPart));
+        
+        bootPart.lba_start = 0;
+        bootPart.lba_end = (BOOT_PART_SIZE / NX_EMMC_BLOCKSIZE) - 1;
+        
+        for (int i = 0; i < 2; i++){
+            strcpy(bootPart.name, "BOOT");
+            bootPart.name[4] = (u8)('0' + i);
+		    bootPart.name[5] = 0;     
+
+            sdmmc_storage_set_mmc_partition(&storage, i + 1);
+            makestring(getnextloc(basepath, bootPart.name), &path);
+            gfx_printf("Dumping %s\n", bootPart.name);
+ 
+            dump_emmc_part(path, &storage, &bootPart);
+            free(path);
+        }
+    }
+
+    if (parts & PART_PKG2){
+        for (int i = 0; i < 6; i++){
+            if (connect_part(pkg2names[i])){
+                message(COLOR_RED, "Find of partition failed!\nPart: %s", pkg2names[i]);
+                return -1;
+            }
+
+            makestring(getnextloc(basepath, system_part->name), &path);
+            gfx_printf("Dumping %s\n", system_part->name);
+
+            dump_emmc_part(path, &storage, system_part);
+            free(path);
+        }
+    }
+
+    gfx_printf("\nDone!");
+    btn_wait();
     return 0;
 }

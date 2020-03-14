@@ -13,7 +13,7 @@ pkg1_info returnpkg1info();
 int mount_mmc(const char *partition, const int biskeynumb);
 void connect_mmc(short mmctype);
 void disconnect_mmc();
-
+int connect_part(const char *partition);
 
 static const u8 zeros[0x10] = {0};
 

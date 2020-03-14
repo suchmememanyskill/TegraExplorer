@@ -514,10 +514,10 @@ void gfx_set_rect_grey(const u8 *buf, u32 size_x, u32 size_y, u32 pos_x, u32 pos
 }
 
 void gfx_box(int x0, int y0, int x1, int y1, u32 color){
-	int i = y0;
-	while(y1 >= i){
-		gfx_line(x0, i, x1, i, color);
-		i++;
+	for (int x = x0; x < x1 + 1; x++){
+		for (int y = y0; y < y1 + 1; y++){
+			gfx_set_pixel(x, y, color);
+		}
 	}
 }
 

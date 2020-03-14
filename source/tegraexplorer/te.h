@@ -38,7 +38,8 @@ enum toolsmenu_return {
     DISPLAY_INFO = 1,
     DISPLAY_GPIO,
     DUMPFIRMWARE,
-    DUMPUSERSAVE
+    DUMPUSERSAVE,
+    DUMP_BOOT
 };
 
 enum formatmenu_return {

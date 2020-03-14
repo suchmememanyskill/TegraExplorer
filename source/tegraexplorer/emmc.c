@@ -61,17 +61,26 @@ pkg1_info returnpkg1info(){
     return pkg1inf;
 }
 
-int mount_mmc(const char *partition, const int biskeynumb){
-    f_unmount("emmc:");
-
-    se_aes_key_set(8, bis_key[biskeynumb] + 0x00, 0x10);
-    se_aes_key_set(9, bis_key[biskeynumb] + 0x10, 0x10);
+int connect_part(const char *partition){
+    sdmmc_storage_set_mmc_partition(&storage, 0);
 
     system_part = nx_emmc_part_find(&gpt, partition);
     if (!system_part) {
         gfx_printf("Failed to locate %s partition.", partition);
         return -1;
     }
+
+    return 0;
+}
+
+int mount_mmc(const char *partition, const int biskeynumb){
+    f_unmount("emmc:");
+    
+    se_aes_key_set(8, bis_key[biskeynumb] + 0x00, 0x10);
+    se_aes_key_set(9, bis_key[biskeynumb] + 0x10, 0x10);
+
+    if (connect_part(partition))
+        return -1;
 
     if (f_mount(&emmc, "emmc:", 1)) {
         gfx_printf("Mount failed of %s.", partition);
