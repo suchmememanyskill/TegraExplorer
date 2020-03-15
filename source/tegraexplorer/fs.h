@@ -35,7 +35,8 @@ enum filemenuoptions {
     DELETE,
     PAYLOAD,
     SCRIPT,
-    HEXVIEW
+    HEXVIEW,
+    DUMPBIS
 };
 
 enum foldermenuoptions {

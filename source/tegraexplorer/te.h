@@ -39,7 +39,8 @@ enum toolsmenu_return {
     DISPLAY_GPIO,
     DUMPFIRMWARE,
     DUMPUSERSAVE,
-    DUMP_BOOT
+    DUMP_BOOT,
+    RESTORE_BOOT
 };
 
 enum formatmenu_return {

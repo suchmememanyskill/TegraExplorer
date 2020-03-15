@@ -38,7 +38,7 @@ void clearscreen(){
 
     gfx_box(0, 0, 719, 15, COLOR_WHITE);
     gfx_con_setpos(0, 0);
-    gfx_printf("Tegraexplorer v1.3.2\n");
+    gfx_printf("Tegraexplorer v1.3.3\n");
 
     RESETCOLOR;
 }
@@ -108,10 +108,16 @@ void printbytes(u8 print[], u32 size, u32 offset){
 
 int makewaitmenu(char *initialmessage, char *hiddenmessage, int timer){
     clearscreen();
+    return makewaitmenunoclear(initialmessage, hiddenmessage, timer);
+}
+
+int makewaitmenunoclear(char *initialmessage, char *hiddenmessage, int timer){
     int res;
     u32 start = get_tmr_s();
 
     gfx_printf(initialmessage);
+
+    while (btn_read() != 0);
 
     while(1){
         res = btn_read();

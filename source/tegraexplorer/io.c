@@ -13,6 +13,7 @@
 #include "../storage/sdmmc.h"
 #include "../storage/nx_emmc.h"
 #include "../utils/types.h"
+#include "../storage/emummc.h"
 
 extern sdmmc_storage_t storage;
 extern emmc_part_t *system_part;
@@ -261,7 +262,7 @@ int copy_recursive(char *path, char *dstpath){
     return 0;
 }
 
-int dump_emmc_part(char *path, sdmmc_storage_t *storage, emmc_part_t *part){
+int dump_emmc_part(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
     FIL fp;
     u8 *buf;
 	u32 lba_curr = part->lba_start;
@@ -272,6 +273,7 @@ int dump_emmc_part(char *path, sdmmc_storage_t *storage, emmc_part_t *part){
     u32 pct = 0;
     int res;
 
+    gfx_printf("Initializing\r");
     buf = calloc(16384, sizeof(u8));
 
     if ((res = f_open(&fp, path, FA_CREATE_ALWAYS | FA_WRITE))){
@@ -284,7 +286,7 @@ int dump_emmc_part(char *path, sdmmc_storage_t *storage, emmc_part_t *part){
 
     while (totalSectors > 0){
         num = MIN(totalSectors, 32);
-        if (!sdmmc_storage_read(storage, lba_curr, num, buf)){
+        if (!emummc_storage_read(mmcstorage, lba_curr, num, buf)){
             message(COLOR_RED, "eMMC read failed!");
             return -1;
         }
@@ -354,4 +356,231 @@ int dump_emmc_parts(u16 parts, u8 mmctype){
     gfx_printf("\nDone!");
     btn_wait();
     return 0;
+}
+
+int restore_emmc_part(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
+    FIL fp;
+    FILINFO fno;
+    u8 *buf;
+	u32 lba_curr = part->lba_start;
+	u32 bytesWritten = 0;
+    u32 totalSectorsDest = part->lba_end - part->lba_start + 1;
+    u64 totalSizeDest = (u64)((u64)totalSectorsDest << 9);
+    u64 totalSize;
+    u32 num = 0;
+    u32 pct = 0;
+    int res;
+
+    gfx_printf("Initializing\r");
+
+    buf = calloc(16384, sizeof(u8));
+
+    if ((res = f_stat(path, &fno))){
+        message(COLOR_RED, "f_stat() failed! err: %d", res);
+        return -1;
+    }
+
+    totalSize = fno.fsize;
+    u64 totalSectors = totalSize / NX_EMMC_BLOCKSIZE;
+
+    if (totalSize > totalSizeDest){
+        message(COLOR_RED, "File too big for destenation!");
+        return -1;
+    }
+
+    gfx_printf("Flashing %s\n", part->name);
+
+    if (totalSize < totalSizeDest){
+        SWAPCOLOR(COLOR_ORANGE);
+        u8 btnres = makewaitmenunoclear(
+            "File is too small for destenation.\nDo you want to flash it anyway?\n\nVol +/- to Cancel\n",
+            "Power to Confirm",
+            2
+        );
+
+        RESETCOLOR;
+
+        if (!btnres){
+            gfx_printf("\nCancelled: %s\n\n", part->name);
+            return 0;
+        }
+        else
+            gfx_printf("\nFlashing %s\n", part->name);
+    }
+
+    if ((res = f_open(&fp, path, FA_OPEN_ALWAYS | FA_READ))){
+        message(COLOR_RED, "f_open() failed! err: %d", res);
+        return -1;
+    }
+
+    while (totalSectors > 0){
+        num = MIN(totalSectors, 32);
+
+        if ((res = f_read(&fp, buf, num * NX_EMMC_BLOCKSIZE, NULL))){
+            message(COLOR_RED, "f_read() failed! err: %d", res);
+            return -1;
+        }
+
+        if (!emummc_storage_write(mmcstorage, lba_curr, num, buf)){
+            message(COLOR_RED, "eMMC write failed!");
+            return -1;
+        }
+
+        lba_curr += num;
+        totalSectors -= num;
+        bytesWritten += num * NX_EMMC_BLOCKSIZE;
+
+        pct = (u64)((u64)(lba_curr - part->lba_start) * 100u) / (u64)(part->lba_end - part->lba_start);
+        gfx_printf("Progress: %d%%\r", pct);
+    }
+
+    gfx_printf("                \r");
+    f_close(&fp);
+    free(buf);
+    return 0;
+}
+
+int restore_emmc_file(char *path, const char *target, u8 partition, u8 mmctype){
+    connect_mmc(mmctype);
+
+    if (partition){
+        emmc_part_t bootPart;
+        const u32 BOOT_PART_SIZE = storage.ext_csd.boot_mult << 17;
+        memset(&bootPart, 0, sizeof(bootPart));
+
+        bootPart.lba_start = 0;
+        bootPart.lba_end = (BOOT_PART_SIZE / NX_EMMC_BLOCKSIZE) - 1;
+
+        strcpy(bootPart.name, target);
+
+        sdmmc_storage_set_mmc_partition(&storage, partition);
+        restore_emmc_part(path, &storage, &bootPart);
+    }
+    else {
+        sdmmc_storage_set_mmc_partition(&storage, partition);
+        if (connect_part(target)){
+            message(COLOR_RED, "Find of partition failed!\nPart: %s", target);
+            return -1;
+        }
+        restore_emmc_part(path, &storage, system_part);
+    }
+    return 0;
+}
+
+int restore_bis_using_file(char *path, u8 mmctype){
+    f_mkdir("sd:/tegraexplorer");
+    f_mkdir("sd:/tegraexplorer/bis");
+    clearscreen();
+
+    if (extract_bis_file(path, "sd:/tegraexplorer/bis")){
+        message(COLOR_ORANGE, "Failed to find file!");
+        return -1;
+    }
+
+    if (!makewaitmenunoclear(
+        "\nAre you sure you want to flash these files\nThis could leave your switch unbootable!\n\nVol +/- to cancel\n",
+        "Power to confirm",
+        5
+    ))
+    {
+        return 0;
+    }
+
+    gfx_printf("\nRestoring BIS...\n\n");
+
+    restore_emmc_file("sd:/tegraexplorer/bis/BOOT0.bin", "BOOT0", 1, mmctype);
+    restore_emmc_file("sd:/tegraexplorer/bis/BOOT1.bin", "BOOT1", 2, mmctype);
+    restore_emmc_file("sd:/tegraexplorer/bis/BCPKG2-1-Normal-Main", pkg2names[0], 0, mmctype);
+    restore_emmc_file("sd:/tegraexplorer/bis/BCPKG2-1-Normal-Main", pkg2names[1], 0, mmctype);
+    restore_emmc_file("sd:/tegraexplorer/bis/BCPKG2-3-SafeMode-Main", pkg2names[2], 0, mmctype);
+    restore_emmc_file("sd:/tegraexplorer/bis/BCPKG2-3-SafeMode-Main", pkg2names[3], 0, mmctype);
+
+    gfx_printf("\n\nDone!\nPress any button to return");
+    btn_wait();
+
+    return 0;
+}
+
+u32 DecodeInt(u8* data) {
+    u32 out = 0;
+
+    for (int i = 0; i < 4; i++) {
+        out |= (data[i] << ((3 - i) * 8));
+    }
+
+    return out;
+}
+
+void copy_fil_size(FIL* in_src, FIL* out_src, int size_src){
+    u8* buff;
+    buff = calloc(16384, sizeof(u8));
+
+    int size = size_src;
+    int copysize;
+
+    while (size > 0){
+        copysize = MIN(16834, size);
+        f_read(in_src, buff, copysize, NULL);
+        f_write(out_src, buff, copysize, NULL);
+        size -= copysize;
+    }
+}
+
+void gen_part(int size, FIL* in, char *path){
+    FIL out;
+
+    f_open(&out, path, FA_WRITE | FA_CREATE_ALWAYS);
+    copy_fil_size(in, &out, size);
+    f_close(&out);
+}
+
+int extract_bis_file(char *path, char *outfolder){
+    FIL in;
+    int res;
+    u8 version[0x10];
+    u8 args;
+    u8 temp[0x4];
+    u32 filesizes[4];
+
+    if ((res = f_open(&in, path, FA_READ | FA_OPEN_EXISTING))){
+        message(COLOR_RED, "Opening file failed! err: %d", res);
+        return -1;
+    }
+
+    f_read(&in, version, 0x10, NULL);
+    f_read(&in, &args, 1, NULL);
+
+    for (int i = 0; i < 4; i++){
+        f_read(&in, temp, 4, NULL);
+        filesizes[i] = DecodeInt(temp);
+    }
+
+    gfx_printf("Version: %s\n\n", version);
+    
+    /*
+    for (int i = 0; i < 4; i++) {
+        gfx_printf("%d ", filesizes[i]);
+    }
+    */
+
+    gfx_printf("\nExtracting BOOT0\n");
+    if (args & BOOT0_ARG)
+        gen_part(filesizes[0], &in, getnextloc(outfolder, "BOOT0.bin"));
+
+    gfx_printf("Extracting BOOT1\n");
+    if (args & BOOT1_ARG)
+        gen_part(filesizes[1], &in, getnextloc(outfolder, "BOOT1.bin"));
+
+    gfx_printf("Extracting BCPKG2_1\n");
+    if (args & BCPKG2_1_ARG)
+        gen_part(filesizes[2], &in, getnextloc(outfolder, "BCPKG2-1-Normal-Main"));
+
+    gfx_printf("Extracting BCPKG2_3\n");
+    if (args & BCPKG2_3_ARG)
+        gen_part(filesizes[3], &in, getnextloc(outfolder, "BCPKG2-3-SafeMode-Main"));
+
+    gfx_printf("\n\nDone!\n");
+
+    f_close(&in);
+    return 0;   
 }

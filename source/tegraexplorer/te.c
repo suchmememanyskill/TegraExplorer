@@ -41,14 +41,15 @@ menu_item shutdownmenu[7] = {
     {"Reboot to Atmosphere", COLOR_GREEN, AMS, -1}
 };
 
-menu_item toolsmenu[7] = {
+menu_item toolsmenu[8] = {
     {"-- TOOLS --\n", COLOR_VIOLET, -1, 0},
     {"Back", COLOR_WHITE, -1, 1},
     {"\nDisplay Console Info", COLOR_GREEN, DISPLAY_INFO, 1},
     {"Display GPIO pins", COLOR_VIOLET, DISPLAY_GPIO, 1},
     {"Dump Firmware", COLOR_BLUE, DUMPFIRMWARE, 1},
     {"Dump User Saves", COLOR_YELLOW, DUMPUSERSAVE, 1},
-    {"[DEBUG] Dump bis", COLOR_RED, DUMP_BOOT, 1}
+    {"[DEBUG] Dump bis", COLOR_RED, DUMP_BOOT, 1},
+    {"[DEBUG] Restore bis", COLOR_RED, RESTORE_BOOT, 1}
 };
 
 menu_item formatmenu[4] = {
@@ -104,7 +105,7 @@ void MainMenu_MountSD(){
 }
 
 void MainMenu_Tools(){
-    res = makemenu(toolsmenu, 7);
+    res = makemenu(toolsmenu, 8);
 
     switch(res){
         case DISPLAY_INFO:
@@ -127,6 +128,22 @@ void MainMenu_Tools(){
             break;
         case DUMP_BOOT:
             dump_emmc_parts(PART_BOOT | PART_PKG2, SYSMMC);
+            break;
+        case RESTORE_BOOT:
+            SWAPCOLOR(COLOR_ORANGE);
+            if (makewaitmenu(
+                "WARNING!\nThis will mess with your switch boot files\nMake a nand backup beforehand!\n\nThis will pull from path:\nsd:/tegraexplorer/boot.bis\n\nVol +/- to cancel\n",
+                "Power to confirm",
+                5
+            ))
+            {
+                if (emu_cfg.enabled){
+                    if ((res = makemenu(mmcChoice, 3)) >= 0)
+                        restore_bis_using_file("sd:/tegraexplorer/boot.bis", res);
+                }
+                else
+                    restore_bis_using_file("sd:/tegraexplorer/boot.bis", SYSMMC);
+            }
             break;
     }
 }

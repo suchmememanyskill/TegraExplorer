@@ -19,7 +19,7 @@ u8 clipboardhelper = 0;
 extern const char sizevalues[4][3];
 extern int launch_payload(char *path);
 
-menu_item explfilemenu[11] = {
+menu_item explfilemenu[12] = {
     {"-- File Menu --", COLOR_BLUE, -1, 0},
     {"FILE", COLOR_GREEN, -1, 0},
     {"\nSIZE", COLOR_VIOLET, -1, 0},
@@ -30,7 +30,8 @@ menu_item explfilemenu[11] = {
     {"\nDelete file\n", COLOR_RED, DELETE, 1},
     {"Launch Payload", COLOR_ORANGE, PAYLOAD, 1},
     {"Launch Script", COLOR_YELLOW, SCRIPT, 1},
-    {"View Hex", COLOR_GREEN, HEXVIEW, 1}
+    {"View Hex", COLOR_GREEN, HEXVIEW, 1},
+    {"Extract Bis", COLOR_RED, DUMPBIS, 1}
 };
 
 menu_item explfoldermenu[6] = {
@@ -316,7 +317,12 @@ int filemenu(fs_entry file){
     else
         explfilemenu[9].property = -1;
 
-    temp = makemenu(explfilemenu, 11);
+    if (strstr(file.name, ".bis") != NULL)
+        explfilemenu[11].property = 1;
+    else
+        explfilemenu[11].property = -1;
+
+    temp = makemenu(explfilemenu, 12);
 
     switch (temp){
         case COPY:
@@ -336,6 +342,11 @@ int filemenu(fs_entry file){
             break;
         case HEXVIEW:
             viewbytes(getnextloc(currentpath, file.name));
+            break;
+        case DUMPBIS:
+            clearscreen();
+            extract_bis_file(getnextloc(currentpath, file.name), currentpath);
+            btn_wait();
             break;
     }
 
