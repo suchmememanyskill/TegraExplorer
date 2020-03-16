@@ -130,7 +130,6 @@ void MainMenu_Tools(){
             dump_emmc_parts(PART_BOOT | PART_PKG2, SYSMMC);
             break;
         case RESTORE_BOOT:
-            SWAPCOLOR(COLOR_ORANGE);
             if (makewaitmenu(
                 "WARNING!\nThis will mess with your switch boot files\nMake a nand backup beforehand!\n\nThis will pull from path:\nsd:/tegraexplorer/boot.bis\n\nVol +/- to cancel\n",
                 "Power to confirm",

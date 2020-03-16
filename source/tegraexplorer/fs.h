@@ -36,7 +36,8 @@ enum filemenuoptions {
     PAYLOAD,
     SCRIPT,
     HEXVIEW,
-    DUMPBIS
+    DUMPBIS,
+    RESTOREBIS
 };
 
 enum foldermenuoptions {

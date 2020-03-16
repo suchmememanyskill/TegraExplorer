@@ -10,6 +10,7 @@
 #include "../utils/util.h"
 #include "io.h"
 #include "script.h"
+#include "te.h"
 
 fs_entry *fileobjects;
 char rootpath[10] = "";
@@ -19,7 +20,7 @@ u8 clipboardhelper = 0;
 extern const char sizevalues[4][3];
 extern int launch_payload(char *path);
 
-menu_item explfilemenu[12] = {
+menu_item explfilemenu[13] = {
     {"-- File Menu --", COLOR_BLUE, -1, 0},
     {"FILE", COLOR_GREEN, -1, 0},
     {"\nSIZE", COLOR_VIOLET, -1, 0},
@@ -31,7 +32,8 @@ menu_item explfilemenu[12] = {
     {"Launch Payload", COLOR_ORANGE, PAYLOAD, 1},
     {"Launch Script", COLOR_YELLOW, SCRIPT, 1},
     {"View Hex", COLOR_GREEN, HEXVIEW, 1},
-    {"Extract Bis", COLOR_RED, DUMPBIS, 1}
+    {"Extract BIS", COLOR_RED, DUMPBIS, 1},
+    {"Restore BIS", COLOR_RED, RESTOREBIS, 1}
 };
 
 menu_item explfoldermenu[6] = {
@@ -317,12 +319,16 @@ int filemenu(fs_entry file){
     else
         explfilemenu[9].property = -1;
 
-    if (strstr(file.name, ".bis") != NULL)
+    if (strstr(file.name, ".bis") != NULL){
         explfilemenu[11].property = 1;
-    else
+        explfilemenu[12].property = 1;
+    }   
+    else {
         explfilemenu[11].property = -1;
+        explfilemenu[12].property = -1;
+    } 
 
-    temp = makemenu(explfilemenu, 12);
+    temp = makemenu(explfilemenu, 13);
 
     switch (temp){
         case COPY:
@@ -347,6 +353,9 @@ int filemenu(fs_entry file){
             clearscreen();
             extract_bis_file(getnextloc(currentpath, file.name), currentpath);
             btn_wait();
+            break;
+        case RESTOREBIS:
+            message(COLOR_ORANGE, "Stubbed");
             break;
     }
 

@@ -10,6 +10,8 @@
 #include "../mem/minerva.h"
 #include "../power/max17050.h"
 #include <stdarg.h>
+#include "../storage/emummc.h"
+#include "emmc.h"
 
 const char fixedoptions[3][50] = {
     "Folder -> previous folder                  ",
@@ -135,6 +137,16 @@ int makewaitmenunoclear(char *initialmessage, char *hiddenmessage, int timer){
             gfx_printf("\r%k%s%k", COLOR_RED, hiddenmessage, COLOR_WHITE);
     }
 }
+
+/*
+int mmcChoiceMenu(){
+    if (emu_cfg.enabled){
+        
+    }
+
+    return SYSMMC;
+}
+*/
 
 void gfx_print_length(int size, char *toprint){
     char *temp;

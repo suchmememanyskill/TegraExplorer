@@ -375,6 +375,11 @@ int restore_emmc_part(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part
 
     buf = calloc(16384, sizeof(u8));
 
+    if (!buf){
+        message(COLOR_RED, "Calloc returned null!");
+        return -1;
+    }
+
     if ((res = f_stat(path, &fno))){
         message(COLOR_RED, "f_stat() failed! err: %d", res);
         return -1;
@@ -430,7 +435,7 @@ int restore_emmc_part(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part
         totalSectors -= num;
         bytesWritten += num * NX_EMMC_BLOCKSIZE;
 
-        pct = (u64)((u64)(lba_curr - part->lba_start) * 100u) / (u64)(part->lba_end - part->lba_start);
+        pct = (u64)((u64)(bytesWritten) * 100u) / (u64)(fno.fsize);
         gfx_printf("Progress: %d%%\r", pct);
     }
 
@@ -457,7 +462,6 @@ int restore_emmc_file(char *path, const char *target, u8 partition, u8 mmctype){
         restore_emmc_part(path, &storage, &bootPart);
     }
     else {
-        sdmmc_storage_set_mmc_partition(&storage, partition);
         if (connect_part(target)){
             message(COLOR_RED, "Find of partition failed!\nPart: %s", target);
             return -1;
