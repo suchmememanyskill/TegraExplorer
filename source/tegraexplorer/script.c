@@ -12,6 +12,7 @@
 #include "../utils/util.h"
 #include "../storage/emummc.h"
 #include "script.h"
+#include "common/common.h"
 
 #include <stdlib.h>
 
