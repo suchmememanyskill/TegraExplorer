@@ -11,6 +11,7 @@ typedef struct _menu_item {
     short property;
 } menu_item;
 
+/*
 enum mainmenu_return {
     SD_CARD = 1,
     EMMC_SAF,
@@ -47,5 +48,6 @@ enum formatmenu_return {
     FORMAT_EMUMMC = 0,
     FORMAT_ALL_FAT32
 };
+*/
 
 void te_main();

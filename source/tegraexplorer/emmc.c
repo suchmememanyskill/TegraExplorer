@@ -22,6 +22,7 @@
 #include "../mem/sdram.h"
 #include "../storage/emummc.h"
 #include "../config/config.h"
+#include "common/common.h"
 
 sdmmc_storage_t storage;
 emmc_part_t *system_part;

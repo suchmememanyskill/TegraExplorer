@@ -11,11 +11,17 @@
 #include "../storage/emummc.h"
 #include "script.h"
 
+#include "common/common.h"
+#include "gfx/menu.h"
+
+#include "utils/utils.h"
+
 extern bool sd_mount();
 extern void sd_unmount();
 extern bool return_sd_mounted(int value);
 extern int launch_payload(char *path);
 
+/*
 menu_item mainmenu[MAINMENU_AMOUNT] = {
     {"[SD:/] SD CARD\n", COLOR_GREEN, SD_CARD, 1},
     {"[SYSTEM:/] EMMC", COLOR_ORANGE, EMMC_SYS, 1},
@@ -64,12 +70,9 @@ menu_item mmcChoice[3] = {
     {"SysMMC", COLOR_ORANGE, SYSMMC, 1},
     {"EmuMMC", COLOR_BLUE, EMUMMC, 1}
 };
+*/
 
-const char emmc_entries[3][8] = {
-    "SAFE",
-    "SYSTEM",
-    "USER"
-};
+
 
 int res = 0;
 
@@ -81,7 +84,7 @@ void MainMenu_EMMC(){
     if (makewaitmenu("You're about to enter EMMC\nModifying anything here\n        can result in a BRICK!\n\nPlease only continue\n    if you know what you're doing\n\nPress Vol+/- to return\n", "Press Power to enter", 4)){
         connect_mmc(SYSMMC);
 
-        if (!mount_mmc(emmc_entries[res - 2], res - 1))
+        if (!mount_mmc(emmc_fs_entries[res - 2], res - 1))
             fileexplorer("emmc:/");
         else
             message(COLOR_RED, "EMMC failed to mount!");
@@ -91,7 +94,7 @@ void MainMenu_EMMC(){
 void MainMenu_EMUMMC(){
     connect_mmc(EMUMMC);
 
-    if (!mount_mmc(emmc_entries[res - 5], res - 4))
+    if (!mount_mmc(emmc_fs_entries[res - 5], res - 4))
         fileexplorer("emmc:/");
     else
         message(COLOR_RED, "EMUMMC failed to mount!");
@@ -105,52 +108,46 @@ void MainMenu_MountSD(){
 }
 
 void MainMenu_Tools(){
-    res = makemenu(toolsmenu, 8);
+    //res = makemenu(toolsmenu, 8);
+    res = menu_make(mainmenu_tools, 7, "-- Tools Menu --");
 
     switch(res){
-        case DISPLAY_INFO:
+        case TOOLS_DISPLAY_INFO:
             displayinfo();
             break;
-        case DISPLAY_GPIO:
+        case TOOLS_DISPLAY_GPIO:
             displaygpio();
             break;
-        case DUMPFIRMWARE:
+        case TOOLS_DUMPFIRMWARE:
             dumpfirmware(SYSMMC);
             break;
-        case DUMPUSERSAVE:
-            if (mainmenu[4].property >= 0){
-                if ((res = makemenu(mmcChoice, 3)) >= 0)
-                    dumpusersaves(res);
-            }
-            else
-                dumpusersaves(SYSMMC);
+        case TOOLS_DUMPUSERSAVE:
+            if ((res = utils_mmcMenu()) > 0)
+                dumpusersaves(res);
 
             break;
-        case DUMP_BOOT:
+        case TOOLS_DUMP_BOOT:
             dump_emmc_parts(PART_BOOT | PART_PKG2, SYSMMC);
             break;
-        case RESTORE_BOOT:
+        case TOOLS_RESTORE_BOOT:
             if (makewaitmenu(
                 "WARNING!\nThis will mess with your switch boot files\nMake a nand backup beforehand!\n\nThis will pull from path:\nsd:/tegraexplorer/boot.bis\n\nVol +/- to cancel\n",
                 "Power to confirm",
                 5
             ))
             {
-                if (emu_cfg.enabled){
-                    if ((res = makemenu(mmcChoice, 3)) >= 0)
-                        restore_bis_using_file("sd:/tegraexplorer/boot.bis", res);
-                }
-                else
-                    restore_bis_using_file("sd:/tegraexplorer/boot.bis", SYSMMC);
+                if ((res = utils_mmcMenu()) > 0)
+                    restore_bis_using_file("sd:/tegraexplorer/boot.bis", res);
             }
             break;
     }
 }
 
 void MainMenu_SDFormat(){
-    res = makemenu(formatmenu, 4);
+    //res = makemenu(formatmenu, 4);
+    res = menu_make(mainmenu_format, 3, "-- Format Menu --");
 
-    if (res >= 0){
+    if (res > 0){
         if(makewaitmenu("Are you sure you want to format your sd?\nThis will delete everything on your SD card\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10)){
             if (format(res)){
                 sd_unmount();
@@ -164,31 +161,37 @@ void MainMenu_Credits(){
 }
 
 void MainMenu_Exit(){
-    if (return_sd_mounted(1)){ 
+    if (return_sd_mounted(1)){
+        /*
         shutdownmenu[5].property = (checkfile("/bootloader/update.bin")) ? 1 : -1;
         shutdownmenu[6].property = (checkfile("/atmosphere/reboot_payload.bin")) ? 1 : -1;
+        */
+
+        SETBIT(mainmenu_shutdown[4].property, ISHIDE, !checkfile("/bootloader/update.bin"));
+        SETBIT(mainmenu_shutdown[5].property, ISHIDE, !checkfile("/atmosphere/reboot_payload.bin"));
     }
     else {
-        shutdownmenu[5].property = -1;
-        shutdownmenu[6].property = -1;
+        for (int i = 4; i <= 5; i++)
+            SETBIT(mainmenu_shutdown[i].property, ISHIDE, 1);
     }
 
-    res = makemenu(shutdownmenu, 7);
+    //res = makemenu(shutdownmenu, 7);
+    res = menu_make(mainmenu_shutdown, 6, "-- Shutdown Menu --");
 
     switch(res){
-        case REBOOT_RCM:
+        case SHUTDOWN_REBOOT_RCM:
             reboot_rcm();
                     
-        case REBOOT_NORMAL:
+        case SHUTDOWN_REBOOT_NORMAL:
             reboot_normal();
 
-        case POWER_OFF:
+        case SHUTDOWN_POWER_OFF:
             power_off();
 
-        case HEKATE:
+        case SHUTDOWN_HEKATE:
             launch_payload("/bootloader/update.bin");
                     
-        case AMS:
+        case SHUTDOWN_AMS:
             launch_payload("/atmosphere/reboot_payload.bin");
     } //todo declock bpmp
 }
@@ -213,6 +216,7 @@ void RunMenuOption(int option){
         mainmenu_functions[option - 1]();
 }
 
+/*
 void fillmainmenu(){
     int i;
 
@@ -232,38 +236,81 @@ void fillmainmenu(){
                 break;
             case 8:
                 if (return_sd_mounted(1)){
-                    mainmenu[i].property = 2;
-                    strcpy(mainmenu[i].name, "\nUnmount SD");
+                    //mainmenu[i].property = 2;
+                    //strcpy(mainmenu[i].name, "\nUnmount SD");
+                    mainmenu_main[7].name = (menu_sd_states[0]);
                 }
                 else {
-                    mainmenu[i].property = 1;
-                    strcpy(mainmenu[i].name, "\nMount SD");
+                    //mainmenu[i].property = 1;
+                    //strcpy(mainmenu[i].name, "\nMount SD");
+                    mainmenu_main[7].name = (menu_sd_states[1]);
                 }
                 break;
         }
     }
 }
+*/
 
 void te_main(){
+    int setter;
 
     if (dump_biskeys() == -1){
         message(COLOR_RED, "Biskeys failed to dump!\nEmmc will not be mounted!");
-        mainmenu[1].property = -1;
-        mainmenu[2].property = -1;
-        mainmenu[3].property = -1;
+        for (int i = 1; i <= 3; i++)
+            mainmenu_main[i].property |= ISHIDE;
     }
 
     if (emummc_load_cfg()){
-        mainmenu[4].property = -2;
-        mainmenu[5].property = -2;
-        mainmenu[6].property = -2;
+        for (int i = 4; i <= 6; i++)
+            mainmenu_main[i].property |= ISHIDE;
     }
 
     disconnect_mmc();
 
     while (1){
-        fillmainmenu();
-        res = makemenu(mainmenu, MAINMENU_AMOUNT);
+        //fillmainmenu();
+
+        setter = return_sd_mounted(1);
+
+        if (emu_cfg.enabled){
+            for (int i = 4; i <= 6; i++)
+                SETBIT(mainmenu_main[i].property, ISHIDE, !setter);
+        }
+        SETBIT(mainmenu_main[0].property, ISHIDE, !setter);
+        mainmenu_main[7].name = (menu_sd_states[!setter]);
+
+        /*
+        if (return_sd_mounted(1)){
+            if (emu_cfg.enabled){
+                for (int i = 4; i <= 6; i++)
+                    SETBIT(mainmenu_main[i], ISHIDE, 0);
+            }
+            SETBIT(mainmenu_main[0], ISHIDE, 0);
+            mainmenu_main[7].name = (menu_sd_states[0]);
+        }
+        else {
+            if (emu_cfg.enabled){
+                for (int i = 4; i <= 6; i++)
+                    SETBIT(mainmenu_main[i], ISHIDE, 1);
+            }
+            SETBIT(mainmenu_main[0], ISHIDE, 1);
+            mainmenu_main[7].name = (menu_sd_states[1]);
+        }
+        */
+
+       setter = return_sd_mounted(10);
+       SETBIT(mainmenu_main[9].property, ISHIDE, !setter);
+
+        /*
+        if (return_sd_mounted(10))
+            SETBIT(mainmenu_main[0], ISHIDE, 0);
+        else
+            SETBIT(mainmenu_main[0], ISHIDE, 1);
+        */
+
+
+        //res = makemenu(mainmenu, MAINMENU_AMOUNT);
+        res = menu_make(mainmenu_main, 12, "-- Main Menu --") + 1;
         RunMenuOption(res);
     }
 }

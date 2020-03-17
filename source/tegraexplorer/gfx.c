@@ -58,6 +58,24 @@ int message(u32 color, const char* message, ...){
     return btn_wait();
 }
 
+/*
+int gfx_errprint(u32 color, int func, int err, int add){
+    clearscreen();
+    SWAPCOLOR(COLOR_ORANGE);
+    gfx_printf("\nAn error occured:\n\n");
+    gfx_printf("Function: %s\nErrcode: %d\nDesc: %s\n");
+    
+    if (add)
+        gfx_printf("Additional info: %d");
+
+    gfx_printf("\nPress any button to return");
+
+    
+    RESETCOLOR;
+    return btn_wait();
+}
+*/
+// Change makemenu to combine makefilemenu to save space + make nagivation more consistant 
 int makemenu(menu_item menu[], int menuamount){
     int currentpos = 1, i, res;
     clearscreen();
@@ -216,7 +234,7 @@ void printfsentry(fs_entry file, bool highlight, bool refresh){
 
 int makefilemenu(fs_entry *files, int amount, char *path){
     int currentpos = -2, i, res = 0, offset = 0, quickoffset = 300;
-    u32 timer;
+    u32 timer, scrolltimer;
     bool refresh = false;
     clearscreen();
     gfx_con_setpos(544, 0);
@@ -237,17 +255,28 @@ int makefilemenu(fs_entry *files, int amount, char *path){
         refresh = false;
         gfx_printf("\n%k%K %s %s\n\nTime taken for screen draw: %dms ", COLOR_BLUE, COLOR_DEFAULT, (offset + 60 < amount) ? "v" : " ", (offset > 0) ? "^" : " ", get_tmr_ms() - timer);
 
-        if (quickoffset == 300)
-            res = btn_wait();
-        else {
-            msleep(quickoffset);
-            res = btn_read();
-        }
+        while (btn_read() & BTN_POWER);
 
-        if (res == 0)
-            quickoffset = 300;
-        else if (quickoffset > 46)
-            quickoffset -= 45;
+        res = 0;
+        while (!res){
+            res = btn_read();
+
+            if (!res)
+                quickoffset = 300;
+            
+            if (quickoffset < 300){
+                scrolltimer = get_tmr_ms();
+                while (res){
+                    if (scrolltimer + quickoffset <= get_tmr_ms())
+                        break;
+
+                    res = btn_read();         
+                }
+            }
+
+            if (quickoffset > 46 && res)
+                quickoffset -= 45;
+        }
 
         if ((res & BTN_VOL_UP) && currentpos > -2){
             currentpos--;

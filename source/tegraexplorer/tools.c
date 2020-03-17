@@ -13,6 +13,7 @@
 #include "emmc.h"
 #include "fs.h"
 #include "io.h"
+#include "common/common.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
@@ -188,7 +189,7 @@ int format(int mode){
     timer = get_tmr_s();
     totalsectors = sd_storage.csd.capacity;
 
-    if (mode == 0){
+    if (mode == FORMAT_EMUMMC){
         if (totalsectors < 83886080){
             gfx_printf("%kYou seem to be running this on a <=32GB SD\nNot enough free space for emummc!", COLOR_RED);
             fatalerror = true;
