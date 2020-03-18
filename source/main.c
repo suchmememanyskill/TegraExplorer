@@ -38,7 +38,7 @@
 #include "utils/dirlist.h"
 #include "utils/sprintf.h"
 #include "utils/util.h"
-#include "tegraexplorer/te.h"
+#include "tegraexplorer/mainmenu.h"
 
 //#include "keys/keys.h"
 

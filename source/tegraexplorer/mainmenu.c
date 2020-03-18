@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <string.h>
-#include "te.h"
+#include "mainmenu.h"
 #include "../utils/util.h"
 #include "utils/tools.h"
 #include "../utils/btn.h"
-#include "emmc.h"
+#include "emmc/emmc.h"
 #include "../storage/emummc.h"
 #include "utils/script.h"
 

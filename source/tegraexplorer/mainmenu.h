@@ -4,6 +4,7 @@
 #define MAINMENU_AMOUNT 12
 #define CREDITS_MESSAGE "\nTegraexplorer, made by:\nSuch Meme, Many Skill\n\nProject based on:\nLockpick_RCM\nHekate\n\nCool people:\nshchmue\ndennthecafebabe\nDax"
 
+/*
 typedef struct _menu_item {
     char name[50];
     u32 color;
@@ -11,7 +12,7 @@ typedef struct _menu_item {
     short property;
 } menu_item;
 
-/*
+
 enum mainmenu_return {
     SD_CARD = 1,
     EMMC_SAF,

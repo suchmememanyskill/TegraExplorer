@@ -1,4 +1,5 @@
 #pragma once
+#include "../../utils/types.h"
 
 typedef struct _pkg1_info {
     short ver;

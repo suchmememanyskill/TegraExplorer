@@ -10,7 +10,7 @@
 #include "../../storage/sdmmc.h"
 #include "../../utils/sprintf.h"
 #include "../../soc/fuse.h"
-#include "../emmc.h"
+#include "../emmc/emmc.h"
 #include "../common/common.h"
 #include "../fs/fsactions.h"
 
