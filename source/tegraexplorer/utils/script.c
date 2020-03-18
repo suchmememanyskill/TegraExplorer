@@ -1,8 +1,6 @@
 #include <string.h>
 #include "../../mem/heap.h"
 #include "../gfx/gfxutils.h"
-#include "../fs.h"
-#include "../io.h"
 #include "../emmc.h"
 #include "../../utils/types.h"
 #include "../../libs/fatfs/ff.h"
@@ -13,6 +11,7 @@
 #include "../../storage/emummc.h"
 #include "script.h"
 #include "../common/common.h"
+#include "../fs/fsactions.h"
 
 #include <stdlib.h>
 
@@ -81,15 +80,15 @@ void Part_Delete(){
 }
 
 void Part_DeleteRecursive(){
-    errcode = del_recursive(args[0]);
+    errcode = fsact_del_recursive(args[0]);
 }
 
 void Part_Copy(){
-    errcode = copy(args[0], args[1], true, false); 
+    errcode = fsact_copy(args[0], args[1], COPY_MODE_PRINT); 
 }
 
 void Part_RecursiveCopy(){
-    errcode = copy_recursive(args[0], args[1]);
+    errcode = fsact_copy_recursive(args[0], args[1]);
 }
 
 void Part_MakeFolder(){
@@ -186,7 +185,7 @@ void ParseScript(char* path){
 
     res = f_open(&in, path, FA_READ | FA_OPEN_EXISTING);
     if (res != FR_OK){
-        gfx_errprint("ParseScript", res, 1);
+        gfx_errDisplay("ParseScript", res, 1);
         return;
     }
 

@@ -42,7 +42,7 @@ int gfx_message(u32 color, const char* message, ...){
     return btn_wait();
 }
 
-int gfx_errprint(char *src_func, int err, int loc){
+int gfx_errDisplay(char *src_func, int err, int loc){
     gfx_clearscreen();
     SWAPCOLOR(COLOR_ORANGE);
     gfx_printf("\nAn error occured:\n\n");
@@ -50,6 +50,8 @@ int gfx_errprint(char *src_func, int err, int loc){
     
     if (err < 15)
         gfx_printf("Desc: %s\n", utils_err_codes[err]);
+    else if (err >= 50 && err <= ERR_DEST_PART_OF_SRC)
+        gfx_printf("Desc: %s\n", utils_err_codes_te[err - 50]);
 
     if (loc)
         gfx_printf("Loc: %d\n", loc);
@@ -104,8 +106,18 @@ void gfx_printandclear(char *in, int length){
 
     gfx_printlength(length, in);
     gfx_con_getpos(&x, &y);
+    RESETCOLOR;
 
-    gfx_box(x, y, 719, y + 16, COLOR_DEFAULT);
+    for (int i = (703 - x) / 16; i > 0; i--)
+        gfx_printf(" ");
+
+    gfx_con_setpos(x, y);
+
+    //gfx_box(x, y, 719, y + 16, COLOR_DEFAULT);
+    /*
+    u8 color = 0x1B;
+    gfx_set_rect_grey(&color, 719 - x, 16, x, y);
+    */
 }
 
 void gfx_printfilesize(int size, char *type){

@@ -11,9 +11,8 @@
 #include "../../utils/sprintf.h"
 #include "../../soc/fuse.h"
 #include "../emmc.h"
-#include "../fs.h"
-#include "../io.h"
 #include "../common/common.h"
+#include "../fs/fsactions.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
@@ -126,7 +125,7 @@ int dumpfirmware(int mmc){
         else
             sprintf(syspath, "%s/%s", path, fno.fname);
 
-        ret = copy(syspath, sdpath, false, false);
+        ret = fsact_copy(syspath, sdpath, 0);
 
         gfx_printf("%d %s\r", ++amount, fno.fname);
 
@@ -156,7 +155,7 @@ void dumpusersaves(int mmc){
 
     SWAPCOLOR(COLOR_GREEN);
 
-    res = copy_recursive("emmc:/save", "sd:/tegraexplorer");
+    res = fsact_copy_recursive("emmc:/save", "sd:/tegraexplorer");
 
     SWAPCOLOR(COLOR_ORANGE);
     gfx_printf("\rResult copy_recursive() %d\n\n", res);

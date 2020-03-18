@@ -24,6 +24,13 @@
 1000 0000: Size component is a GigaByte : note that this won't surpass gigabytes, but i don't expect people to have a single file that's a terrabyte big
 */
 
+#define COPY_MODE_PRINT 0x1
+#define COPY_MODE_CANCEL 0x2
+#define BUFSIZE 32768
+
+#define OPERATIONCOPY 0x2
+#define OPERATIONMOVE 0x4
+
 typedef struct {
     char *name;
     u32 storage;

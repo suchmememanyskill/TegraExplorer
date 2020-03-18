@@ -1,11 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "te.h"
-#include "gfx.h"
 #include "../utils/util.h"
 #include "utils/tools.h"
-#include "fs.h"
-#include "io.h"
 #include "../utils/btn.h"
 #include "emmc.h"
 #include "../storage/emummc.h"
@@ -16,6 +13,8 @@
 
 #include "utils/utils.h"
 #include "gfx/gfxutils.h"
+#include "fs/fsutils.h"
+#include "fs/fsmenu.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
@@ -75,20 +74,22 @@ menu_item mmcChoice[3] = {
 
 
 
-int res = 0;
+int res = 0, meter = 0;
 
 void MainMenu_SDCard(){
-    fileexplorer("SD:/");
+    fileexplorer("SD:/", 0);
 }
 
 void MainMenu_EMMC(){
-    if (makewaitmenu("You're about to enter EMMC\nModifying anything here\n        can result in a BRICK!\n\nPlease only continue\n    if you know what you're doing\n\nPress Vol+/- to return\n", "Press Power to enter", 4)){
+    gfx_clearscreen();
+    gfx_printf("You're about to enter EMMC\nModifying anything here\n        can result in a BRICK!\n\nPlease only continue\n    if you know what you're doing\n\nPress Vol+/- to return\n");
+    if (gfx_makewaitmenu("Press Power to enter", 4)){
         connect_mmc(SYSMMC);
 
         if (!mount_mmc(emmc_fs_entries[res - 2], res - 1))
-            fileexplorer("emmc:/");
+            fileexplorer("emmc:/", 1);
         else
-            message(COLOR_RED, "EMMC failed to mount!");
+            gfx_message(COLOR_RED, "EMMC failed to mount!");
     }
 }
 
@@ -96,9 +97,10 @@ void MainMenu_EMUMMC(){
     connect_mmc(EMUMMC);
 
     if (!mount_mmc(emmc_fs_entries[res - 5], res - 4))
-        fileexplorer("emmc:/");
+        fileexplorer("emmc:/", 1);   
     else
-        message(COLOR_RED, "EMUMMC failed to mount!");
+        gfx_message(COLOR_RED, "EMUMMC failed to mount!");
+        
 }
 
 void MainMenu_MountSD(){
@@ -128,11 +130,12 @@ void MainMenu_Tools(){
 
             break;
         case TOOLS_DUMP_BOOT:
-            dump_emmc_parts(PART_BOOT | PART_PKG2, SYSMMC);
+            //dump_emmc_parts(PART_BOOT | PART_PKG2, SYSMMC);
             break;
         case TOOLS_RESTORE_BOOT:
-            if (makewaitmenu(
-                "WARNING!\nThis will mess with your switch boot files\nMake a nand backup beforehand!\n\nThis will pull from path:\nsd:/tegraexplorer/boot.bis\n\nVol +/- to cancel\n",
+            /*
+            gfx_printf("WARNING!\nThis will mess with your switch boot files\nMake a nand backup beforehand!\n\nThis will pull from path:\nsd:/tegraexplorer/boot.bis\n\nVol +/- to cancel\n");
+            if (gfx_makewaitmenu(
                 "Power to confirm",
                 5
             ))
@@ -140,6 +143,7 @@ void MainMenu_Tools(){
                 if ((res = utils_mmcMenu()) > 0)
                     restore_bis_using_file("sd:/tegraexplorer/boot.bis", res);
             }
+            */
             break;
     }
 }
@@ -149,7 +153,9 @@ void MainMenu_SDFormat(){
     res = menu_make(mainmenu_format, 3, "-- Format Menu --");
 
     if (res > 0){
-        if(makewaitmenu("Are you sure you want to format your sd?\nThis will delete everything on your SD card\nThis action is irreversible!\n\nPress Vol+/- to cancel\n", "Press Power to continue", 10)){
+        gfx_clearscreen();
+        gfx_printf("Are you sure you want to format your sd?\nThis will delete everything on your SD card\nThis action is irreversible!\n\nPress Vol+/- to cancel\n");
+        if(gfx_makewaitmenu("Press Power to continue", 10)){
             if (format(res)){
                 sd_unmount();
             }
@@ -158,7 +164,9 @@ void MainMenu_SDFormat(){
 }
 
 void MainMenu_Credits(){
-    message(COLOR_WHITE, CREDITS_MESSAGE);
+    if (++meter >= 3)
+        gfx_errDisplay("credits", 53, 0);
+    gfx_message(COLOR_WHITE, CREDITS_MESSAGE);
 }
 
 void MainMenu_Exit(){
@@ -168,8 +176,8 @@ void MainMenu_Exit(){
         shutdownmenu[6].property = (checkfile("/atmosphere/reboot_payload.bin")) ? 1 : -1;
         */
 
-        SETBIT(mainmenu_shutdown[4].property, ISHIDE, !checkfile("/bootloader/update.bin"));
-        SETBIT(mainmenu_shutdown[5].property, ISHIDE, !checkfile("/atmosphere/reboot_payload.bin"));
+        SETBIT(mainmenu_shutdown[4].property, ISHIDE, !fsutil_checkfile("/bootloader/update.bin"));
+        SETBIT(mainmenu_shutdown[5].property, ISHIDE, !fsutil_checkfile("/atmosphere/reboot_payload.bin"));
     }
     else {
         for (int i = 4; i <= 5; i++)
@@ -213,6 +221,8 @@ part_handler mainmenu_functions[] = {
 };
 
 void RunMenuOption(int option){
+    if (option != 11)
+        meter = 0;
     if (option > 0)
         mainmenu_functions[option - 1]();
 }
@@ -256,7 +266,7 @@ void te_main(){
     int setter;
 
     if (dump_biskeys() == -1){
-        message(COLOR_RED, "Biskeys failed to dump!\nEmmc will not be mounted!");
+        gfx_message(COLOR_RED, "Biskeys failed to dump!\nEmmc will not be mounted!");
         for (int i = 1; i <= 3; i++)
             mainmenu_main[i].property |= ISHIDE;
     }

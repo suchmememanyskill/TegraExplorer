@@ -6,6 +6,16 @@ extern const char *menu_sd_states[];
 extern const char *emmc_fs_entries[];
 extern const char *utils_err_codes[];
 
+enum utils_err_codes_te_call {
+    ERR_SAME_LOC = 50,
+    ERR_DISK_WRITE_FAILED,
+    ERR_EMPTY_CLIPBOARD,
+    ERR_FOLDER_ROOT = 54,
+    ERR_DEST_PART_OF_SRC
+};
+
+extern const char *utils_err_codes_te[];
+
 enum mainmenu_main_return {
     MAIN_SDCARD = 0,
     MAIN_EMMC_SAF,
@@ -57,3 +67,32 @@ enum mmc_types {
 };
 
 extern menu_entry utils_mmcChoice[];
+
+enum fs_menu_file_return {
+    FILE_COPY = 4,
+    FILE_MOVE,
+    FILE_DELETE,
+    FILE_PAYLOAD,
+    FILE_SCRIPT,
+    FILE_HEXVIEW,
+    FILE_DUMPBIS,
+    FILE_RESTOREBIS
+};
+
+extern menu_entry fs_menu_file[];
+
+enum fs_menu_folder_return {
+    DIR_EXITFOLDER = 2,
+    DIR_COPYFOLDER,
+    DIR_DELETEFOLDER
+};
+
+extern menu_entry fs_menu_folder[];
+
+enum fs_menu_startdir_return {
+    FILEMENU_RETURN = 0,
+    FILEMENU_CLIPBOARD,
+    FILEMENU_CURFOLDER
+};
+
+extern menu_entry fs_menu_startdir[];

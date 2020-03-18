@@ -40,12 +40,13 @@ void _printentry(menu_entry entry, bool highlighted, bool refresh){
         gfx_printf("\n");
     else { 
         SWAPCOLOR(COLOR_BLUE);
+        SWAPBGCOLOR(COLOR_DEFAULT);
         gfx_printf("\a%d\e%s", entry.storage, gfx_file_size_names[size - 4]);
     }   
 }
 
 int menu_make(menu_entry *entries, int amount, char *toptext){
-    int currentpos = 0, i, res = 0, offset = 0, delay = 300;
+    int currentpos = 0, i, res = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 59;
     u32 scrolltimer, timer;
     bool refresh = false;
 
@@ -64,6 +65,7 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
     while (!(res & BTN_POWER)){
         gfx_con_setpos(0, 47);
         timer = get_tmr_ms();
+        refresh = false;
 
         if (!currentpos){
             while (currentpos < amount && entries[currentpos].property & (ISSKIP | ISHIDE))
@@ -74,11 +76,25 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
                 currentpos--;
         }
 
+        if (currentpos > maxscreen){
+            offset += currentpos - maxscreen;
+            minscreen += currentpos - maxscreen;
+            maxscreen += currentpos - maxscreen;
+            refresh = true;
+        }
+
+        if (currentpos < minscreen){
+            offset -= minscreen - currentpos;
+            maxscreen -= minscreen - currentpos;
+            minscreen -= minscreen - currentpos;      
+            refresh = true;
+        }
+
         for (int i = 0 + offset; i < amount && i < 60 + offset; i++)
             if (!(entries[i].property & ISHIDE))
                 _printentry(entries[i], (i == currentpos), refresh);
 
-        gfx_printf("\n%k%K %s %s\n\nTime taken for screen draw: %dms ", COLOR_BLUE, COLOR_DEFAULT, (offset + 60 < amount) ? "v" : " ", (offset > 0) ? "^" : " ", get_tmr_ms() - timer);
+        gfx_printf("\n%k%K %s %s\n\nTime taken for screen draw: %dms\n%d", COLOR_BLUE, COLOR_DEFAULT, (offset + 60 < amount) ? "v" : " ", (offset > 0) ? "^" : " ", get_tmr_ms() - timer, currentpos);
 
         while (btn_read() & BTN_POWER);
 

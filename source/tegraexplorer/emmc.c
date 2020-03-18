@@ -1,7 +1,5 @@
 #include <string.h>
 #include "../mem/heap.h"
-#include "gfx.h"
-#include "fs.h"
 #include "emmc.h"
 #include "../utils/types.h"
 #include "../libs/fatfs/ff.h"
