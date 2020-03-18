@@ -1,18 +1,18 @@
 #include <string.h>
-#include "../mem/heap.h"
-#include "gfx.h"
-#include "fs.h"
-#include "io.h"
-#include "emmc.h"
-#include "../utils/types.h"
-#include "../libs/fatfs/ff.h"
-#include "../utils/sprintf.h"
-#include "../utils/btn.h"
-#include "../gfx/gfx.h"
-#include "../utils/util.h"
-#include "../storage/emummc.h"
+#include "../../mem/heap.h"
+#include "../gfx/gfxutils.h"
+#include "../fs.h"
+#include "../io.h"
+#include "../emmc.h"
+#include "../../utils/types.h"
+#include "../../libs/fatfs/ff.h"
+#include "../../utils/sprintf.h"
+#include "../../utils/btn.h"
+#include "../../gfx/gfx.h"
+#include "../../utils/util.h"
+#include "../../storage/emummc.h"
 #include "script.h"
-#include "common/common.h"
+#include "../common/common.h"
 
 #include <stdlib.h>
 
@@ -182,11 +182,11 @@ void ParseScript(char* path){
     forceExit = false;
     currentcolor = COLOR_WHITE;
     
-    clearscreen();
+    gfx_clearscreen();
 
     res = f_open(&in, path, FA_READ | FA_OPEN_EXISTING);
     if (res != FR_OK){
-        message(COLOR_RED, "File Opening Failed\nErrcode %d", res);
+        gfx_errprint("ParseScript", res, 1);
         return;
     }
 

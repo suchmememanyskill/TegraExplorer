@@ -3,18 +3,19 @@
 #include "te.h"
 #include "gfx.h"
 #include "../utils/util.h"
-#include "tools.h"
+#include "utils/tools.h"
 #include "fs.h"
 #include "io.h"
 #include "../utils/btn.h"
 #include "emmc.h"
 #include "../storage/emummc.h"
-#include "script.h"
+#include "utils/script.h"
 
 #include "common/common.h"
 #include "gfx/menu.h"
 
 #include "utils/utils.h"
+#include "gfx/gfxutils.h"
 
 extern bool sd_mount();
 extern void sd_unmount();

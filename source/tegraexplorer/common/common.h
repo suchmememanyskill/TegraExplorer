@@ -4,6 +4,7 @@
 extern const char *gfx_file_size_names[];
 extern const char *menu_sd_states[];
 extern const char *emmc_fs_entries[];
+extern const char *utils_err_codes[];
 
 enum mainmenu_main_return {
     MAIN_SDCARD = 0,

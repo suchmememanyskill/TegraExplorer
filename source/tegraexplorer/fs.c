@@ -9,7 +9,7 @@
 #include "../gfx/gfx.h"
 #include "../utils/util.h"
 #include "io.h"
-#include "script.h"
+#include "utils/script.h"
 #include "te.h"
 
 fs_entry *fileobjects;

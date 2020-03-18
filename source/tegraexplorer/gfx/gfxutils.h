@@ -8,7 +8,7 @@
 
 void gfx_clearscreen();
 int gfx_message(u32 color, const char* message, ...);
-int gfx_errprint(u32 color, int func, int err, int add);
+int gfx_errprint(char *src_func, int err, int loc);
 int gfx_makewaitmenu(char *hiddenmessage, int timer);
 void gfx_printlength(int size, char *toprint);
 void gfx_printandclear(char *in, int length);

@@ -1,26 +1,26 @@
 #include "tools.h"
-#include "gfx.h"
-#include "../libs/fatfs/ff.h"
-#include "../gfx/gfx.h"
-#include "../utils/btn.h"
-#include "../soc/gpio.h"
-#include "../utils/util.h"
-#include "../utils/types.h"
-#include "../libs/fatfs/diskio.h"
-#include "../storage/sdmmc.h"
-#include "../utils/sprintf.h"
-#include "../soc/fuse.h"
-#include "emmc.h"
-#include "fs.h"
-#include "io.h"
-#include "common/common.h"
+#include "../gfx/gfxutils.h"
+#include "../../libs/fatfs/ff.h"
+#include "../../gfx/gfx.h"
+#include "../../utils/btn.h"
+#include "../../soc/gpio.h"
+#include "../../utils/util.h"
+#include "../../utils/types.h"
+#include "../../libs/fatfs/diskio.h"
+#include "../../storage/sdmmc.h"
+#include "../../utils/sprintf.h"
+#include "../../soc/fuse.h"
+#include "../emmc.h"
+#include "../fs.h"
+#include "../io.h"
+#include "../common/common.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
 extern sdmmc_storage_t sd_storage;
 
 void displayinfo(){
-    clearscreen();
+    gfx_clearscreen();
 
     FATFS *fs;
     DWORD fre_clust, fre_sect, tot_sect;
@@ -68,7 +68,7 @@ void displayinfo(){
 
 void displaygpio(){
     int res;
-    clearscreen();
+    gfx_clearscreen();
     gfx_printf("Updates gpio pins every 50ms:\nPress power to exit");
     msleep(200);
     while (1){
@@ -99,7 +99,7 @@ int dumpfirmware(int mmc){
     pkg1_info pkg1 = returnpkg1info();
     u32 timer = get_tmr_s();
 
-    clearscreen();
+    gfx_clearscreen();
     connect_mmc(mmc);
     mount_mmc("SYSTEM", 2);
 
@@ -149,7 +149,7 @@ void dumpusersaves(int mmc){
 
     connect_mmc(mmc);
     mount_mmc("USER", 2);
-    clearscreen();
+    gfx_clearscreen();
 
     res = f_mkdir("sd:/tegraexplorer");
     gfx_printf("Creating sd:/tegraexplorer, res: %d\nCopying:\n", res);
@@ -173,7 +173,7 @@ void dumpusersaves(int mmc){
 }
 
 int format(int mode){
-    clearscreen();
+    gfx_clearscreen();
     int res;
     bool fatalerror = false;
     DWORD plist[] = {666, 61145088};

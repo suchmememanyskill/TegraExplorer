@@ -7,6 +7,7 @@
 #include "../../utils/btn.h"
 #include "../../utils/util.h"
 #include "../../mem/heap.h"
+#include "../common/common.h"
 
 
 void gfx_clearscreen(){
@@ -41,18 +42,20 @@ int gfx_message(u32 color, const char* message, ...){
     return btn_wait();
 }
 
-int gfx_errprint(u32 color, int func, int err, int add){
+int gfx_errprint(char *src_func, int err, int loc){
     gfx_clearscreen();
     SWAPCOLOR(COLOR_ORANGE);
     gfx_printf("\nAn error occured:\n\n");
-    gfx_printf("Function: %s\nErrcode: %d\nDesc: %s\n");
+    gfx_printf("Function: %s\nErrcode: %d\n", src_func, err);
     
-    if (add)
-        gfx_printf("Additional info: %d");
+    if (err < 15)
+        gfx_printf("Desc: %s\n", utils_err_codes[err]);
+
+    if (loc)
+        gfx_printf("Loc: %d\n", loc);
 
     gfx_printf("\nPress any button to return");
 
-    
     RESETCOLOR;
     return btn_wait();
 }
