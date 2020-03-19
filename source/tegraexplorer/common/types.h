@@ -31,6 +31,14 @@
 #define OPERATIONCOPY 0x2
 #define OPERATIONMOVE 0x4
 
+#define PART_BOOT 0x1
+#define PART_PKG2 0x2
+
+#define BOOT0_ARG 0x80
+#define BOOT1_ARG 0x40
+#define BCPKG2_1_ARG 0x20
+#define BCPKG2_3_ARG 0x10
+
 typedef struct {
     char *name;
     u32 storage;

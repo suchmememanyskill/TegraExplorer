@@ -8,20 +8,25 @@
 
 void _printentry(menu_entry entry, bool highlighted, bool refresh){
     int size;
-
+    u32 color = (entry.property & ISMENU) ? entry.storage : ((entry.property & ISDIR) ? COLOR_WHITE : COLOR_VIOLET);
+    /*
     if (entry.property & ISMENU)
         SWAPCOLOR(entry.storage);
     else if (entry.property & ISDIR)
         SWAPCOLOR(COLOR_WHITE);
     else {
         SWAPCOLOR(COLOR_VIOLET);
+    }
+    */
 
+   if (!(entry.property & ISMENU && entry.property & ISDIR)){
         for (size = 4; size < 8; size++)
             if ((entry.property & (1 << size)))
                 break;
-    }
-        
+   }
 
+        
+    /*
     if (highlighted){
         SWAPBGCOLOR(COLOR_WHITE);
         if ((entry.property & ISMENU) ? entry.storage == COLOR_WHITE : entry.property & ISDIR)
@@ -29,6 +34,9 @@ void _printentry(menu_entry entry, bool highlighted, bool refresh){
     }
     else
         SWAPBGCOLOR(COLOR_DEFAULT);
+    */
+   SWAPCOLOR((highlighted) ? COLOR_DEFAULT : color);
+   SWAPBGCOLOR((highlighted) ? color : COLOR_DEFAULT);
         
 
     if (refresh)
@@ -94,7 +102,7 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
             if (!(entries[i].property & ISHIDE))
                 _printentry(entries[i], (i == currentpos), refresh);
 
-        gfx_printf("\n%k%K %s %s\n\nTime taken for screen draw: %dms\n%d", COLOR_BLUE, COLOR_DEFAULT, (offset + 60 < amount) ? "v" : " ", (offset > 0) ? "^" : " ", get_tmr_ms() - timer, currentpos);
+        gfx_printf("\n%k%K %s %s\n\nTime taken for screen draw: %dms", COLOR_BLUE, COLOR_DEFAULT, (offset + 60 < amount) ? "v" : " ", (offset > 0) ? "^" : " ", get_tmr_ms() - timer);
 
         while (btn_read() & BTN_POWER);
 

@@ -15,6 +15,7 @@
 #include "gfx/gfxutils.h"
 #include "fs/fsutils.h"
 #include "fs/fsmenu.h"
+#include "emmc/emmcoperations.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
@@ -88,8 +89,6 @@ void MainMenu_EMMC(){
 
         if (!mount_mmc(emmc_fs_entries[res - 2], res - 1))
             fileexplorer("emmc:/", 1);
-        else
-            gfx_message(COLOR_RED, "EMMC failed to mount!");
     }
 }
 
@@ -98,9 +97,6 @@ void MainMenu_EMUMMC(){
 
     if (!mount_mmc(emmc_fs_entries[res - 5], res - 4))
         fileexplorer("emmc:/", 1);   
-    else
-        gfx_message(COLOR_RED, "EMUMMC failed to mount!");
-        
 }
 
 void MainMenu_MountSD(){
@@ -130,7 +126,7 @@ void MainMenu_Tools(){
 
             break;
         case TOOLS_DUMP_BOOT:
-            //dump_emmc_parts(PART_BOOT | PART_PKG2, SYSMMC);
+            dump_emmc_parts(PART_BOOT | PART_PKG2, SYSMMC);
             break;
         case TOOLS_RESTORE_BOOT:
             /*
@@ -266,7 +262,7 @@ void te_main(){
     int setter;
 
     if (dump_biskeys() == -1){
-        gfx_message(COLOR_RED, "Biskeys failed to dump!\nEmmc will not be mounted!");
+        gfx_errDisplay("dump_biskey", ERR_BISKEY_DUMP_FAILED, 0);
         for (int i = 1; i <= 3; i++)
             mainmenu_main[i].property |= ISHIDE;
     }

@@ -5,13 +5,18 @@ extern const char *gfx_file_size_names[];
 extern const char *menu_sd_states[];
 extern const char *emmc_fs_entries[];
 extern const char *utils_err_codes[];
+extern const char *pkg2names[];
 
 enum utils_err_codes_te_call {
     ERR_SAME_LOC = 50,
     ERR_DISK_WRITE_FAILED,
     ERR_EMPTY_CLIPBOARD,
     ERR_FOLDER_ROOT = 54,
-    ERR_DEST_PART_OF_SRC
+    ERR_DEST_PART_OF_SRC,
+    ERR_PART_NOT_FOUND,
+    ERR_BISKEY_DUMP_FAILED,
+    ERR_MEM_ALLOC_FAILED,
+    ERR_EMMC_READ_FAILED
 };
 
 extern const char *utils_err_codes_te[];

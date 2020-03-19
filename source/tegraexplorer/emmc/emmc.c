@@ -21,6 +21,7 @@
 #include "../../storage/emummc.h"
 #include "../../config/config.h"
 #include "../common/common.h"
+#include "../gfx/gfxutils.h"
 
 sdmmc_storage_t storage;
 emmc_part_t *system_part;
@@ -65,7 +66,7 @@ int connect_part(const char *partition){
 
     system_part = nx_emmc_part_find(&gpt, partition);
     if (!system_part) {
-        gfx_printf("Failed to locate %s partition.", partition);
+        gfx_errDisplay("connect_mmc_part", ERR_PART_NOT_FOUND, 0);
         return -1;
     }
 
@@ -73,6 +74,7 @@ int connect_part(const char *partition){
 }
 
 int mount_mmc(const char *partition, const int biskeynumb){
+    int res;
     f_unmount("emmc:");
     
     se_aes_key_set(8, bis_key[biskeynumb] + 0x00, 0x10);
@@ -81,8 +83,8 @@ int mount_mmc(const char *partition, const int biskeynumb){
     if (connect_part(partition))
         return -1;
 
-    if (f_mount(&emmc, "emmc:", 1)) {
-        gfx_printf("Mount failed of %s.", partition);
+    if ((res = f_mount(&emmc, "emmc:", 1))) {
+        gfx_errDisplay("mount_mmc", res, 0);
         return -1;
     } 
 

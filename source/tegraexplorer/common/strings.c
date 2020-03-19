@@ -40,7 +40,20 @@ const char *utils_err_codes_te[] = { // these start at 50
     "SAME LOC",
     "DISK WRITE FAILED",
     "EMPTY CLIPBOARD",
-    "DEFENITION OF INSANITY"
-    "FOLDER ROOT"
-    "DEST PART OF SRC"
+    "DEFENITION OF INSANITY",
+    "FOLDER ROOT",
+    "DEST PART OF SRC",
+    "PART NOT FOUND",
+    "BISKEY DUMP FAILED",
+    "MEM ALLOC FAILED",
+    "EMMC READ FAILED"
+};
+
+const char *pkg2names[] = {
+    "BCPKG2-1-Normal-Main",
+    "BCPKG2-2-Normal-Sub",
+    "BCPKG2-3-SafeMode-Main",
+    "BCPKG2-4-SafeMode-Sub",
+    "BCPKG2-5-Repair-Main",
+    "BCPKG2-6-Repair-Sub"
 };
