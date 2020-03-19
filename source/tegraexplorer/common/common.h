@@ -55,8 +55,7 @@ enum mainmenu_tools_return {
     TOOLS_DISPLAY_GPIO,
     TOOLS_DUMPFIRMWARE,
     TOOLS_DUMPUSERSAVE,
-    TOOLS_DUMP_BOOT,
-    TOOLS_RESTORE_BOOT
+    TOOLS_DUMP_BOOT
 };
 
 extern menu_entry mainmenu_tools[];

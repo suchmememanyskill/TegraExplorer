@@ -108,7 +108,7 @@ void MainMenu_MountSD(){
 
 void MainMenu_Tools(){
     //res = makemenu(toolsmenu, 8);
-    res = menu_make(mainmenu_tools, 7, "-- Tools Menu --");
+    res = menu_make(mainmenu_tools, 6, "-- Tools Menu --");
 
     switch(res){
         case TOOLS_DISPLAY_INFO:
@@ -127,19 +127,6 @@ void MainMenu_Tools(){
             break;
         case TOOLS_DUMP_BOOT:
             dump_emmc_parts(PART_BOOT | PART_PKG2, SYSMMC);
-            break;
-        case TOOLS_RESTORE_BOOT:
-            /*
-            gfx_printf("WARNING!\nThis will mess with your switch boot files\nMake a nand backup beforehand!\n\nThis will pull from path:\nsd:/tegraexplorer/boot.bis\n\nVol +/- to cancel\n");
-            if (gfx_makewaitmenu(
-                "Power to confirm",
-                5
-            ))
-            {
-                if ((res = utils_mmcMenu()) > 0)
-                    restore_bis_using_file("sd:/tegraexplorer/boot.bis", res);
-            }
-            */
             break;
     }
 }

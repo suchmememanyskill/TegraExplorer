@@ -31,8 +31,7 @@ menu_entry mainmenu_tools[] = {
     {"Display GPIO pins", COLOR_VIOLET, ISMENU},
     {"Dump Firmware", COLOR_BLUE, ISMENU},
     {"Dump User Saves", COLOR_YELLOW, ISMENU},
-    {"[DEBUG] Dump bis", COLOR_RED, ISMENU},
-    {"[DEBUG] Restore bis", COLOR_RED, ISMENU}
+    {"Dump bis", COLOR_ORANGE, ISMENU}
 };
 
 menu_entry mainmenu_format[] = {
@@ -58,7 +57,7 @@ menu_entry fs_menu_file[] = {
     {"Launch Payload", COLOR_ORANGE, ISMENU},
     {"Launch Script", COLOR_YELLOW, ISMENU},
     {"View Hex", COLOR_GREEN, ISMENU},
-    {"Extract BIS", COLOR_RED, ISMENU},
+    {"\nExtract BIS", COLOR_YELLOW, ISMENU},
     {"Restore BIS", COLOR_RED, ISMENU}
 };
 
