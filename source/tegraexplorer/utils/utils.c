@@ -6,8 +6,6 @@
 #include "../../mem/heap.h"
 
 int utils_mmcMenu(){
-    int res;
-
     if (emu_cfg.enabled)
         return menu_make(utils_mmcChoice, 3, "-- Choose MMC --");    
     else

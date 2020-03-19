@@ -59,3 +59,5 @@ const char *pkg2names[] = {
     "BCPKG2-5-Repair-Main",
     "BCPKG2-6-Repair-Sub"
 };
+
+const char *mainmenu_credits = "\nTegraexplorer, made by:\nSuch Meme, Many Skill\n\nProject based on:\nLockpick_RCM\nHekate\n\nCool people:\nshchmue\ndennthecafebabe\nDax";

@@ -22,59 +22,6 @@ extern void sd_unmount();
 extern bool return_sd_mounted(int value);
 extern int launch_payload(char *path);
 
-/*
-menu_item mainmenu[MAINMENU_AMOUNT] = {
-    {"[SD:/] SD CARD\n", COLOR_GREEN, SD_CARD, 1},
-    {"[SYSTEM:/] EMMC", COLOR_ORANGE, EMMC_SYS, 1},
-    {"[USER:/] EMMC", COLOR_ORANGE, EMMC_USR, 1},
-    {"[SAFE:/] EMMC", COLOR_ORANGE, EMMC_SAF, 1},
-    {"\n[SYSTEM:/] EMUMMC", COLOR_BLUE, EMUMMC_SYS, 1},
-    {"[USER:/] EMUMMC", COLOR_BLUE, EMUMMC_USR, 1},
-    {"[SAFE:/] EMUMMC", COLOR_BLUE, EMUMMC_SAF, 1},
-    {"\nMount/Unmount SD", COLOR_WHITE, MOUNT_SD, 1},
-    {"Tools", COLOR_VIOLET, TOOLS, 1},
-    {"SD format", COLOR_VIOLET, SD_FORMAT, 1},
-    {"\nCredits", COLOR_WHITE, CREDITS, 1},
-    {"Exit", COLOR_WHITE, EXIT, 1}
-};
-
-menu_item shutdownmenu[7] = {
-    {"-- EXIT --\n", COLOR_ORANGE, -1, 0},
-    {"Back", COLOR_WHITE, -1, 1},
-    {"\nReboot to RCM", COLOR_VIOLET, REBOOT_RCM, 1},
-    {"Reboot normally", COLOR_ORANGE, REBOOT_NORMAL, 1},
-    {"Power off\n", COLOR_BLUE, POWER_OFF, 1},
-    {"Reboot to Hekate", COLOR_GREEN, HEKATE, -1},
-    {"Reboot to Atmosphere", COLOR_GREEN, AMS, -1}
-};
-
-menu_item toolsmenu[8] = {
-    {"-- TOOLS --\n", COLOR_VIOLET, -1, 0},
-    {"Back", COLOR_WHITE, -1, 1},
-    {"\nDisplay Console Info", COLOR_GREEN, DISPLAY_INFO, 1},
-    {"Display GPIO pins", COLOR_VIOLET, DISPLAY_GPIO, 1},
-    {"Dump Firmware", COLOR_BLUE, DUMPFIRMWARE, 1},
-    {"Dump User Saves", COLOR_YELLOW, DUMPUSERSAVE, 1},
-    {"[DEBUG] Dump bis", COLOR_RED, DUMP_BOOT, 1},
-    {"[DEBUG] Restore bis", COLOR_RED, RESTORE_BOOT, 1}
-};
-
-menu_item formatmenu[4] = {
-    {"-- FORMAT SD --\n", COLOR_RED, -1, 0},
-    {"Back\n", COLOR_WHITE, -1, 1},
-    {"Format entire SD to FAT32", COLOR_RED, FORMAT_ALL_FAT32, 1},
-    {"Format for EmuMMC setup (FAT32/RAW)", COLOR_RED, FORMAT_EMUMMC, 1}
-};
-
-menu_item mmcChoice[3] = {
-    {"Back\n", COLOR_WHITE, -1, 1},
-    {"SysMMC", COLOR_ORANGE, SYSMMC, 1},
-    {"EmuMMC", COLOR_BLUE, EMUMMC, 1}
-};
-*/
-
-
-
 int res = 0, meter = 0;
 
 void MainMenu_SDCard(){
@@ -149,16 +96,11 @@ void MainMenu_SDFormat(){
 void MainMenu_Credits(){
     if (++meter >= 3)
         gfx_errDisplay("credits", 53, 0);
-    gfx_message(COLOR_WHITE, CREDITS_MESSAGE);
+    gfx_message(COLOR_WHITE, mainmenu_credits);
 }
 
 void MainMenu_Exit(){
     if (return_sd_mounted(1)){
-        /*
-        shutdownmenu[5].property = (checkfile("/bootloader/update.bin")) ? 1 : -1;
-        shutdownmenu[6].property = (checkfile("/atmosphere/reboot_payload.bin")) ? 1 : -1;
-        */
-
         SETBIT(mainmenu_shutdown[4].property, ISHIDE, !fsutil_checkfile("/bootloader/update.bin"));
         SETBIT(mainmenu_shutdown[5].property, ISHIDE, !fsutil_checkfile("/atmosphere/reboot_payload.bin"));
     }
@@ -167,7 +109,6 @@ void MainMenu_Exit(){
             SETBIT(mainmenu_shutdown[i].property, ISHIDE, 1);
     }
 
-    //res = makemenu(shutdownmenu, 7);
     res = menu_make(mainmenu_shutdown, 6, "-- Shutdown Menu --");
 
     switch(res){
@@ -209,42 +150,6 @@ void RunMenuOption(int option){
     if (option > 0)
         mainmenu_functions[option - 1]();
 }
-
-/*
-void fillmainmenu(){
-    int i;
-
-    for (i = 0; i < MAINMENU_AMOUNT; i++){
-        switch (i + 1) {
-            case 5:
-            case 6:
-            case 7:
-                if (mainmenu[i].property == -2)
-                    continue;
-            case 1:
-            case 10:
-                if (return_sd_mounted(i + 1))
-                    mainmenu[i].property = 1;
-                else
-                    mainmenu[i].property = -1;
-                break;
-            case 8:
-                if (return_sd_mounted(1)){
-                    //mainmenu[i].property = 2;
-                    //strcpy(mainmenu[i].name, "\nUnmount SD");
-                    mainmenu_main[7].name = (menu_sd_states[0]);
-                }
-                else {
-                    //mainmenu[i].property = 1;
-                    //strcpy(mainmenu[i].name, "\nMount SD");
-                    mainmenu_main[7].name = (menu_sd_states[1]);
-                }
-                break;
-        }
-    }
-}
-*/
-
 void te_main(){
     int setter;
 
@@ -270,40 +175,13 @@ void te_main(){
             for (int i = 4; i <= 6; i++)
                 SETBIT(mainmenu_main[i].property, ISHIDE, !setter);
         }
+
         SETBIT(mainmenu_main[0].property, ISHIDE, !setter);
         mainmenu_main[7].name = (menu_sd_states[!setter]);
 
-        /*
-        if (return_sd_mounted(1)){
-            if (emu_cfg.enabled){
-                for (int i = 4; i <= 6; i++)
-                    SETBIT(mainmenu_main[i], ISHIDE, 0);
-            }
-            SETBIT(mainmenu_main[0], ISHIDE, 0);
-            mainmenu_main[7].name = (menu_sd_states[0]);
-        }
-        else {
-            if (emu_cfg.enabled){
-                for (int i = 4; i <= 6; i++)
-                    SETBIT(mainmenu_main[i], ISHIDE, 1);
-            }
-            SETBIT(mainmenu_main[0], ISHIDE, 1);
-            mainmenu_main[7].name = (menu_sd_states[1]);
-        }
-        */
+        setter = return_sd_mounted(10);
+        SETBIT(mainmenu_main[9].property, ISHIDE, !setter);
 
-       setter = return_sd_mounted(10);
-       SETBIT(mainmenu_main[9].property, ISHIDE, !setter);
-
-        /*
-        if (return_sd_mounted(10))
-            SETBIT(mainmenu_main[0], ISHIDE, 0);
-        else
-            SETBIT(mainmenu_main[0], ISHIDE, 1);
-        */
-
-
-        //res = makemenu(mainmenu, MAINMENU_AMOUNT);
         res = menu_make(mainmenu_main, 12, "-- Main Menu --") + 1;
         RunMenuOption(res);
     }

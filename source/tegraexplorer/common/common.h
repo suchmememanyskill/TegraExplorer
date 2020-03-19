@@ -6,6 +6,7 @@ extern const char *menu_sd_states[];
 extern const char *emmc_fs_entries[];
 extern const char *utils_err_codes[];
 extern const char *pkg2names[];
+extern const char *mainmenu_credits;
 
 enum utils_err_codes_te_call {
     ERR_SAME_LOC = 50,
