@@ -17,7 +17,7 @@
 
 char func[11] = "", args[2][128] = {"", ""};
 int res, errcode;
-const int scriptver = 133;
+const int scriptver = 140;
 bool forceExit = false;
 u32 currentcolor;
 
