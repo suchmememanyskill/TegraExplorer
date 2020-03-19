@@ -14,6 +14,7 @@
 #include "../common/types.h"
 #include "../../utils/sprintf.h"
 #include "../utils/script.h"
+#include "../emmc/emmcoperations.h"
 
 extern char *currentpath;
 extern char *clipboard;
@@ -170,14 +171,13 @@ int filemenu(menu_entry file){
             viewbytes(fsutil_getnextloc(currentpath, file.name));
             break;
         case FILE_DUMPBIS:
-            /*
-            clearscreen();
-            extract_bis_file(getnextloc(currentpath, file.name), currentpath);
+            gfx_clearscreen();
+            extract_bis_file(fsutil_getnextloc(currentpath, file.name), currentpath);
+            fsreader_readfolder(currentpath);
             btn_wait();
-            */
             break;
         case FILE_RESTOREBIS:
-            gfx_message(COLOR_ORANGE, "Stubbed");
+            restore_bis_using_file(fsutil_getnextloc(currentpath, file.name), SYSMMC);
             break;
     }
 

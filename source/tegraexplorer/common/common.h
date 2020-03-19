@@ -16,7 +16,9 @@ enum utils_err_codes_te_call {
     ERR_PART_NOT_FOUND,
     ERR_BISKEY_DUMP_FAILED,
     ERR_MEM_ALLOC_FAILED,
-    ERR_EMMC_READ_FAILED
+    ERR_EMMC_READ_FAILED,
+    ERR_EMMC_WRITE_FAILED,
+    ERR_FILE_TOO_BIG_FOR_DEST
 };
 
 extern const char *utils_err_codes_te[];
@@ -60,8 +62,8 @@ enum mainmenu_tools_return {
 extern menu_entry mainmenu_tools[];
 
 enum mainmenu_format_return {
-    FORMAT_EMUMMC = 1,
-    FORMAT_ALL_FAT32
+    FORMAT_ALL_FAT32 = 1,
+    FORMAT_EMUMMC
 };
 
 extern menu_entry mainmenu_format[];

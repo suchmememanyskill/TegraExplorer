@@ -50,7 +50,7 @@ int gfx_errDisplay(char *src_func, int err, int loc){
     
     if (err < 15)
         gfx_printf("Desc: %s\n", utils_err_codes[err]);
-    else if (err >= 50 && err <= ERR_BISKEY_DUMP_FAILED)
+    else if (err >= ERR_SAME_LOC && err <= ERR_FILE_TOO_BIG_FOR_DEST)
         gfx_printf("Desc: %s\n", utils_err_codes_te[err - 50]);
 
     if (loc)

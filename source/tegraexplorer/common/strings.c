@@ -46,7 +46,9 @@ const char *utils_err_codes_te[] = { // these start at 50
     "PART NOT FOUND",
     "BISKEY DUMP FAILED",
     "MEM ALLOC FAILED",
-    "EMMC READ FAILED"
+    "EMMC READ FAILED",
+    "EMMC WRITE FAILED",
+    "FILE TOO BIG FOR DEST"
 };
 
 const char *pkg2names[] = {

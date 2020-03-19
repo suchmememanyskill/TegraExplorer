@@ -54,7 +54,7 @@ void _printentry(menu_entry entry, bool highlighted, bool refresh){
 }
 
 int menu_make(menu_entry *entries, int amount, char *toptext){
-    int currentpos = 0, i, res = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 59;
+    int currentpos = 0, res = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 59;
     u32 scrolltimer, timer;
     bool refresh = false;
 
