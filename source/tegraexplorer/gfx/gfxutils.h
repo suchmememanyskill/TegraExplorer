@@ -13,3 +13,5 @@ int gfx_makewaitmenu(char *hiddenmessage, int timer);
 void gfx_printlength(int size, char *toprint);
 void gfx_printandclear(char *in, int length);
 void gfx_printfilesize(int size, char *type);
+
+extern int printerrors;

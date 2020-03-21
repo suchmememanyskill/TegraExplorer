@@ -9,6 +9,7 @@
 #include "../../mem/heap.h"
 #include "../common/common.h"
 
+int printerrors = true;
 
 void gfx_clearscreen(){
     int battery = 0;
@@ -43,6 +44,9 @@ int gfx_message(u32 color, const char* message, ...){
 }
 
 int gfx_errDisplay(char *src_func, int err, int loc){
+    if (!printerrors)
+        return 0;
+
     gfx_clearscreen();
     SWAPCOLOR(COLOR_ORANGE);
     gfx_printf("\nAn error occured:\n\n");

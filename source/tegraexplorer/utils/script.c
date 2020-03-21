@@ -158,6 +158,7 @@ int ParsePart(){
     gfx_printf("Parsing error...\nPress any key to continue");
     btn_wait();
     forceExit = true;
+    printerrors = true;
     return -1;
 }
 
@@ -188,6 +189,8 @@ void ParseScript(char* path){
         gfx_errDisplay("ParseScript", res, 1);
         return;
     }
+
+    printerrors = false;
 
     while (!forceExit){
         currentchar = GetNextByte();
@@ -279,5 +282,6 @@ void ParseScript(char* path){
         }
     }
 
+    printerrors = true;
     f_close(&in);
 }
