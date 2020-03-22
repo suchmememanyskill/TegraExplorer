@@ -19,8 +19,9 @@
 
 extern bool sd_mount();
 extern void sd_unmount();
-extern bool return_sd_mounted(int value);
 extern int launch_payload(char *path);
+extern bool sd_inited;
+extern bool sd_mounted;
 
 int res = 0, meter = 0;
 
@@ -47,10 +48,7 @@ void MainMenu_EMUMMC(){
 }
 
 void MainMenu_MountSD(){
-    if (return_sd_mounted(1))
-        sd_unmount();
-    else
-        sd_mount();
+    (sd_mounted) ? sd_unmount() : sd_mount();
 }
 
 void MainMenu_Tools(){
@@ -100,7 +98,7 @@ void MainMenu_Credits(){
 }
 
 void MainMenu_Exit(){
-    if (return_sd_mounted(1)){
+    if (sd_mounted){
         SETBIT(mainmenu_shutdown[4].property, ISHIDE, !fsutil_checkfile("/bootloader/update.bin"));
         SETBIT(mainmenu_shutdown[5].property, ISHIDE, !fsutil_checkfile("/atmosphere/reboot_payload.bin"));
     }
@@ -169,7 +167,7 @@ void te_main(){
     while (1){
         //fillmainmenu();
 
-        setter = return_sd_mounted(1);
+        setter = sd_mounted;
 
         if (emu_cfg.enabled){
             for (int i = 4; i <= 6; i++)
@@ -179,7 +177,7 @@ void te_main(){
         SETBIT(mainmenu_main[0].property, ISHIDE, !setter);
         mainmenu_main[7].name = (menu_sd_states[!setter]);
 
-        setter = return_sd_mounted(10);
+        setter = sd_inited;
         SETBIT(mainmenu_main[9].property, ISHIDE, !setter);
 
         res = menu_make(mainmenu_main, 12, "-- Main Menu --") + 1;

@@ -179,6 +179,8 @@ int filemenu(menu_entry file){
         case FILE_RESTOREBIS:
             restore_bis_using_file(fsutil_getnextloc(currentpath, file.name), SYSMMC);
             break;
+        case -1:
+            return -1;
     }
 
     return 0;

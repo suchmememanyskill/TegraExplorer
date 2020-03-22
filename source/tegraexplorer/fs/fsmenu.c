@@ -54,6 +54,8 @@ void fileexplorer(const char *startpath, int type){
                 if (foldermenu())
                     return;
                 break;
+            case -1:
+                return;
 
             default:
                 if(fsreader_files[res].property & ISDIR){
@@ -61,7 +63,8 @@ void fileexplorer(const char *startpath, int type){
                     fsreader_readfolder(currentpath);
                 }
                 else
-                    filemenu(fsreader_files[res]);
+                    if(filemenu(fsreader_files[res]))
+                        return;
                 
                 break;
         }

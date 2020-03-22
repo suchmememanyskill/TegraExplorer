@@ -48,7 +48,8 @@ const char *utils_err_codes_te[] = { // these start at 50
     "MEM ALLOC FAILED",
     "EMMC READ FAILED",
     "EMMC WRITE FAILED",
-    "FILE TOO BIG FOR DEST"
+    "FILE TOO BIG FOR DEST",
+    "SD EJECTED"
 };
 
 const char *pkg2names[] = {

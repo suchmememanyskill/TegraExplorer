@@ -45,19 +45,10 @@
 sdmmc_t sd_sdmmc;
 sdmmc_storage_t sd_storage;
 __attribute__ ((aligned (16))) FATFS sd_fs;
-static bool sd_mounted, sd_inited;
+bool sd_mounted, sd_inited;
 volatile nyx_storage_t *nyx_str = (nyx_storage_t *)NYX_STORAGE_ADDR;
 hekate_config h_cfg;
 boot_cfg_t __attribute__((section ("._boot_cfg"))) b_cfg;
-
-bool return_sd_mounted(int value){
-	switch(value){
-		case 10:
-			return sd_inited;
-		default:
-			return sd_mounted;
-	}
-}
 
 bool sd_mount()
 {

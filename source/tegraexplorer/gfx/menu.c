@@ -5,6 +5,11 @@
 #include "../common/common.h"
 #include "../../utils/util.h"
 #include "../../mem/minerva.h"
+#include "../../soc/gpio.h"
+#include "gfxutils.h"
+
+extern void sd_unmount();
+extern bool sd_inited;
 
 void _printentry(menu_entry entry, bool highlighted, bool refresh){
     int size;
@@ -54,17 +59,25 @@ void _printentry(menu_entry entry, bool highlighted, bool refresh){
 }
 
 int menu_make(menu_entry *entries, int amount, char *toptext){
-    int currentpos = 0, res = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 59;
+    int currentpos = 0, res = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 59, calculatedamount = 0;
     u32 scrolltimer, timer;
     bool refresh = false;
 
     gfx_clearscreen();
 
+    for (int i = 0; i < amount; i++)
+        if (!(entries[i].property & ISMENU))
+            calculatedamount++;
+
     gfx_con_setpos(512, 0);
-    SWAPCOLOR(COLOR_DEFAULT);
-    SWAPBGCOLOR(COLOR_WHITE);
-    gfx_printf("%3d entries\n", amount);
-    RESETCOLOR;
+    if (calculatedamount){
+        SWAPCOLOR(COLOR_DEFAULT);
+        SWAPBGCOLOR(COLOR_WHITE);
+        gfx_printf("%3d entries\n", amount);
+        RESETCOLOR;
+    }
+    else
+        gfx_printf("\n");
 
     SWAPCOLOR(COLOR_GREEN);
     gfx_printlength(42, toptext);
@@ -108,6 +121,14 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
 
         res = 0;
         while (!res){
+            if (!res){
+                if (sd_inited && !!gpio_read(GPIO_PORT_Z, GPIO_PIN_1)){
+                    gfx_errDisplay("menu", ERR_SD_EJECTED, 0);
+                    sd_unmount();
+                    return -1;
+                }
+            }
+
             res = btn_read();
 
             if (!res)

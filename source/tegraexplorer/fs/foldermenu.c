@@ -66,6 +66,7 @@ int foldermenu(){
 
     switch (res){
         case DIR_EXITFOLDER:
+        case -1:
             return -1;
         case DIR_COPYFOLDER:
             fsreader_writeclipboard(currentpath, OPERATIONCOPY | ISDIR);
