@@ -155,7 +155,7 @@ void functionparser(){
     u32 argsize = 0;
 
     //gfx_printf("getting func %c\n", currentchar);
-    char *funcbuff = readtilchar('(', 0);
+    char *funcbuff = readtilchar('(', ' ');
     /*calloc(20, sizeof(char));
     for (int i = 0; i < 19 && currentchar != '(' && currentchar != ' '; i++){
         funcbuff[i] = currentchar;
