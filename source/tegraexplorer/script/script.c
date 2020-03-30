@@ -94,22 +94,81 @@ void getnextvalidchar(){
         getnextchar();
 }
 
+char *makestr(u32 size, char ignore){
+    char *str;
+    u32 count = 0;
+
+    str = calloc(size + 1, sizeof(char));
+    for (u32 i = 0; i < size; i++){
+        getnextchar();
+        if (ignore != 0 && ignore == currentchar)
+            continue;
+                
+        str[count++] = currentchar;
+    }
+        
+    return str;
+}
+/*
+char *makestrstrip(u32 size){
+    char *str;
+    int count = 0;
+
+    str = calloc(size + 1, sizeof(char));
+    for (u32 i = 0; i < size;){
+        if (currentchar == '"'){
+            getnextchar();
+            i++;
+            while (getnextchar() != '"')
+                i++;
+        }
+        else if (currentchar == ' '){
+            while (getnextchar() == ' ')
+                i++;
+        }
+        else{
+            getnextchar();
+            i++;
+        }
+            
+        str[count++] = currentchar;
+    }
+        
+    return str;
+}
+*/
+
+char *readtilchar(char end, char ignore){ // this will strip spaces unless it's enclosed in a ""
+    FSIZE_t offset, size;
+
+    offset = f_tell(&scriptin);
+    getfollowingchar(end);
+    size = f_tell(&scriptin) - offset;
+    f_lseek(&scriptin, offset - 1);
+
+    return makestr((u32)size, ignore);
+}
+
 void functionparser(){
     char *unsplitargs;
     FSIZE_t fileoffset;
     u32 argsize = 0;
 
     //gfx_printf("getting func %c\n", currentchar);
-    char *funcbuff = calloc(20, sizeof(char));
+    char *funcbuff = readtilchar('(', 0);
+    /*calloc(20, sizeof(char));
     for (int i = 0; i < 19 && currentchar != '(' && currentchar != ' '; i++){
         funcbuff[i] = currentchar;
         getnextchar();
     }
+    */
+
     getfollowingchar('(');
     getnextchar();
 
     //gfx_printf("getting arg len %c\n", currentchar);
 
+    /*
     fileoffset = f_tell(&scriptin);
     getfollowingchar(')');
     argsize = f_tell(&scriptin) - fileoffset;
@@ -124,9 +183,12 @@ void functionparser(){
         unsplitargs[i] = currentchar;
         getnextchar();
     }
+    */
+    unsplitargs = readtilchar(')', 0);
 
     //gfx_printf("parsing args %c\n", currentchar);
     argc = splitargs(unsplitargs);
+    getnextchar();
     getnextchar();
 
     gfx_printf("\n\nFunc: %s\n", funcbuff, currentchar);
@@ -135,6 +197,7 @@ void functionparser(){
     for (int i = 0; i < argc; i++)
         gfx_printf("%d | %s\n", i, argv[i]);
 
+    //gfx_printf("\ncurrent char: %c", currentchar);
     free(unsplitargs);
     free(funcbuff); 
 }
@@ -144,6 +207,7 @@ char *gettargetvar(){
     FSIZE_t fileoffset;
     u32 varsize = 0;
 
+    /*
     fileoffset = f_tell(&scriptin);
     getfollowingchar('=');
     varsize = f_tell(&scriptin) - fileoffset;
@@ -159,6 +223,9 @@ char *gettargetvar(){
         variable[i] = currentchar;
         getnextchar();
     }
+    */
+
+    variable = readtilchar('=', ' ');
 
     getfollowingchar('=');
     getnextchar();
