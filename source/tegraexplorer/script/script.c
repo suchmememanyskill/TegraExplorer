@@ -24,21 +24,22 @@ u32 countchars(char* in, char target) {
     return count;
 }
 
-char **args = NULL;
+char **argv = NULL;
+u32 argc;
 u32 splitargs(char* in) {
     // arg like '5, "6", @arg7'
     u32 i, current = 0, count = countchars(in, ',') + 1, len = strlen(in), curcount = 0;
 
-    if (args != NULL) {
-        for (i = 0; args[i] != NULL; i++)
-            free(args[i]);
-        free(args);
+    if (argv != NULL) {
+        for (i = 0; argv[i] != NULL; i++)
+            free(argv[i]);
+        free(argv);
     }
         
-    args = calloc(count + 1, sizeof(char*));
+    argv = calloc(count + 1, sizeof(char*));
 
     for (i = 0; i < count; i++)
-        args[i] = calloc(128, sizeof(char));
+        argv[i] = calloc(128, sizeof(char));
     
 
     for (i = 0; i < len && curcount < count; i++) {
@@ -48,16 +49,16 @@ u32 splitargs(char* in) {
         }
         else if (in[i] == '@' || in[i] == '$') {
             while (in[i] != ',' && in[i] != ' ' && in[i] != ')' && i < len) {
-                args[curcount][current++] = in[i++];
+                argv[curcount][current++] = in[i++];
             }
             i--;
         }
         else if (in[i] >= '0' && in[i] <= '9')
-            args[curcount][current++] = in[i];
+            argv[curcount][current++] = in[i];
         else if (in[i] == '"') {
             i++;
             while (in[i] != '"') {
-                args[curcount][current++] = in[i++];
+                argv[curcount][current++] = in[i++];
             }
         }
     }
@@ -75,71 +76,121 @@ char getnextchar(){
     if (sizeof(char) != endByte)
         forceExit = true;
 
-    gfx_printf("|%c|", currentchar);
+    //gfx_printf("|%c|", currentchar);
     return currentchar;
 }
 
 void getfollowingchar(char end){
     while (currentchar != end){
-        getnextchar();
         if (currentchar == '"'){
             while (getnextchar() != '"');
         }
+        getnextchar();
     }
 }
 
 void getnextvalidchar(){
-    while (!((currentchar >= '0' && currentchar <= 'Z') || (currentchar >= 'a' && currentchar <= 'z') || currentchar == '#' || currentchar == '@'))
+    while ((!((currentchar >= '0' && currentchar <= 'Z') || (currentchar >= 'a' && currentchar <= 'z') || currentchar == '#' || currentchar == '@') && !f_eof(&scriptin)) || currentchar == ';')
         getnextchar();
 }
 
-void mainparser(){
+void functionparser(){
     char *unsplitargs;
-    FSIZE_t curoffset;
+    FSIZE_t fileoffset;
     u32 argsize = 0;
 
+    //gfx_printf("getting func %c\n", currentchar);
+    char *funcbuff = calloc(20, sizeof(char));
+    for (int i = 0; i < 19 && currentchar != '(' && currentchar != ' '; i++){
+        funcbuff[i] = currentchar;
+        getnextchar();
+    }
+    getfollowingchar('(');
+    getnextchar();
+
+    //gfx_printf("getting arg len %c\n", currentchar);
+
+    fileoffset = f_tell(&scriptin);
+    getfollowingchar(')');
+    argsize = f_tell(&scriptin) - fileoffset;
+    f_lseek(&scriptin, fileoffset - 1);
+
+    getnextchar();
+
+    //gfx_printf("getting args %c\n", currentchar);
+
+    unsplitargs = calloc(argsize + 1, sizeof(char));
+    for (int i = 0; i < argsize; i++){
+        unsplitargs[i] = currentchar;
+        getnextchar();
+    }
+
+    //gfx_printf("parsing args %c\n", currentchar);
+    argc = splitargs(unsplitargs);
+    getnextchar();
+
+    gfx_printf("\n\nFunc: %s\n", funcbuff, currentchar);
+    gfx_printf("Split: %s\n", unsplitargs);
+
+    for (int i = 0; i < argc; i++)
+        gfx_printf("%d | %s\n", i, argv[i]);
+
+    free(unsplitargs);
+    free(funcbuff); 
+}
+
+char *gettargetvar(){
+    char *variable = NULL;
+    FSIZE_t fileoffset;
+    u32 varsize = 0;
+
+    fileoffset = f_tell(&scriptin);
+    getfollowingchar('=');
+    varsize = f_tell(&scriptin) - fileoffset;
+    f_lseek(&scriptin, fileoffset - 1);
+
+    variable = calloc(varsize + 1, sizeof(char));
+
+    getnextchar();
+    for (int i = 0; i < varsize; i++){
+        if (currentchar == ' ')
+            break;
+
+        variable[i] = currentchar;
+        getnextchar();
+    }
+
+    getfollowingchar('=');
+    getnextchar();
+
+    return variable;
+}
+
+void mainparser(){
+    char *variable = NULL;
+    FSIZE_t fileoffset;
+    u32 varsize = 0;
+
     getnextvalidchar();
+
+    if (f_eof(&scriptin))
+        return;
 
     if (currentchar == '#'){
         getfollowingchar('\n');
         return;
     }
 
-    gfx_printf("Getting func name...\n");
-    char *funcbuff = calloc(20, sizeof(char));
-    for (int i = 0; i < 19 && currentchar != '(' && currentchar != ' '; i++){
-        funcbuff[i] = currentchar;
-        getnextchar();
-    }
-    gfx_printf("Skipping to next (...\n");
-    getfollowingchar('(');
-    getnextchar();
-
-    curoffset = f_tell(&scriptin);
-    gfx_printf("Skipping to next )...\n");
-    getfollowingchar(')');
-    argsize = f_tell(&scriptin) - curoffset;
-    f_lseek(&scriptin, curoffset - 1);
-
-    gfx_printf("Getting args...\nSize: %d\n",  argsize);
-    getnextchar();
-    unsplitargs = calloc(argsize, sizeof(char));
-    for (int i = 0; i < argsize; i++){
-        unsplitargs[i] = currentchar;
-        getnextchar();
+    if (currentchar == '@'){
+        variable = gettargetvar();
+        getnextvalidchar();
     }
 
-    gfx_printf("Splitting args...\n");
-    int argcount = splitargs(unsplitargs);
+    functionparser();
+    if (variable != NULL)
+        gfx_printf("target: %s", variable);
 
-    gfx_printf("\n\nFunc: %s\n", funcbuff);
-    gfx_printf("Split: %s\n", unsplitargs);
-
-    for (int i = 0; i < argcount; i++)
-        gfx_printf("%d | %s\n", i, args[i]);
-
-    free(unsplitargs);
-    free(funcbuff); 
+    free(variable);
 }
 
 void tester(char *path){
@@ -152,10 +203,14 @@ void tester(char *path){
         gfx_errDisplay("ParseScript", res, 1);
         return;
     }
+    
 
     printerrors = false;
 
+    while (!f_eof(&scriptin)){
+        mainparser();
+    }
 
-    mainparser();
+    f_close(&scriptin);
     btn_wait();
 }
