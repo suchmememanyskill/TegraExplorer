@@ -13,7 +13,7 @@
 #include "../gfx/menu.h"
 #include "../common/types.h"
 #include "../../utils/sprintf.h"
-#include "../utils/script.h"
+#include "../script/script.h"
 #include "../emmc/emmcoperations.h"
 
 extern char *currentpath;
@@ -165,7 +165,8 @@ int filemenu(menu_entry file){
             launch_payload(fsutil_getnextloc(currentpath, file.name));
             break;
         case FILE_SCRIPT:
-            ParseScript(fsutil_getnextloc(currentpath, file.name));
+            //ParseScript(fsutil_getnextloc(currentpath, file.name));
+            tester(fsutil_getnextloc(currentpath, file.name));
             break;
         case FILE_HEXVIEW:
             viewbytes(fsutil_getnextloc(currentpath, file.name));

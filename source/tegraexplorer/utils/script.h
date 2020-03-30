@@ -8,4 +8,4 @@ typedef struct _script_parts {
     short arg_amount;
 } script_parts;
 
-void ParseScript(char* path);
+//void ParseScript(char* path);
