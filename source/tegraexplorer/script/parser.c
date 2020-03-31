@@ -32,11 +32,13 @@ u32 splitargs(char* in) {
     // arg like '5, "6", @arg7'
     u32 i, current = 0, count = countchars(in, ',') + 1, len = strlen(in), curcount = 0;
 
+    /*
     if (argv != NULL) {
         for (i = 0; argv[i] != NULL; i++)
             free(argv[i]);
         free(argv);
     }
+    */
         
     argv = calloc(count + 1, sizeof(char*));
 
@@ -130,8 +132,10 @@ void functionparser(){
     FSIZE_t fileoffset;
     u32 argsize = 0;
 
+    /*
     if (funcbuff != NULL)
         free(funcbuff);
+    */
 
     funcbuff = readtilchar('(', ' ');
 
@@ -195,11 +199,10 @@ void mainparser(){
     res = run_function(funcbuff, &out);
     if (res < 0){
         printerrors = true;
-        gfx_errDisplay("mainparser", ERR_PARSE_FAIL, 0);
-        forceExit = true;
-
-        //gfx_printf("Func: %s\nArg1: %s\n", funcbuff, argv[0]);
         btn_wait();
+        gfx_errDisplay("mainparser", ERR_PARSE_FAIL, f_tell(&scriptin));
+        forceExit = true;
+        //gfx_printf("Func: %s\nArg1: %s\n", funcbuff, argv[0]);
     }
     else {
         str_int_add("@RESULT", out);
@@ -209,7 +212,22 @@ void mainparser(){
     }
 
     //gfx_printf("\nGoing to next func %c\n", currentchar);
-    free(variable);
+
+    if (funcbuff != NULL){
+         free(funcbuff);
+         funcbuff = NULL;
+    }
+
+    if (argv != NULL) {
+        for (int i = 0; argv[i] != NULL; i++)
+            free(argv[i]);
+        free(argv);
+        argv = NULL;
+    }
+
+    if (variable != NULL){
+        free(variable);
+    }
 }
 
 void skipbrackets(){
@@ -231,6 +249,7 @@ void skipbrackets(){
 void tester(char *path){
     int res;
     forceExit = false;
+    currentchar = 0;
     gfx_clearscreen();
 
     res = f_open(&scriptin, path, FA_READ | FA_OPEN_EXISTING);
@@ -246,19 +265,11 @@ void tester(char *path){
     str_int_add("@BTN_VOL+", 0);
     str_int_add("@BTN_VOL-", 0);
 
+    //str_int_printall();
     printerrors = false;
 
     while (!f_eof(&scriptin) && !forceExit){
         mainparser();
-    }
-
-    if (funcbuff != NULL)
-        free(funcbuff);
-
-    if (argv != NULL) {
-        for (int i = 0; argv[i] != NULL; i++)
-            free(argv[i]);
-        free(argv);
     }
 
     printerrors = true;

@@ -16,6 +16,7 @@
 #include "variables.h"
 #include "../utils/utils.h"
 #include "functions.h"
+#include "../fs/fsutils.h"
 
 extern FIL scriptin;
 extern char **argv;
@@ -164,6 +165,21 @@ int part_goto(){
     return 0;
 }
 
+int part_invert(){
+    int arg;
+    if (parseIntInput(argv[0], &arg))
+        return -1;
+    return (arg) ? 0 : 1;
+}
+
+int part_fs_exists(){
+    char *path;
+    if (parseStringInput(argv[0], &path))
+        return -1;
+    
+    return fsutil_checkfile(path);
+}
+
 str_fnc_struct functions[] = {
     {"printf", part_printf, 1},
     {"printInt", part_print_int, 1},
@@ -174,6 +190,8 @@ str_fnc_struct functions[] = {
     {"goto", part_goto, 1},
     {"setString", part_SetString, 2},
     {"setStringIndex", part_SetStringIndex, 2},
+    {"invert", part_invert, 1},
+    {"fs_exists", part_fs_exists, 1},
     {NULL, NULL, 0}
 };
 
