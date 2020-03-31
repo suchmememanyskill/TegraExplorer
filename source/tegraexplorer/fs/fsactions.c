@@ -23,22 +23,22 @@ int fsact_copy(const char *locin, const char *locout, u8 options){
 
     if (!strcmp(locin, locout)){
         gfx_errDisplay("copy", ERR_SAME_LOC, 1);
-        return -1;
+        return 1;
     }
 
     if ((res = f_open(&in, locin, FA_READ | FA_OPEN_EXISTING))){
         gfx_errDisplay("copy", res, 2);
-        return -1;
+        return 1;
     }
 
     if (f_stat(locin, &in_info)){
         gfx_errDisplay("copy", res, 3);
-        return -1;
+        return 1;
     }
        
     if (f_open(&out, locout, FA_CREATE_ALWAYS | FA_WRITE)){
         gfx_errDisplay("copy", res, 4);
-        return -1;
+        return 1;
     }
 
     buff = malloc (BUFSIZE);
@@ -48,17 +48,17 @@ int fsact_copy(const char *locin, const char *locout, u8 options){
     while (sizeoffile > 0){
         if ((res = f_read(&in, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp1))){
             gfx_errDisplay("copy", res, 5);
-            return -1;
+            return 1;
         }
             
         if ((res = f_write(&out, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp2))){
             gfx_errDisplay("copy", res, 6);
-            return -1;
+            return 1;
         }
             
         if (temp1 != temp2){
             gfx_errDisplay("copy", ERR_DISK_WRITE_FAILED, 7);
-            return -1;
+            return 1;
         }
 
         sizeoffile -= temp1;
@@ -84,7 +84,7 @@ int fsact_copy(const char *locin, const char *locout, u8 options){
 
     if ((res = f_chmod(locout, in_info.fattrib, 0x3A))){
         gfx_errDisplay("copy", res, 8);
-        return -1;
+        return 1;
     }
 
     f_stat(locin, &in_info); //somehow stops fatfs from being weird
@@ -103,7 +103,7 @@ int fsact_del_recursive(char *path){
 
     if ((res = f_opendir(&dir, localpath))){
         gfx_errDisplay("del_recursive", res, 1);
-        return -1;
+        return 1;
     }
 
     while (!f_readdir(&dir, &fno) && fno.fname[0]){
@@ -117,7 +117,7 @@ int fsact_del_recursive(char *path){
 
             if ((res = f_unlink(fsutil_getnextloc(localpath, fno.fname)))){
                 gfx_errDisplay("del_recursive", res, 2);
-                return -1;
+                return 1;
             }        
         }
     }
@@ -126,7 +126,7 @@ int fsact_del_recursive(char *path){
 
     if ((res = f_unlink(localpath))){
         gfx_errDisplay("del_recursive", res, 3);
-        return -1;
+        return 1;
     }
 
     free(localpath);
@@ -148,7 +148,7 @@ int fsact_copy_recursive(char *path, char *dstpath){
 
     if ((res = f_opendir(&dir, startpath))){
         gfx_errDisplay("copy_recursive", res, 1);
-        return -1;
+        return 1;
     }
 
     f_mkdir(destpath);
@@ -166,7 +166,7 @@ int fsact_copy_recursive(char *path, char *dstpath){
 
             if ((res = fsact_copy(temp, fsutil_getnextloc(destpath, fno.fname), COPY_MODE_PRINT))){
                 gfx_errDisplay("copy_recursive", res, 2);
-                return -1;
+                return 1;
             }
 
             free(temp);
@@ -177,12 +177,12 @@ int fsact_copy_recursive(char *path, char *dstpath){
     
     if ((res = (f_stat(startpath, &fno)))){
         gfx_errDisplay("copy_recursive", res, 3);
-        return -1;
+        return 1;
     }
 
     if ((res = f_chmod(destpath, fno.fattrib, 0x3A))){
         gfx_errDisplay("copy_recursive", res, 4);
-        return -1;
+        return 1;
     }
     
     free(startpath);

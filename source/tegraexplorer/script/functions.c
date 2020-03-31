@@ -18,6 +18,7 @@
 #include "functions.h"
 #include "../fs/fsutils.h"
 #include "../../utils/sprintf.h"
+#include "../fs/fsactions.h"
 
 extern FIL scriptin;
 extern char **argv;
@@ -287,6 +288,81 @@ int part_Exit(){
     return 0;
 }
 
+int part_fs_Move(){
+    char *left, *right;
+
+    if (parseStringInput(argv[0], &left))
+        return -1;
+    if (parseStringInput(argv[1], &right))
+        return -1;
+
+    int res;
+    res = f_rename(left, right);
+    if (res)
+        res = f_rename(left, right);
+    
+    return res;
+}
+
+int part_fs_Delete(){
+    char *arg;
+
+    if (parseStringInput(argv[0], &arg))
+        return -1;
+
+    int res;
+    res = f_unlink(arg);
+    if (res)
+        res = f_unlink(arg);
+    
+    return res;
+}
+
+int part_fs_DeleteRecursive(){
+    char *arg;
+
+    if (parseStringInput(argv[0], &arg))
+        return -1;
+
+    return fsact_del_recursive(arg);
+}
+
+int part_fs_Copy(){
+    char *left, *right;
+
+    if (parseStringInput(argv[0], &left))
+        return -1;
+    if (parseStringInput(argv[1], &right))
+        return -1;
+
+    return fsact_copy(left, right, COPY_MODE_PRINT);
+}
+
+int part_fs_CopyRecursive(){
+    char *left, *right;
+
+    if (parseStringInput(argv[0], &left))
+        return -1;
+    if (parseStringInput(argv[1], &right))
+        return -1;
+
+    return fsact_copy_recursive(left, right);
+}
+
+int part_fs_MakeDir(){
+    char *arg;
+
+    if (parseStringInput(argv[0], &arg))
+        return -1;
+
+    int res;
+    res = f_mkdir(arg);
+    if (res)
+        res = f_mkdir(arg);
+    
+    return res;
+}
+
 str_fnc_struct functions[] = {
     {"printf", part_printf, 1},
     {"printInt", part_print_int, 1},
@@ -301,6 +377,12 @@ str_fnc_struct functions[] = {
     {"combineStrings", part_addstrings, 3},
     {"invert", part_invert, 1},
     {"fs_exists", part_fs_exists, 1},
+    {"fs_move", part_fs_Move, 2},
+    {"fs_mkdir", part_fs_MakeDir, 1},
+    {"fs_del", part_fs_Delete, 1},
+    {"fs_delRecursive", part_fs_DeleteRecursive, 1},
+    {"fs_copy", part_fs_Copy, 2},
+    {"fs_copyRecursive", part_fs_CopyRecursive, 2},
     {"mmc_connect", part_ConnectMMC, 1},
     {"mmc_mount", part_MountMMC, 1},
     {"pause", part_Pause, 0},
