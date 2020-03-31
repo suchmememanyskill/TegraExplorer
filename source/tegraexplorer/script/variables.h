@@ -26,3 +26,7 @@ void str_int_printall();
 int str_jmp_add(char *key, u64 value);
 int str_jmp_find(char *key, u64 *out);
 void str_jmp_clear();
+int str_str_add(char *key, char *value);
+int str_str_find(char *key, char **out);
+int str_str_index(int index, char **out);
+void str_str_clear();

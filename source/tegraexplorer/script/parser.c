@@ -267,5 +267,6 @@ void tester(char *path){
     f_close(&scriptin);
     str_int_clear();
     str_jmp_clear();
+    str_str_clear();
     btn_wait();
 }

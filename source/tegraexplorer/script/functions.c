@@ -43,8 +43,23 @@ int parseJmpInput(char *in, u64 *out){
         return -1;
 }
 
+int parseStringInput(char *in, char **out){
+    if (in[0] == '$'){
+        if (str_str_find(in, out))
+            return -1;
+        else
+            return 0;
+    }
+    else{
+        *out = in; 
+        return 0;
+    }
+}
+
 int part_printf(){
-    gfx_printf(argv[0]);
+    char *toprint;
+    parseStringInput(argv[0], &toprint);
+    gfx_printf(toprint);
     gfx_printf("\n");
     return 0;
 }
@@ -121,6 +136,26 @@ int part_SetInt(){
     return out;
 }
 
+int part_SetString(){
+    if (argv[1][0] != '$')
+        return -1;
+    str_str_add(argv[1], argv[0]);
+    return 0;
+}
+
+int part_SetStringIndex(){
+    int index;
+    char *out;
+    if (parseIntInput(argv[0], &index))
+        return -1;
+    if (argv[1][0] != '$')
+        return -1;
+    if (str_str_index(index, &out))
+        return -1;
+    str_str_add(argv[1], out);
+    return 0;
+}
+
 int part_goto(){
     u64 target = 0;
     if (parseJmpInput(argv[0], &target))
@@ -137,6 +172,8 @@ str_fnc_struct functions[] = {
     {"check", part_Check, 3},
     {"setInt", part_SetInt, 1},
     {"goto", part_goto, 1},
+    {"setString", part_SetString, 2},
+    {"setStringIndex", part_SetStringIndex, 2},
     {NULL, NULL, 0}
 };
 
