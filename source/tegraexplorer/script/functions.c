@@ -1,0 +1,66 @@
+#include <string.h>
+#include <stdlib.h>
+#include "../../mem/heap.h"
+#include "../gfx/gfxutils.h"
+#include "../emmc/emmc.h"
+#include "../../utils/types.h"
+#include "../../libs/fatfs/ff.h"
+#include "../../utils/sprintf.h"
+#include "../../utils/btn.h"
+#include "../../gfx/gfx.h"
+#include "../../utils/util.h"
+#include "../../storage/emummc.h"
+#include "parser.h"
+#include "../common/common.h"
+#include "../fs/fsactions.h"
+#include "variables.h"
+#include "../utils/utils.h"
+#include "functions.h"
+
+extern FIL scriptin;
+extern char **argv;
+extern u32 argc;
+
+int part_printf(){
+    gfx_printf(argv[0]);
+    gfx_printf("\n");
+    return 0;
+}
+
+int part_if(){
+    int condition;
+    if (argv[0][0] == '@'){
+        if (str_int_find(argv[0], &condition))
+            return -10;
+    }
+    else 
+        condition = atoi(argv[0]);
+
+    getfollowingchar('{');
+
+    if (condition)
+        return 0;
+    else {
+        skipbrackets();
+        return 0;
+    }
+}
+
+str_fnc_struct functions[] = {
+    {"printf", part_printf, 1},
+    {"if", part_if, 1},
+    {NULL, NULL, 0}
+};
+
+int run_function(char *func_name, int *out){
+    for (u32 i = 0; functions[i].key != NULL; i++){
+        if (!strcmp(functions[i].key, func_name)){
+            if (argc != functions[i].arg_count)
+                return -2;
+
+            *out = functions[i].value();
+            return 0;
+        }
+    }
+    return -1;
+}

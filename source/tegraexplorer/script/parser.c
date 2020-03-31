@@ -9,9 +9,11 @@
 #include "../../gfx/gfx.h"
 #include "../../utils/util.h"
 #include "../../storage/emummc.h"
-#include "script.h"
+#include "parser.h"
 #include "../common/common.h"
 #include "../fs/fsactions.h"
+#include "functions.h"
+#include "variables.h"
 
 
 u32 countchars(char* in, char target) {
@@ -90,7 +92,7 @@ void getfollowingchar(char end){
 }
 
 void getnextvalidchar(){
-    while ((!((currentchar >= '0' && currentchar <= 'Z') || (currentchar >= 'a' && currentchar <= 'z') || currentchar == '#' || currentchar == '@') && !f_eof(&scriptin)) || currentchar == ';')
+    while ((!((currentchar >= 'A' && currentchar <= 'Z') || (currentchar >= 'a' && currentchar <= 'z') || currentchar == '#' || currentchar == '@') && !f_eof(&scriptin)) /*|| currentchar == ';' */)
         getnextchar();
 }
 
@@ -149,13 +151,18 @@ char *readtilchar(char end, char ignore){ // this will strip spaces unless it's 
     return makestr((u32)size, ignore);
 }
 
+
+char *funcbuff = NULL;
 void functionparser(){
     char *unsplitargs;
     FSIZE_t fileoffset;
     u32 argsize = 0;
 
+    if (funcbuff != NULL)
+        free(funcbuff);
+
     //gfx_printf("getting func %c\n", currentchar);
-    char *funcbuff = readtilchar('(', ' ');
+    funcbuff = readtilchar('(', ' ');
     /*calloc(20, sizeof(char));
     for (int i = 0; i < 19 && currentchar != '(' && currentchar != ' '; i++){
         funcbuff[i] = currentchar;
@@ -176,7 +183,7 @@ void functionparser(){
 
     getnextchar();
 
-    //gfx_printf("getting args %c\n", currentchar);
+    gfx_printf("getting args %c\n", currentchar);
 
     unsplitargs = calloc(argsize + 1, sizeof(char));
     for (int i = 0; i < argsize; i++){
@@ -191,15 +198,16 @@ void functionparser(){
     getnextchar();
     getnextchar();
 
+    /*
     gfx_printf("\n\nFunc: %s\n", funcbuff, currentchar);
     gfx_printf("Split: %s\n", unsplitargs);
 
     for (int i = 0; i < argc; i++)
         gfx_printf("%d | %s\n", i, argv[i]);
+    */
 
     //gfx_printf("\ncurrent char: %c", currentchar);
     free(unsplitargs);
-    free(funcbuff); 
 }
 
 char *gettargetvar(){
@@ -235,6 +243,7 @@ char *gettargetvar(){
 
 void mainparser(){
     char *variable = NULL;
+    int res, out = 0;
     FSIZE_t fileoffset;
     u32 varsize = 0;
 
@@ -254,10 +263,36 @@ void mainparser(){
     }
 
     functionparser();
+    /*
     if (variable != NULL)
-        gfx_printf("target: %s", variable);
+        gfx_printf("target: %s\n", variable);
+    */
 
+    //gfx_printf("Func: %s\n", funcbuff);
+    res = run_function(funcbuff, &out);
+    str_int_add("@RESULT", res);
+
+    if (variable != NULL)
+        str_int_add(variable, res);
+
+    //gfx_printf("\nGoing to next func %c\n", currentchar);
     free(variable);
+}
+
+void skipbrackets(){
+    u32 bracketcounter = 0;
+
+    getfollowingchar('{');
+    getnextchar();
+
+    while (currentchar != '}' || bracketcounter != 0){
+        if (currentchar == '{')
+            bracketcounter++;
+        else if (currentchar == '}')
+            bracketcounter--;
+
+        getnextchar();
+    }
 }
 
 void tester(char *path){
@@ -271,6 +306,12 @@ void tester(char *path){
         return;
     }
     
+    //add builtin vars
+    str_int_add("@EMUMMC", emu_cfg.enabled);
+    str_int_add("@RESULT", 0);
+    str_int_add("@BTN_POWER", 0);
+    str_int_add("@BTN_VOL+", 0);
+    str_int_add("@BTN_VOL-", 0);
 
     printerrors = false;
 
@@ -278,6 +319,10 @@ void tester(char *path){
         mainparser();
     }
 
+    printerrors = true;
+    //str_int_printall();
+
     f_close(&scriptin);
+    str_int_clear();
     btn_wait();
 }

@@ -13,7 +13,7 @@
 #include "../gfx/menu.h"
 #include "../common/types.h"
 #include "../../utils/sprintf.h"
-#include "../script/script.h"
+#include "../script/parser.h"
 #include "../emmc/emmcoperations.h"
 
 extern char *currentpath;

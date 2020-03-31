@@ -1,0 +1,89 @@
+#include <string.h>
+#include "../../mem/heap.h"
+#include "../gfx/gfxutils.h"
+#include "../emmc/emmc.h"
+#include "../../utils/types.h"
+#include "../../libs/fatfs/ff.h"
+#include "../../utils/sprintf.h"
+#include "../../utils/btn.h"
+#include "../../gfx/gfx.h"
+#include "../../utils/util.h"
+#include "../../storage/emummc.h"
+#include "parser.h"
+#include "../common/common.h"
+#include "../fs/fsactions.h"
+#include "variables.h"
+#include "../utils/utils.h"
+
+static dict_str_int *str_int_table = NULL;
+static dict_str_str *str_str_table = NULL;
+static dict_str_loc *str_jmp_table = NULL;
+
+int str_int_add(char *key, int value){
+    char *key_local;
+    dict_str_int *keyvaluepair;
+
+    utils_copystring(key, &key_local);
+    
+    keyvaluepair = calloc(1, sizeof(keyvaluepair));
+    keyvaluepair->key = key_local;
+    keyvaluepair->value = value;
+    keyvaluepair->next = NULL;
+    if (str_int_table == NULL){
+        str_int_table = keyvaluepair;
+    }
+    else {
+        dict_str_int *temp;
+        temp = str_int_table;
+        while (temp != NULL){
+            if (!strcmp(temp->key, key_local)){
+                temp->value = value;
+                return 0;
+            }
+
+            if (temp->next == NULL){
+                temp->next = keyvaluepair;
+                return 0;
+            }
+
+            temp = temp->next;
+        }
+    }
+
+    return 0;
+}
+
+int str_int_find(char *key, int *out){
+    dict_str_int *temp;
+    temp = str_int_table;
+    while (temp != NULL){
+        if (!strcmp(temp->key, key)){
+            *out = temp->value;
+            return 0;
+        }
+        temp = temp->next;
+    }
+
+    return -1;
+}
+
+void str_int_clear(){
+    dict_str_int *cur, *next;
+    cur = str_int_table;
+
+    while (cur != NULL){
+        next = cur->next;
+        free(cur->key);
+        free(cur);
+        cur = next;
+    }
+}
+
+void str_int_printall(){
+    dict_str_int *temp;
+    temp = str_int_table;
+    while (temp != NULL){
+        gfx_printf("%s -> %d\n", temp->key, temp->value);
+        temp = temp->next;
+    }
+}
