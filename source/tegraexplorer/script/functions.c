@@ -32,6 +32,17 @@ int parseIntInput(char *in, int *out){
     return 0;
 }
 
+int parseJmpInput(char *in, u64 *out){
+    if (in[0] == '?'){
+        if (str_jmp_find(argv[0], out))
+            return -1;
+        else
+            return 0;
+    }
+    else
+        return -1;
+}
+
 int part_printf(){
     gfx_printf(argv[0]);
     gfx_printf("\n");
@@ -104,12 +115,28 @@ int part_Check(){
         return -1;
 }
 
+int part_SetInt(){
+    int out;
+    parseIntInput(argv[0], &out);
+    return out;
+}
+
+int part_goto(){
+    u64 target = 0;
+    if (parseJmpInput(argv[0], &target))
+        return -1;
+    f_lseek(&scriptin, target);
+    return 0;
+}
+
 str_fnc_struct functions[] = {
     {"printf", part_printf, 1},
-    {"print_int", part_print_int, 1},
+    {"printInt", part_print_int, 1},
     {"if", part_if, 1},
     {"math", part_Math, 3},
     {"check", part_Check, 3},
+    {"setInt", part_SetInt, 1},
+    {"goto", part_goto, 1},
     {NULL, NULL, 0}
 };
 

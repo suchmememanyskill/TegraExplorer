@@ -23,3 +23,6 @@ int str_int_add(char *key, int value);
 int str_int_find(char *key, int *out);
 void str_int_clear();
 void str_int_printall();
+int str_jmp_add(char *key, u64 value);
+int str_jmp_find(char *key, u64 *out);
+void str_jmp_clear();

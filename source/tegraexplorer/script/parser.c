@@ -49,7 +49,7 @@ u32 splitargs(char* in) {
             curcount++;
             current = 0;
         }
-        else if (in[i] == '@' || in[i] == '$') {
+        else if (in[i] == '@' || in[i] == '$' || in[i] == '?') {
             while (in[i] != ',' && in[i] != ' ' && in[i] != ')' && i < len) {
                 argv[curcount][current++] = in[i++];
             }
@@ -92,7 +92,7 @@ void getfollowingchar(char end){
 }
 
 void getnextvalidchar(){
-    while ((!((currentchar >= 'A' && currentchar <= 'Z') || (currentchar >= 'a' && currentchar <= 'z') || currentchar == '#' || currentchar == '@') && !f_eof(&scriptin)) /*|| currentchar == ';' */)
+    while ((!((currentchar >= '?' && currentchar <= 'Z') || (currentchar >= 'a' && currentchar <= 'z') || currentchar == '#') && !f_eof(&scriptin)) /*|| currentchar == ';' */)
         getnextchar();
 }
 
@@ -181,6 +181,15 @@ void mainparser(){
         getnextvalidchar();
     }
 
+    if (currentchar == '?'){
+        char *jumpname;
+        jumpname = readtilchar(';', ' ');
+        getnextchar();
+        str_jmp_add(jumpname, f_tell(&scriptin));
+        getfollowingchar('\n');
+        return;
+    }
+
     functionparser();
 
     res = run_function(funcbuff, &out);
@@ -188,6 +197,9 @@ void mainparser(){
         printerrors = true;
         gfx_errDisplay("mainparser", ERR_PARSE_FAIL, 0);
         forceExit = true;
+
+        //gfx_printf("Func: %s\nArg1: %s\n", funcbuff, argv[0]);
+        btn_wait();
     }
     else {
         str_int_add("@RESULT", out);
@@ -254,5 +266,6 @@ void tester(char *path){
 
     f_close(&scriptin);
     str_int_clear();
+    str_jmp_clear();
     btn_wait();
 }
