@@ -145,7 +145,7 @@ int filemenu(menu_entry file){
     }
 
     SETBIT(fs_menu_file[7].property, ISHIDE, !(strstr(file.name, ".bin") != NULL && file.property & ISKB));
-    SETBIT(fs_menu_file[8].property, ISHIDE, !(strstr(file.name, ".tegrascript") != NULL));
+    SETBIT(fs_menu_file[8].property, ISHIDE, !(strstr(file.name, ".te") != NULL));
     SETBIT(fs_menu_file[10].property, ISHIDE, !(strstr(file.name, ".bis") != NULL));
     SETBIT(fs_menu_file[11].property, ISHIDE, !(strstr(file.name, ".bis") != NULL));
 

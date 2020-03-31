@@ -17,10 +17,12 @@
 #include "../utils/utils.h"
 #include "functions.h"
 #include "../fs/fsutils.h"
+#include "../../utils/sprintf.h"
 
 extern FIL scriptin;
 extern char **argv;
 extern u32 argc;
+extern int forceExit;
 
 int parseIntInput(char *in, int *out){
     if (in[0] == '@'){
@@ -57,8 +59,10 @@ int parseStringInput(char *in, char **out){
     }
 }
 
+u32 currentcolor = COLOR_WHITE;
 int part_printf(){
     char *toprint;
+    SWAPCOLOR(currentcolor);
     parseStringInput(argv[0], &toprint);
     gfx_printf(toprint);
     gfx_printf("\n");
@@ -70,6 +74,24 @@ int part_print_int(){
     if (parseIntInput(argv[0], &toprint))
         return -1;
     gfx_printf("%s: %d\n", argv[0], toprint);
+    return 0;
+}
+
+int part_Wait(){
+    int arg;
+    u32 begintime;
+    SWAPCOLOR(currentcolor);
+
+    if (parseIntInput(argv[0], &arg))
+        return -1;
+
+    begintime = get_tmr_s();
+
+    while (begintime + arg > get_tmr_s()){
+        gfx_printf("\r<Wait %d seconds> ", (begintime + arg) - get_tmr_s());
+    }
+
+    gfx_printf("\r                 \r");
     return 0;
 }
 
@@ -105,7 +127,7 @@ int part_Math(){
         case '/':
             return left * right;
     }
-    return 0;
+    return -1;
 }
 
 int part_Check(){
@@ -138,9 +160,13 @@ int part_SetInt(){
 }
 
 int part_SetString(){
+    char *arg0;
+    if (parseStringInput(argv[0], &arg0))
+        return -1;
     if (argv[1][0] != '$')
         return -1;
-    str_str_add(argv[1], argv[0]);
+
+    str_str_add(argv[1], arg0);
     return 0;
 }
 
@@ -180,6 +206,87 @@ int part_fs_exists(){
     return fsutil_checkfile(path);
 }
 
+int part_ConnectMMC(){
+    char *arg;
+    parseStringInput(argv[0], &arg);
+
+    if (!strcmp(arg, "SYSMMC"))
+        connect_mmc(SYSMMC);
+    else if (!strcmp(arg, "EMUMMC"))
+        connect_mmc(EMUMMC);
+    else
+        return -1;
+
+    return 0;
+}
+
+int part_MountMMC(){
+    char *arg;
+    parseStringInput(argv[0], &arg);
+    return mount_mmc(arg, 2);
+}
+
+int part_Pause(){
+    int res;
+
+    while (btn_read() != 0);
+
+    res = btn_wait();  
+
+    str_int_add("@BTN_POWER", (res & BTN_POWER));
+    str_int_add("@BTN_VOL+", (res & BTN_VOL_UP));
+    str_int_add("@BTN_VOL-", (res & BTN_VOL_DOWN));
+    
+    return res;
+}
+
+int part_addstrings(){
+    char *combined, *left, *middle;
+    if (parseStringInput(argv[0], &left))
+        return -1;
+    if (parseStringInput(argv[1], &middle))
+        return -1;
+    if (argv[2][0] != '$')
+        return -1;
+    
+    combined = calloc(strlen(left) + strlen(middle) + 1, sizeof(char));
+    sprintf(combined, "%s%s", left, middle);
+    
+    str_str_add(argv[2], combined);
+    free(combined);
+    return 0;
+}
+
+int part_setColor(){
+    char *arg;
+    if (parseStringInput(argv[0], &arg))
+        return -1;
+
+    if (!strcmp(arg, "RED"))
+        currentcolor = COLOR_RED;
+    else if (!strcmp(arg, "ORANGE"))
+        currentcolor = COLOR_ORANGE;
+    else if (!strcmp(arg, "YELLOW"))
+        currentcolor = COLOR_YELLOW;
+    else if (!strcmp(arg, "GREEN"))
+        currentcolor = COLOR_GREEN;
+    else if (!strcmp(arg, "BLUE"))
+        currentcolor = COLOR_BLUE;
+    else if (!strcmp(arg, "VIOLET"))
+        currentcolor = COLOR_VIOLET;
+    else if (!strcmp(arg, "WHITE"))
+        currentcolor = COLOR_WHITE;
+    else
+        return -1;
+
+    return 0;
+}
+
+int part_Exit(){
+    forceExit = true;
+    return 0;
+}
+
 str_fnc_struct functions[] = {
     {"printf", part_printf, 1},
     {"printInt", part_print_int, 1},
@@ -190,8 +297,15 @@ str_fnc_struct functions[] = {
     {"goto", part_goto, 1},
     {"setString", part_SetString, 2},
     {"setStringIndex", part_SetStringIndex, 2},
+    {"setColor", part_setColor, 1},
+    {"combineStrings", part_addstrings, 3},
     {"invert", part_invert, 1},
     {"fs_exists", part_fs_exists, 1},
+    {"mmc_connect", part_ConnectMMC, 1},
+    {"mmc_mount", part_MountMMC, 1},
+    {"pause", part_Pause, 0},
+    {"wait", part_Wait, 1},
+    {"exit", part_Exit, 0},
     {NULL, NULL, 0}
 };
 

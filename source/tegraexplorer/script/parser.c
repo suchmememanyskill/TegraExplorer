@@ -120,6 +120,10 @@ char *readtilchar(char end, char ignore){
     offset = f_tell(&scriptin);
     getfollowingchar(end);
     size = f_tell(&scriptin) - offset;
+
+    if (size <= 0)
+        return NULL;
+
     f_lseek(&scriptin, offset - 1);
 
     return makestr((u32)size, ignore);
@@ -144,8 +148,13 @@ void functionparser(){
 
     unsplitargs = readtilchar(')', 0);
 
-    argc = splitargs(unsplitargs);
-    getnextchar();
+    if (unsplitargs != NULL){
+        argc = splitargs(unsplitargs);
+        getnextchar();
+    }
+    else {
+        argc = 0;
+    }
     getnextchar();
 
     free(unsplitargs);
@@ -199,7 +208,8 @@ void mainparser(){
     res = run_function(funcbuff, &out);
     if (res < 0){
         printerrors = true;
-        btn_wait();
+        //gfx_printf("%s|%s|%d", funcbuff, argv[0], argc);
+        //btn_wait();
         gfx_errDisplay("mainparser", ERR_PARSE_FAIL, f_tell(&scriptin));
         forceExit = true;
         //gfx_printf("Func: %s\nArg1: %s\n", funcbuff, argv[0]);
@@ -246,10 +256,12 @@ void skipbrackets(){
     }
 }
 
+extern u32 currentcolor;
 void tester(char *path){
     int res;
     forceExit = false;
     currentchar = 0;
+    currentcolor = COLOR_WHITE;
     gfx_clearscreen();
 
     res = f_open(&scriptin, path, FA_READ | FA_OPEN_EXISTING);
@@ -257,6 +269,8 @@ void tester(char *path){
         gfx_errDisplay("ParseScript", res, 1);
         return;
     }
+
+    printerrors = false;
     
     //add builtin vars
     str_int_add("@EMUMMC", emu_cfg.enabled);
@@ -266,7 +280,6 @@ void tester(char *path){
     str_int_add("@BTN_VOL-", 0);
 
     //str_int_printall();
-    printerrors = false;
 
     while (!f_eof(&scriptin) && !forceExit){
         mainparser();
@@ -279,5 +292,5 @@ void tester(char *path){
     str_int_clear();
     str_jmp_clear();
     str_str_clear();
-    btn_wait();
+    //btn_wait();
 }
