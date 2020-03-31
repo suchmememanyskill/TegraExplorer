@@ -20,7 +20,8 @@ enum utils_err_codes_te_call {
     ERR_EMMC_READ_FAILED,
     ERR_EMMC_WRITE_FAILED,
     ERR_FILE_TOO_BIG_FOR_DEST,
-    ERR_SD_EJECTED
+    ERR_SD_EJECTED,
+    ERR_PARSE_FAIL
 };
 
 extern const char *utils_err_codes_te[];

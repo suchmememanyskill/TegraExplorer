@@ -111,36 +111,8 @@ char *makestr(u32 size, char ignore){
         
     return str;
 }
-/*
-char *makestrstrip(u32 size){
-    char *str;
-    int count = 0;
 
-    str = calloc(size + 1, sizeof(char));
-    for (u32 i = 0; i < size;){
-        if (currentchar == '"'){
-            getnextchar();
-            i++;
-            while (getnextchar() != '"')
-                i++;
-        }
-        else if (currentchar == ' '){
-            while (getnextchar() == ' ')
-                i++;
-        }
-        else{
-            getnextchar();
-            i++;
-        }
-            
-        str[count++] = currentchar;
-    }
-        
-    return str;
-}
-*/
-
-char *readtilchar(char end, char ignore){ // this will strip spaces unless it's enclosed in a ""
+char *readtilchar(char end, char ignore){
     FSIZE_t offset, size;
 
     offset = f_tell(&scriptin);
@@ -161,52 +133,17 @@ void functionparser(){
     if (funcbuff != NULL)
         free(funcbuff);
 
-    //gfx_printf("getting func %c\n", currentchar);
     funcbuff = readtilchar('(', ' ');
-    /*calloc(20, sizeof(char));
-    for (int i = 0; i < 19 && currentchar != '(' && currentchar != ' '; i++){
-        funcbuff[i] = currentchar;
-        getnextchar();
-    }
-    */
 
     getfollowingchar('(');
     getnextchar();
 
-    //gfx_printf("getting arg len %c\n", currentchar);
-
-    /*
-    fileoffset = f_tell(&scriptin);
-    getfollowingchar(')');
-    argsize = f_tell(&scriptin) - fileoffset;
-    f_lseek(&scriptin, fileoffset - 1);
-
-    getnextchar();
-
-    gfx_printf("getting args %c\n", currentchar);
-
-    unsplitargs = calloc(argsize + 1, sizeof(char));
-    for (int i = 0; i < argsize; i++){
-        unsplitargs[i] = currentchar;
-        getnextchar();
-    }
-    */
     unsplitargs = readtilchar(')', 0);
 
-    //gfx_printf("parsing args %c\n", currentchar);
     argc = splitargs(unsplitargs);
     getnextchar();
     getnextchar();
 
-    /*
-    gfx_printf("\n\nFunc: %s\n", funcbuff, currentchar);
-    gfx_printf("Split: %s\n", unsplitargs);
-
-    for (int i = 0; i < argc; i++)
-        gfx_printf("%d | %s\n", i, argv[i]);
-    */
-
-    //gfx_printf("\ncurrent char: %c", currentchar);
     free(unsplitargs);
 }
 
@@ -214,24 +151,6 @@ char *gettargetvar(){
     char *variable = NULL;
     FSIZE_t fileoffset;
     u32 varsize = 0;
-
-    /*
-    fileoffset = f_tell(&scriptin);
-    getfollowingchar('=');
-    varsize = f_tell(&scriptin) - fileoffset;
-    f_lseek(&scriptin, fileoffset - 1);
-
-    variable = calloc(varsize + 1, sizeof(char));
-
-    getnextchar();
-    for (int i = 0; i < varsize; i++){
-        if (currentchar == ' ')
-            break;
-
-        variable[i] = currentchar;
-        getnextchar();
-    }
-    */
 
     variable = readtilchar('=', ' ');
 
@@ -263,17 +182,19 @@ void mainparser(){
     }
 
     functionparser();
-    /*
-    if (variable != NULL)
-        gfx_printf("target: %s\n", variable);
-    */
 
-    //gfx_printf("Func: %s\n", funcbuff);
     res = run_function(funcbuff, &out);
-    str_int_add("@RESULT", res);
+    if (res < 0){
+        printerrors = true;
+        gfx_errDisplay("mainparser", ERR_PARSE_FAIL, 0);
+        forceExit = true;
+    }
+    else {
+        str_int_add("@RESULT", out);
 
-    if (variable != NULL)
-        str_int_add(variable, res);
+        if (variable != NULL)
+            str_int_add(variable, out);
+    }
 
     //gfx_printf("\nGoing to next func %c\n", currentchar);
     free(variable);
@@ -297,7 +218,7 @@ void skipbrackets(){
 
 void tester(char *path){
     int res;
-
+    forceExit = false;
     gfx_clearscreen();
 
     res = f_open(&scriptin, path, FA_READ | FA_OPEN_EXISTING);
@@ -315,8 +236,17 @@ void tester(char *path){
 
     printerrors = false;
 
-    while (!f_eof(&scriptin)){
+    while (!f_eof(&scriptin) && !forceExit){
         mainparser();
+    }
+
+    if (funcbuff != NULL)
+        free(funcbuff);
+
+    if (argv != NULL) {
+        for (int i = 0; argv[i] != NULL; i++)
+            free(argv[i]);
+        free(argv);
     }
 
     printerrors = true;

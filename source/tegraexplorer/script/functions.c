@@ -21,20 +21,35 @@ extern FIL scriptin;
 extern char **argv;
 extern u32 argc;
 
+int parseIntInput(char *in, int *out){
+    if (in[0] == '@'){
+        if (str_int_find(argv[0], out))
+            return -1;
+    }
+    else
+        *out = atoi(in);
+    
+    return 0;
+}
+
 int part_printf(){
     gfx_printf(argv[0]);
     gfx_printf("\n");
     return 0;
 }
 
+int part_print_int(){
+    int toprint;
+    if (parseIntInput(argv[0], &toprint))
+        return -1;
+    gfx_printf("%s: %d\n", argv[0], toprint);
+    return 0;
+}
+
 int part_if(){
     int condition;
-    if (argv[0][0] == '@'){
-        if (str_int_find(argv[0], &condition))
-            return -10;
-    }
-    else 
-        condition = atoi(argv[0]);
+    if (parseIntInput(argv[0], &condition))
+        return -1;
 
     getfollowingchar('{');
 
@@ -46,9 +61,55 @@ int part_if(){
     }
 }
 
+int part_Math(){
+    int left, right;
+    if (parseIntInput(argv[0], &left))
+        return -1;
+    if (parseIntInput(argv[2], &right))
+        return -1;
+    
+    switch (argv[1][0]){
+        case '+':
+            return left + right;
+        case '-':
+            return left - right;
+        case '*':
+            return left * right;
+        case '/':
+            return left * right;
+    }
+    return 0;
+}
+
+int part_Check(){
+    int left, right;
+    if (parseIntInput(argv[0], &left))
+        return -1;
+    if (parseIntInput(argv[2], &right))
+        return -1;
+
+    if (!strcmp(argv[1], "=="))
+        return (left == right);
+    else if (!strcmp(argv[1], "!="))
+        return (left != right);
+    else if (!strcmp(argv[1], ">="))
+        return (left >= right);
+    else if (!strcmp(argv[1], "<="))
+        return (left <= right);
+    else if (!strcmp(argv[1], ">"))
+        return (left > right);
+    else if (!strcmp(argv[1], "<"))
+        return (left < right);
+    else
+        return -1;
+}
+
 str_fnc_struct functions[] = {
     {"printf", part_printf, 1},
+    {"print_int", part_print_int, 1},
     {"if", part_if, 1},
+    {"math", part_Math, 3},
+    {"check", part_Check, 3},
     {NULL, NULL, 0}
 };
 
@@ -59,6 +120,8 @@ int run_function(char *func_name, int *out){
                 return -2;
 
             *out = functions[i].value();
+            if (*out < 0)
+                return -1;
             return 0;
         }
     }
