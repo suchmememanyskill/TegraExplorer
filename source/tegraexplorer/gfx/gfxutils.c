@@ -63,6 +63,9 @@ int gfx_errDisplay(char *src_func, int err, int loc){
     gfx_printf("\nPress any button to return");
 
     RESETCOLOR;
+
+    while (btn_read() != 0);
+
     return btn_wait();
 }
 

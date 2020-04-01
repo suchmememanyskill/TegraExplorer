@@ -21,6 +21,14 @@ u32 countchars(char* in, char target) {
     u32 len = strlen(in);
     u32 count = 0;
     for (u32 i = 0; i < len; i++) {
+        if (in[i] == '"'){
+            i++;
+            while (in[i] != '"'){
+                i++;
+                if (i >= len)
+                    return -1;
+            }
+        }
         if (in[i] == target)
             count++;
     }
@@ -31,7 +39,11 @@ char **argv = NULL;
 u32 argc;
 u32 splitargs(char* in) {
     // arg like '5, "6", @arg7'
-    u32 i, current = 0, count = countchars(in, ',') + 1, len = strlen(in), curcount = 0;
+    u32 i, current = 0, count = 1, len = strlen(in), curcount = 0;
+
+    if ((count += countchars(in, ',')) < 0){
+        return 0;
+    }
 
     /*
     if (argv != NULL) {
@@ -86,9 +98,9 @@ char getnextchar(){
 }
 
 void getfollowingchar(char end){
-    while (currentchar != end){
+    while (currentchar != end && !f_eof(&scriptin)){
         if (currentchar == '"'){
-            while (getnextchar() != '"');
+            while (getnextchar() != '"' && !f_eof(&scriptin));
         }
         getnextchar();
     }
@@ -241,7 +253,7 @@ void skipbrackets(){
     getfollowingchar('{');
     getnextchar();
 
-    while (currentchar != '}' || bracketcounter != 0){
+    while ((currentchar != '}' || bracketcounter != 0) && !f_eof(&scriptin)){
         if (currentchar == '{')
             bracketcounter++;
         else if (currentchar == '}')
