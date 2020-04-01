@@ -253,7 +253,7 @@ void skipbrackets(){
 
 extern u32 currentcolor;
 extern char *currentpath;
-void tester(char *path){
+void runScript(char *path){
     int res;
     forceExit = false;
     currentchar = 0;

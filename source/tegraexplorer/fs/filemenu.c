@@ -166,7 +166,7 @@ int filemenu(menu_entry file){
             break;
         case FILE_SCRIPT:
             //ParseScript(fsutil_getnextloc(currentpath, file.name));
-            tester(fsutil_getnextloc(currentpath, file.name));
+            runScript(fsutil_getnextloc(currentpath, file.name));
             fsreader_readfolder(currentpath);
             break;
         case FILE_HEXVIEW:

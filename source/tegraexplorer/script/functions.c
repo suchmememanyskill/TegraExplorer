@@ -399,7 +399,7 @@ int part_fs_ReadDir(){
         return -1;
 
     if (!f_readdir(&dir, &fno) && fno.fname[0]){
-        str_str_add("$FSOBJNAME", fno.fname);
+        str_str_add("$FILENAME", fno.fname);
         str_int_add("@ISDIR", (fno.fattrib & AM_DIR) ? 1 : 0);
     }
     else {

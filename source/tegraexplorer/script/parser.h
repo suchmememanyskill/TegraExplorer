@@ -1,5 +1,5 @@
 #pragma once
 
-void tester(char *path);
+void runScript(char *path);
 void skipbrackets();
 void getfollowingchar(char end);
