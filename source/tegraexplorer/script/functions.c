@@ -107,12 +107,19 @@ int part_if(){
 
     getfollowingchar('{');
 
+    if (!condition)
+        skipbrackets();
+    
+    return 0;
+
+    /*
     if (condition)
         return 0;
     else {
         skipbrackets();
         return 0;
     }
+    */
 }
 
 int part_Math(){
@@ -130,7 +137,7 @@ int part_Math(){
         case '*':
             return left * right;
         case '/':
-            return left * right;
+            return left / right;
     }
     return -1;
 }
