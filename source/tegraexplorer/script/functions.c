@@ -63,8 +63,10 @@ int parseStringInput(char *in, char **out){
 u32 currentcolor = COLOR_WHITE;
 int part_printf(){
     char *toprint;
+    if (parseStringInput(argv[0], &toprint))
+        return -1;
+        
     SWAPCOLOR(currentcolor);
-    parseStringInput(argv[0], &toprint);
     gfx_printf(toprint);
     gfx_printf("\n");
     return 0;
@@ -74,6 +76,8 @@ int part_print_int(){
     int toprint;
     if (parseIntInput(argv[0], &toprint))
         return -1;
+    
+    SWAPCOLOR(currentcolor);
     gfx_printf("%s: %d\n", argv[0], toprint);
     return 0;
 }
@@ -363,9 +367,71 @@ int part_fs_MakeDir(){
     return res;
 }
 
+DIR dir;
+FILINFO fno;
+int isdirvalid = false;
+int part_fs_OpenDir(){
+    char *path;
+
+    if (parseStringInput(argv[0], &path))
+        return -1;
+
+    if (f_opendir(&dir, path))
+        return -1;
+    
+    isdirvalid = true;
+    str_int_add("@ISDIRVALID", isdirvalid);
+    return 0;
+}
+
+int part_fs_CloseDir(){
+    if (!isdirvalid)
+        return 0;
+
+    f_closedir(&dir);
+    isdirvalid = false;
+    str_int_add("@ISDIRVALID", isdirvalid);
+    return 0;
+}
+
+int part_fs_ReadDir(){
+    if (!isdirvalid)
+        return -1;
+
+    if (!f_readdir(&dir, &fno) && fno.fname[0]){
+        str_str_add("$FSOBJNAME", fno.fname);
+        str_int_add("@ISDIR", (fno.fattrib & AM_DIR) ? 1 : 0);
+    }
+    else {
+        part_fs_CloseDir();
+    }
+
+    return 0;
+}
+
+int part_setPrintPos(){
+    int left, right;
+
+    if (parseIntInput(argv[0], &left))
+        return -1;
+
+    if (parseIntInput(argv[1], &right))
+        return -1;
+
+    if (left > 42)
+        return -1;
+
+    if (right > 78)
+        return -1;
+
+    gfx_con_setpos(left * 16, right * 16);
+    return 0;
+}
+
 str_fnc_struct functions[] = {
     {"printf", part_printf, 1},
     {"printInt", part_print_int, 1},
+    {"setPrintPos", part_setPrintPos, 2},
     {"if", part_if, 1},
     {"math", part_Math, 3},
     {"check", part_Check, 3},
@@ -383,6 +449,9 @@ str_fnc_struct functions[] = {
     {"fs_delRecursive", part_fs_DeleteRecursive, 1},
     {"fs_copy", part_fs_Copy, 2},
     {"fs_copyRecursive", part_fs_CopyRecursive, 2},
+    {"fs_openDir", part_fs_OpenDir, 1},
+    {"fs_closeDir", part_fs_CloseDir, 0},
+    {"fs_readDir", part_fs_ReadDir, 0},
     {"mmc_connect", part_ConnectMMC, 1},
     {"mmc_mount", part_MountMMC, 1},
     {"pause", part_Pause, 0},

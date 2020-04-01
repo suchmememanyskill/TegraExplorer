@@ -14,6 +14,7 @@
 #include "../fs/fsactions.h"
 #include "functions.h"
 #include "variables.h"
+#include "../fs/fsreader.h"
 
 
 u32 countchars(char* in, char target) {
@@ -133,8 +134,6 @@ char *readtilchar(char end, char ignore){
 char *funcbuff = NULL;
 void functionparser(){
     char *unsplitargs;
-    FSIZE_t fileoffset;
-    u32 argsize = 0;
 
     /*
     if (funcbuff != NULL)
@@ -162,8 +161,6 @@ void functionparser(){
 
 char *gettargetvar(){
     char *variable = NULL;
-    FSIZE_t fileoffset;
-    u32 varsize = 0;
 
     variable = readtilchar('=', ' ');
 
@@ -176,8 +173,6 @@ char *gettargetvar(){
 void mainparser(){
     char *variable = NULL;
     int res, out = 0;
-    FSIZE_t fileoffset;
-    u32 varsize = 0;
 
     getnextvalidchar();
 
@@ -257,6 +252,7 @@ void skipbrackets(){
 }
 
 extern u32 currentcolor;
+extern char *currentpath;
 void tester(char *path){
     int res;
     forceExit = false;
@@ -278,6 +274,7 @@ void tester(char *path){
     str_int_add("@BTN_POWER", 0);
     str_int_add("@BTN_VOL+", 0);
     str_int_add("@BTN_VOL-", 0);
+    str_str_add("$CURRENTPATH", currentpath);
 
     //str_int_printall();
 
