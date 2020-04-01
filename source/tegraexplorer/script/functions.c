@@ -65,7 +65,7 @@ int part_printf(){
     char *toprint;
     if (parseStringInput(argv[0], &toprint))
         return -1;
-        
+
     SWAPCOLOR(currentcolor);
     gfx_printf(toprint);
     gfx_printf("\n");
@@ -428,6 +428,17 @@ int part_setPrintPos(){
     return 0;
 }
 
+int part_stringcompare(){
+    char *left, *right;
+
+    if (parseStringInput(argv[0], &left))
+        return -1;
+    if (parseStringInput(argv[1], &right))
+        return -1;
+
+    return (strcmp(left, right)) ? 0 : 1;
+}
+
 str_fnc_struct functions[] = {
     {"printf", part_printf, 1},
     {"printInt", part_print_int, 1},
@@ -441,6 +452,7 @@ str_fnc_struct functions[] = {
     {"setStringIndex", part_SetStringIndex, 2},
     {"setColor", part_setColor, 1},
     {"combineStrings", part_addstrings, 3},
+    {"compareStrings", part_stringcompare, 2},
     {"invert", part_invert, 1},
     {"fs_exists", part_fs_exists, 1},
     {"fs_move", part_fs_Move, 2},
