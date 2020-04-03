@@ -67,7 +67,7 @@ int connect_part(const char *partition){
     system_part = nx_emmc_part_find(&gpt, partition);
     if (!system_part) {
         gfx_errDisplay("connect_mmc_part", ERR_PART_NOT_FOUND, 0);
-        return -1;
+        return 1;
     }
 
     return 0;
@@ -81,11 +81,11 @@ int mount_mmc(const char *partition, const int biskeynumb){
     se_aes_key_set(9, bis_key[biskeynumb] + 0x10, 0x10);
 
     if (connect_part(partition))
-        return -1;
+        return 1;
 
     if ((res = f_mount(&emmc, "emmc:", 1))) {
         gfx_errDisplay("mount_mmc", res, 0);
-        return -1;
+        return 1;
     } 
 
     return 0;

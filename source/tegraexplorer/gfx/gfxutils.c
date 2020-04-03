@@ -54,7 +54,7 @@ int gfx_errDisplay(char *src_func, int err, int loc){
     
     if (err < 15)
         gfx_printf("Desc: %s\n", utils_err_codes[err]);
-    else if (err >= ERR_SAME_LOC && err <= ERR_SD_EJECTED)
+    else if (err >= ERR_SAME_LOC && err <= ERR_PARSE_FAIL)
         gfx_printf("Desc: %s\n", utils_err_codes_te[err - 50]);
 
     if (loc)
@@ -63,6 +63,9 @@ int gfx_errDisplay(char *src_func, int err, int loc){
     gfx_printf("\nPress any button to return");
 
     RESETCOLOR;
+
+    while (btn_read() != 0);
+
     return btn_wait();
 }
 

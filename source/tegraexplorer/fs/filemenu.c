@@ -13,7 +13,7 @@
 #include "../gfx/menu.h"
 #include "../common/types.h"
 #include "../../utils/sprintf.h"
-#include "../utils/script.h"
+#include "../script/parser.h"
 #include "../emmc/emmcoperations.h"
 
 extern char *currentpath;
@@ -145,7 +145,7 @@ int filemenu(menu_entry file){
     }
 
     SETBIT(fs_menu_file[7].property, ISHIDE, !(strstr(file.name, ".bin") != NULL && file.property & ISKB));
-    SETBIT(fs_menu_file[8].property, ISHIDE, !(strstr(file.name, ".tegrascript") != NULL));
+    SETBIT(fs_menu_file[8].property, ISHIDE, !(strstr(file.name, ".te") != NULL));
     SETBIT(fs_menu_file[10].property, ISHIDE, !(strstr(file.name, ".bis") != NULL));
     SETBIT(fs_menu_file[11].property, ISHIDE, !(strstr(file.name, ".bis") != NULL));
 
@@ -165,7 +165,9 @@ int filemenu(menu_entry file){
             launch_payload(fsutil_getnextloc(currentpath, file.name));
             break;
         case FILE_SCRIPT:
-            ParseScript(fsutil_getnextloc(currentpath, file.name));
+            //ParseScript(fsutil_getnextloc(currentpath, file.name));
+            runScript(fsutil_getnextloc(currentpath, file.name));
+            fsreader_readfolder(currentpath);
             break;
         case FILE_HEXVIEW:
             viewbytes(fsutil_getnextloc(currentpath, file.name));

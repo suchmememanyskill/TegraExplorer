@@ -6,7 +6,7 @@
 #include "../utils/btn.h"
 #include "emmc/emmc.h"
 #include "../storage/emummc.h"
-#include "utils/script.h"
+#include "script/functions.h"
 
 #include "common/common.h"
 #include "gfx/menu.h"
@@ -127,7 +127,7 @@ void MainMenu_Exit(){
     } //todo declock bpmp
 }
 
-part_handler mainmenu_functions[] = {
+func_void_ptr mainmenu_functions[] = {
     MainMenu_SDCard,
     MainMenu_EMMC,
     MainMenu_EMMC,

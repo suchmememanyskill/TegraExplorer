@@ -73,7 +73,7 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
     if (calculatedamount){
         SWAPCOLOR(COLOR_DEFAULT);
         SWAPBGCOLOR(COLOR_WHITE);
-        gfx_printf("%3d entries\n", amount);
+        gfx_printf("%3d entries\n", calculatedamount);
         RESETCOLOR;
     }
     else
