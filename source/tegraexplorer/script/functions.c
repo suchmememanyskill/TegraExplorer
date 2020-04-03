@@ -446,6 +446,22 @@ int part_stringcompare(){
     return (strcmp(left, right)) ? 0 : 1;
 }
 
+int part_fs_combinePath(){
+    char *combined, *left, *middle;
+    if (parseStringInput(argv[0], &left))
+        return -1;
+    if (parseStringInput(argv[1], &middle))
+        return -1;
+    if (argv[2][0] != '$')
+        return -1;
+    
+    combined = fsutil_getnextloc(left, middle);
+    
+    str_str_add(argv[2], combined);
+    free(combined);
+    return 0;
+}
+
 str_fnc_struct functions[] = {
     {"printf", part_printf, 1},
     {"printInt", part_print_int, 1},
@@ -471,6 +487,7 @@ str_fnc_struct functions[] = {
     {"fs_openDir", part_fs_OpenDir, 1},
     {"fs_closeDir", part_fs_CloseDir, 0},
     {"fs_readDir", part_fs_ReadDir, 0},
+    {"fs_combinePath", part_fs_combinePath, 3},
     {"mmc_connect", part_ConnectMMC, 1},
     {"mmc_mount", part_MountMMC, 1},
     {"pause", part_Pause, 0},

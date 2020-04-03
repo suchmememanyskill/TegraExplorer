@@ -15,7 +15,7 @@
 #include "functions.h"
 #include "variables.h"
 #include "../fs/fsreader.h"
-
+#include "../utils/utils.h"
 
 u32 countchars(char* in, char target) {
     u32 len = strlen(in);
@@ -267,10 +267,12 @@ extern u32 currentcolor;
 extern char *currentpath;
 void runScript(char *path){
     int res;
+    char *path_local = NULL;
     forceExit = false;
     currentchar = 0;
     currentcolor = COLOR_WHITE;
     gfx_clearscreen();
+    utils_copystring(path, &path_local);
 
     res = f_open(&scriptin, path, FA_READ | FA_OPEN_EXISTING);
     if (res != FR_OK){
@@ -301,5 +303,6 @@ void runScript(char *path){
     str_int_clear();
     str_jmp_clear();
     str_str_clear();
+    free(path_local);
     //btn_wait();
 }
