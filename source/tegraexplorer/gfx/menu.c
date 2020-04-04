@@ -6,7 +6,6 @@
 #include "../../utils/util.h"
 #include "../../mem/minerva.h"
 #include "../../soc/gpio.h"
-#include "gfxutils.h"
 
 extern void sd_unmount();
 extern bool sd_inited;

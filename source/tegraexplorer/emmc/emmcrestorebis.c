@@ -105,6 +105,7 @@ int restore_emmc_part(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part
     return 0;
 }
 
+// function replaced by new mmc implementation. Will be removed at some point
 int restore_emmc_file(char *path, const char *target, u8 partition, u8 mmctype){
     connect_mmc(mmctype);
 

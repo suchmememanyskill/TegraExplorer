@@ -1,5 +1,6 @@
 #pragma once
 #include "../../utils/types.h"
+#include "../../utils/list.h"
 
 typedef struct _pkg1_info {
     short ver;
@@ -15,6 +16,8 @@ int mount_mmc(const char *partition, const int biskeynumb);
 void connect_mmc(short mmctype);
 void disconnect_mmc();
 int connect_part(const char *partition);
+void dumpEmuGpt();
+link_t *selectGpt(short mmcType);
 
 static const u8 zeros[0x10] = {0};
 

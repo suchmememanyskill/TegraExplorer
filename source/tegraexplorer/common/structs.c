@@ -2,13 +2,9 @@
 #include "types.h"
 
 menu_entry mainmenu_main[] = {
-    {"[SD:/] SD CARD\n", COLOR_GREEN, ISMENU},
-    {"[SAFE:/] EMMC", COLOR_ORANGE, ISMENU},
-    {"[SYSTEM:/] EMMC", COLOR_ORANGE, ISMENU},
-    {"[USER:/] EMMC", COLOR_ORANGE, ISMENU},
-    {"\n[SAFE:/] EMUMMC", COLOR_BLUE, ISMENU},
-    {"[SYSTEM:/] EMUMMC", COLOR_BLUE, ISMENU},
-    {"[USER:/] EMUMMC", COLOR_BLUE, ISMENU},
+    {"[SD:/] SD CARD", COLOR_GREEN, ISMENU},
+    {"[EMMC:/] EMMC", COLOR_ORANGE, ISMENU},
+    {"[EMMC:/] EMUMMC", COLOR_BLUE, ISMENU},
     {"\nMount/Unmount SD", COLOR_WHITE, ISMENU},
     {"Tools", COLOR_VIOLET, ISMENU},
     {"SD format", COLOR_VIOLET, ISMENU},
@@ -30,8 +26,7 @@ menu_entry mainmenu_tools[] = {
     {"\nDisplay Console Info", COLOR_GREEN, ISMENU},
     {"Display GPIO pins", COLOR_VIOLET, ISMENU},
     {"Dump Firmware", COLOR_BLUE, ISMENU},
-    {"Dump User Saves", COLOR_YELLOW, ISMENU},
-    {"Dump bis", COLOR_ORANGE, ISMENU}
+    {"Dump User Saves", COLOR_YELLOW, ISMENU}
 };
 
 menu_entry mainmenu_format[] = {
@@ -73,4 +68,26 @@ menu_entry fs_menu_startdir[] = {
     {"Folder -> previous folder            ", COLOR_ORANGE, ISMENU},
     {"Clipboard -> Current folder          ", COLOR_ORANGE, ISMENU},
     {"Current folder menu                  ", COLOR_ORANGE, ISMENU}
+};
+
+gpt_entry_rule gpt_fs_rules[] = {
+    {"PRODINFOF", 0 | isFS},
+    {"SAFE", 1 | isFS },
+    {"SYSTEM", 2 | isFS},
+    {"USER", 3 | isFS},
+    {NULL, 0}
+};
+
+menu_entry mmcmenu_start[] = {
+    {"Back", COLOR_ORANGE, ISMENU},
+    {"Dump File Partitions", COLOR_ORANGE, ISMENU},
+    {"Clipboard -> Partition\n", COLOR_ORANGE, ISMENU},
+    {"BOOT0/1", COLOR_BLUE, isBOOT | ISMENU}
+};
+
+menu_entry mmcmenu_filemenu[] = {
+    {"Part:", COLOR_ORANGE, ISSKIP | ISMENU},
+    {NULL, COLOR_VIOLET, ISSKIP | ISMENU},
+    {"\nBack", COLOR_WHITE, ISMENU},
+    {"Dump to SD", COLOR_YELLOW, ISMENU}
 };

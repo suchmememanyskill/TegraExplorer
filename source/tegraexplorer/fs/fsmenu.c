@@ -48,6 +48,7 @@ void fileexplorer(const char *startpath, int type){
                     copyfolder(clipboard, currentpath);
                 else
                     copyfile(clipboard, currentpath);
+                clipboardhelper = 0;
                 break;
             
             case FILEMENU_CURFOLDER:

@@ -21,7 +21,9 @@ enum utils_err_codes_te_call {
     ERR_EMMC_WRITE_FAILED,
     ERR_FILE_TOO_BIG_FOR_DEST,
     ERR_SD_EJECTED,
-    ERR_PARSE_FAIL
+    ERR_PARSE_FAIL,
+    ERR_CANNOT_COPY_FILE_TO_FS_PART,
+    ERR_NO_DESTENATION
 };
 
 extern const char *utils_err_codes_te[];
@@ -57,8 +59,7 @@ enum mainmenu_tools_return {
     TOOLS_DISPLAY_INFO = 1,
     TOOLS_DISPLAY_GPIO,
     TOOLS_DUMPFIRMWARE,
-    TOOLS_DUMPUSERSAVE,
-    TOOLS_DUMP_BOOT
+    TOOLS_DUMPUSERSAVE
 };
 
 extern menu_entry mainmenu_tools[];
@@ -105,3 +106,9 @@ enum fs_menu_startdir_return {
 };
 
 extern menu_entry fs_menu_startdir[];
+
+extern gpt_entry_rule gpt_fs_rules[];
+
+extern menu_entry mmcmenu_start[];
+
+extern menu_entry mmcmenu_filemenu[];
