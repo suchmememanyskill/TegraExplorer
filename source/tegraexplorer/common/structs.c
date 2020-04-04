@@ -81,5 +81,13 @@ gpt_entry_rule gpt_fs_rules[] = {
 
 menu_entry mmcmenu_start[] = {
     {"Back", COLOR_ORANGE, ISMENU},
-    {"RESERVED\n", COLOR_ORANGE, ISMENU}
+    {"RESERVED\n", COLOR_ORANGE, ISMENU},
+    {"BOOT0/1", COLOR_BLUE, isBOOT | ISMENU}
+};
+
+menu_entry mmcmenu_filemenu[] = {
+    {"Part:", COLOR_ORANGE, ISSKIP | ISMENU},
+    {NULL, COLOR_VIOLET, ISSKIP | ISMENU},
+    {"\nBack", COLOR_WHITE, ISMENU},
+    {"Dump to SD", COLOR_YELLOW, ISMENU}
 };

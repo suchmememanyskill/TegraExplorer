@@ -51,3 +51,4 @@ typedef struct {
 } gpt_entry_rule;
 
 #define isFS 0x80
+#define isBOOT 0x2

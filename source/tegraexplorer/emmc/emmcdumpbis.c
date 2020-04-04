@@ -68,11 +68,24 @@ int dump_emmc_part(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
     return 0;
 }
 
+int existsCheck(char *path){
+    int res = 0;
+
+    if (fsutil_checkfile(path)){
+        gfx_printf("File already exists! Overwrite?\nVol +/- to cancel\n");
+        res = gfx_makewaitmenu("Power to continue", 3);
+        gfx_printf("\r                 \r");
+        return res;
+    }
+
+    return 1;
+}
+
 int dump_emmc_parts(u16 parts, u8 mmctype){
     char *path;
-    char basepath[] = "sd:/tegraexplorer/dumps";
+    char basepath[] = "sd:/tegraexplorer/partition_dumps";
     f_mkdir("sd:/tegraexplorer");
-    f_mkdir("sd:/tegraexplorer/dumps");
+    f_mkdir("sd:/tegraexplorer/partition_dumps");
 
     connect_mmc(mmctype);
     gfx_clearscreen();
@@ -92,29 +105,44 @@ int dump_emmc_parts(u16 parts, u8 mmctype){
 
             emummc_storage_set_mmc_partition(&storage, i + 1);
             utils_copystring(fsutil_getnextloc(basepath, bootPart.name), &path);
+
+            if (!existsCheck(path))
+                continue;
+
             gfx_printf("Dumping %s\n", bootPart.name);
  
             dump_emmc_part(path, &storage, &bootPart);
             free(path);
         }
+        emummc_storage_set_mmc_partition(&storage, 0);
     }
 
     if (parts & PART_PKG2){
         for (int i = 0; i < 6; i++){
-            if (connect_part(pkg2names[i])){
-                gfx_errDisplay("dump_emmc_parts", ERR_PART_NOT_FOUND, 0);
-                return -1;
-            }
+            utils_copystring(fsutil_getnextloc(basepath, pkg2names[i]), &path);
+            gfx_printf("Dumping %s\n", pkg2names[i]);
 
-            utils_copystring(fsutil_getnextloc(basepath, system_part->name), &path);
-            gfx_printf("Dumping %s\n", system_part->name);
-
-            dump_emmc_part(path, &storage, system_part);
+            dump_emmc_specific(pkg2names[i], path);
             free(path);
         }
     }
 
     gfx_printf("\nDone!");
     btn_wait();
+    return 0;
+}
+
+int dump_emmc_specific(char *part, char *path){
+    if (!existsCheck(path))
+        return 0;
+
+    emummc_storage_set_mmc_partition(&storage, 0);
+    if (connect_part(part)){
+        gfx_errDisplay("dump_emmc_specific", ERR_PART_NOT_FOUND, 0);
+        return 1;
+    }
+
+    dump_emmc_part(path, &storage, system_part);
+
     return 0;
 }

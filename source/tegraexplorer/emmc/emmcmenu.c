@@ -29,6 +29,8 @@
 #include "../utils/utils.h"
 #include "../gfx/menu.h"
 #include "../fs/fsmenu.h"
+#include "emmcoperations.h"
+#include "../fs/fsutils.h"
 
 menu_entry *mmcMenuEntries = NULL;
 
@@ -71,7 +73,7 @@ void addEntry(emmc_part_t *part, u8 property, int spot){
 }
 
 int fillMmcMenu(short mmcType){
-    int count = 2, i;
+    int count = 3, i;
 
     if (mmcMenuEntries != NULL)
         clearfileobjects(&mmcMenuEntries);
@@ -83,7 +85,7 @@ int fillMmcMenu(short mmcType){
 
     createfileobjects(count, &mmcMenuEntries);
 
-    for (i = 0; i < 2; i++){
+    for (i = 0; i < 3; i++){
         utils_copystring(mmcmenu_start[i].name, &mmcMenuEntries[i].name);
         mmcMenuEntries[i].property = mmcmenu_start[i].property;
         mmcMenuEntries[i].storage = mmcmenu_start[i].storage;
@@ -112,7 +114,33 @@ int makeMmcMenu(short mmcType){
                 if (mmcMenuEntries[selection].property & ISDIR){
                     if (!mount_mmc(mmcMenuEntries[selection].name, mmcMenuEntries[selection].storage))
                         fileexplorer("emmc:/", 1);  
-                } 
+                }
+                else {
+                    if (mmcmenu_filemenu[1].name != NULL)
+                        free(mmcmenu_filemenu[1].name);
+                    
+                    utils_copystring(mmcMenuEntries[selection].name, &mmcmenu_filemenu[1].name);
+
+                    if ((menu_make(mmcmenu_filemenu, 4, "-- RAW PARTITION --")) < 3){
+                        break;
+                    }
+
+                    if (mmcMenuEntries[selection].property & isBOOT){
+                        dump_emmc_parts(PART_BOOT, (u8)mmcType);
+                    }
+                    else {
+                        f_mkdir("sd:/tegraexplorer");
+                        f_mkdir("sd:/tegraexplorer/partition_dumps");
+
+                        gfx_clearscreen();
+                        gfx_printf("Dumping %s...\n", mmcMenuEntries[selection].name);
+
+                        if (!dump_emmc_specific(mmcMenuEntries[selection].name, fsutil_getnextloc("sd:/tegraexplorer/partition_dumps", mmcMenuEntries[selection].name))){
+                            gfx_printf("\nDone!");
+                            btn_wait();
+                        }
+                    }
+                }
         }
     }
 }
