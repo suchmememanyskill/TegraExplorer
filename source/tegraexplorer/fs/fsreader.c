@@ -29,20 +29,20 @@ void fsreader_writeclipboard(const char *in, u8 args){
     utils_copystring(in, &clipboard);
 }
 
-void clearfileobjects(){
-    if (fsreader_files != NULL){
-        for (int i = 0; fsreader_files[i].name != NULL; i++){
-            free(fsreader_files[i].name);
-            fsreader_files[i].name = NULL;
+void clearfileobjects(menu_entry **menu){
+    if ((*menu) != NULL){
+        for (int i = 0; (*menu)[i].name != NULL; i++){
+            free((*menu)[i].name);
+            (*menu)[i].name = NULL;
         }
-        free(fsreader_files);
-        fsreader_files = NULL;
+        free((*menu));
+        (*menu) = NULL;
     }
 }
 
-void createfileobjects(int size){
-    fsreader_files = calloc (size + 1, sizeof(menu_entry));
-    fsreader_files[size].name = NULL;
+void createfileobjects(int size, menu_entry **menu){
+    (*menu) = calloc (size + 1, sizeof(menu_entry));
+    (*menu)[size].name = NULL;
 }
 
 void addobject(char* name, int spot, u8 attribs){
@@ -83,8 +83,8 @@ int fsreader_readfolder(const char *path){
     FILINFO fno;
     int folderamount, res;
     
-    clearfileobjects();
-    createfileobjects(fsutil_getfolderentryamount(path) + 3);
+    clearfileobjects(&fsreader_files);
+    createfileobjects(fsutil_getfolderentryamount(path) + 3, &fsreader_files);
 
     for (folderamount = 0; folderamount < 3; folderamount++){
         utils_copystring(fs_menu_startdir[folderamount].name, &(fsreader_files[folderamount].name));

@@ -105,3 +105,7 @@ enum fs_menu_startdir_return {
 };
 
 extern menu_entry fs_menu_startdir[];
+
+extern gpt_entry_rule gpt_fs_rules[];
+
+extern menu_entry mmcmenu_start[];

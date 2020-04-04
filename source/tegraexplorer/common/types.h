@@ -44,3 +44,10 @@ typedef struct {
     u32 storage;
     u16 property;
 } menu_entry; 
+
+typedef struct {
+    const char *name;
+    u8 property;
+} gpt_entry_rule;
+
+#define isFS 0x80

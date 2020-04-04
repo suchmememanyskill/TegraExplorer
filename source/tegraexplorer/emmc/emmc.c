@@ -22,13 +22,16 @@
 #include "../../config/config.h"
 #include "../common/common.h"
 #include "../gfx/gfxutils.h"
+#include "../../utils/list.h"
+#include "../../mem/heap.h"
 
 sdmmc_storage_t storage;
 emmc_part_t *system_part;
 sdmmc_t sdmmc;
 extern hekate_config h_cfg;
 __attribute__ ((aligned (16))) FATFS emmc;
-LIST_INIT(gpt);
+LIST_INIT(sys_gpt);
+LIST_INIT(emu_gpt);
 
 u8 bis_key[4][32];
 pkg1_info pkg1inf = {-1, ""};
@@ -64,7 +67,7 @@ pkg1_info returnpkg1info(){
 int connect_part(const char *partition){
     sdmmc_storage_set_mmc_partition(&storage, 0);
 
-    system_part = nx_emmc_part_find(&gpt, partition);
+    system_part = nx_emmc_part_find(selectGpt(currentlyMounted), partition);
     if (!system_part) {
         gfx_errDisplay("connect_mmc_part", ERR_PART_NOT_FOUND, 0);
         return 1;
@@ -213,8 +216,7 @@ int dump_biskeys(){
     }
 
     sdmmc_storage_set_mmc_partition(&storage, 0);
-    // Parse eMMC GPT.
-    nx_emmc_gpt_parse(&gpt, &storage);
+    nx_emmc_gpt_parse(&sys_gpt, &storage);
 
     se_aes_key_set(8, bis_key[2] + 0x00, 0x10);
     se_aes_key_set(9, bis_key[2] + 0x10, 0x10);
@@ -222,4 +224,20 @@ int dump_biskeys(){
     pkg1inf.ver = pkg1_id->kb;
     strcpy(pkg1inf.id, pkg1_id->id);
     return 0;
+}
+
+void dumpEmuGpt(){
+    connect_mmc(EMUMMC);
+    sdmmc_storage_set_mmc_partition(&storage, 0);
+    nx_emmc_gpt_parse(&emu_gpt, &storage);
+}
+
+link_t *selectGpt(short mmcType){
+    switch(mmcType){
+        case SYSMMC:
+            return &sys_gpt;
+        case EMUMMC:
+            return &emu_gpt;
+    }
+    return NULL;
 }
