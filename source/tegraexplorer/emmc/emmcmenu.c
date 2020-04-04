@@ -103,6 +103,8 @@ int fillMmcMenu(short mmcType){
 }
 
 int handleEntries(short mmcType, menu_entry part){
+    int res = 0;
+
     if (part.property & ISDIR){
         if (!mount_mmc(part.name, part.storage))
             fileexplorer("emmc:/", 1);  
@@ -116,20 +118,22 @@ int handleEntries(short mmcType, menu_entry part){
         if ((menu_make(mmcmenu_filemenu, 4, "-- RAW PARTITION --")) < 3)
             return 0;
 
+        f_mkdir("sd:/tegraexplorer");
+        f_mkdir("sd:/tegraexplorer/partition_dumps");
+
+        gfx_clearscreen();
+
         if (part.property & isBOOT){
-            dump_emmc_parts(PART_BOOT, (u8)mmcType);
+            res = emmcDumpBoot("sd:/tegraexplorer/partition_dumps");
         }
         else {
-            f_mkdir("sd:/tegraexplorer");
-            f_mkdir("sd:/tegraexplorer/partition_dumps");
-
-            gfx_clearscreen();
             gfx_printf("Dumping %s...\n", part.name);
+            res = emmcDumpSpecific(part.name, fsutil_getnextloc("sd:/tegraexplorer/partition_dumps", part.name));
+        }
 
-            if (!dump_emmc_specific(part.name, fsutil_getnextloc("sd:/tegraexplorer/partition_dumps", part.name))){
-                gfx_printf("\nDone!");
-                btn_wait();
-            }
+        if (!res){
+            gfx_printf("\nDone!");
+            btn_wait();
         }
     }
 
@@ -182,7 +186,6 @@ int mmcFlashFile(char *path, short mmcType){
     if (part != NULL){
         return restore_emmc_part(path, &storage, part);
     }
-    clipboardhelper = 0;
     return 1;
 }
 
@@ -194,6 +197,7 @@ int makeMmcMenu(short mmcType){
         selection = menu_make(mmcMenuEntries, count, (mmcType == SYSMMC) ? "-- SYSMMC --" : "-- EMUMMC --");
 
         switch(selection){
+            case -1:
             case 0:
                 return 0;
             case 1:
@@ -203,10 +207,11 @@ int makeMmcMenu(short mmcType){
                         gfx_printf("\nDone!");
                         btn_wait();
                     }   
+                    clipboardhelper = 0;
                 }
                 else
                     gfx_errDisplay("mmcMenu", ERR_EMPTY_CLIPBOARD, 0);
-                break; //stubbed
+                break; 
             default:
                 handleEntries(mmcType, mmcMenuEntries[selection]);
                 break;

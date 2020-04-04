@@ -122,7 +122,7 @@ int dump_emmc_parts(u16 parts, u8 mmctype){
             utils_copystring(fsutil_getnextloc(basepath, pkg2names[i]), &path);
             gfx_printf("Dumping %s\n", pkg2names[i]);
 
-            dump_emmc_specific(pkg2names[i], path);
+            emmcDumpSpecific(pkg2names[i], path);
             free(path);
         }
     }
@@ -132,7 +132,36 @@ int dump_emmc_parts(u16 parts, u8 mmctype){
     return 0;
 }
 
-int dump_emmc_specific(char *part, char *path){
+int emmcDumpBoot(char *basePath){
+    emmc_part_t bootPart;
+    const u32 BOOT_PART_SIZE = storage.ext_csd.boot_mult << 17;
+    char *path;
+    memset(&bootPart, 0, sizeof(emmc_part_t));
+        
+    bootPart.lba_start = 0;
+    bootPart.lba_end = (BOOT_PART_SIZE / NX_EMMC_BLOCKSIZE) - 1;
+        
+    for (int i = 0; i < 2; i++){
+        strcpy(bootPart.name, "BOOT");
+        bootPart.name[4] = (u8)('0' + i);
+	    bootPart.name[5] = 0;     
+
+        emummc_storage_set_mmc_partition(&storage, i + 1);
+        utils_copystring(fsutil_getnextloc(basePath, bootPart.name), &path);
+
+        if (!existsCheck(path))
+            continue;
+
+        gfx_printf("Dumping %s\n", bootPart.name);
+ 
+        dump_emmc_part(path, &storage, &bootPart);
+        free(path);
+    }
+    emummc_storage_set_mmc_partition(&storage, 0);
+    return 0;
+}
+
+int emmcDumpSpecific(char *part, char *path){
     if (!existsCheck(path))
         return 0;
 

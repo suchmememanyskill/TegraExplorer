@@ -19,11 +19,14 @@
 #include "../fs/fsutils.h"
 #include "../../utils/sprintf.h"
 #include "../fs/fsactions.h"
+#include "../emmc/emmcoperations.h"
+#include "../emmc/emmcmenu.h"
 
 extern FIL scriptin;
 extern char **argv;
 extern u32 argc;
 extern int forceExit;
+extern short currentlyMounted;
 
 int parseIntInput(char *in, int *out){
     if (in[0] == '@'){
@@ -462,6 +465,34 @@ int part_fs_combinePath(){
     return 0;
 }
 
+int part_mmc_dumpPart(){
+    char *left, *right;
+
+    if (parseStringInput(argv[0], &left))
+        return -1;
+    if (parseStringInput(argv[1], &right))
+        return -1;
+
+    if (!strcmp(left, "BOOT")){
+        return emmcDumpBoot(right);
+    }
+    else {
+        return emmcDumpSpecific(left, right);
+    }
+}
+
+int part_mmc_restorePart(){
+    char *path;
+
+    if (parseStringInput(argv[0], &path))
+        return -1;
+
+    if (currentlyMounted < 0)
+        return -1;
+
+    return mmcFlashFile(path, currentlyMounted);   
+}
+
 str_fnc_struct functions[] = {
     {"printf", part_printf, 1},
     {"printInt", part_print_int, 1},
@@ -490,6 +521,8 @@ str_fnc_struct functions[] = {
     {"fs_combinePath", part_fs_combinePath, 3},
     {"mmc_connect", part_ConnectMMC, 1},
     {"mmc_mount", part_MountMMC, 1},
+    {"mmc_dumpPart", part_mmc_dumpPart, 2},
+    {"mmc_restorePart", part_mmc_restorePart, 1},
     {"pause", part_Pause, 0},
     {"wait", part_Wait, 1},
     {"exit", part_Exit, 0},
