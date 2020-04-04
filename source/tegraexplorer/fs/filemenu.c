@@ -111,7 +111,6 @@ void copyfile(const char *src_in, const char *outfolder){
     free(out);
     free(filename);
     fsreader_readfolder(currentpath);
-    clipboardhelper = 0;
 }
 
 int filemenu(menu_entry file){
