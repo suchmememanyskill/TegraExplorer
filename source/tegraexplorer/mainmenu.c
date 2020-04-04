@@ -60,7 +60,7 @@ void MainMenu_MountSD(){
 
 void MainMenu_Tools(){
     //res = makemenu(toolsmenu, 8);
-    res = menu_make(mainmenu_tools, 6, "-- Tools Menu --");
+    res = menu_make(mainmenu_tools, 5, "-- Tools Menu --");
 
     switch(res){
         case TOOLS_DISPLAY_INFO:
@@ -77,9 +77,6 @@ void MainMenu_Tools(){
             if ((res = utils_mmcMenu()) > 0)
                 dumpusersaves(res);
 
-            break;
-        case TOOLS_DUMP_BOOT:
-            dump_emmc_parts(PART_BOOT | PART_PKG2, SYSMMC);
             break;
     }
 }

@@ -26,8 +26,7 @@ menu_entry mainmenu_tools[] = {
     {"\nDisplay Console Info", COLOR_GREEN, ISMENU},
     {"Display GPIO pins", COLOR_VIOLET, ISMENU},
     {"Dump Firmware", COLOR_BLUE, ISMENU},
-    {"Dump User Saves", COLOR_YELLOW, ISMENU},
-    {"Dump bis", COLOR_ORANGE, ISMENU}
+    {"Dump User Saves", COLOR_YELLOW, ISMENU}
 };
 
 menu_entry mainmenu_format[] = {
@@ -81,6 +80,7 @@ gpt_entry_rule gpt_fs_rules[] = {
 
 menu_entry mmcmenu_start[] = {
     {"Back", COLOR_ORANGE, ISMENU},
+    {"Dump File Partitions", COLOR_ORANGE, ISMENU},
     {"Clipboard -> Partition\n", COLOR_ORANGE, ISMENU},
     {"BOOT0/1", COLOR_BLUE, isBOOT | ISMENU}
 };

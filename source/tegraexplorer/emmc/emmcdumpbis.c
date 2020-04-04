@@ -81,6 +81,7 @@ int existsCheck(char *path){
     return 1;
 }
 
+/*
 int dump_emmc_parts(u16 parts, u8 mmctype){
     char *path;
     char basepath[] = "sd:/tegraexplorer/partition_dumps";
@@ -131,6 +132,7 @@ int dump_emmc_parts(u16 parts, u8 mmctype){
     btn_wait();
     return 0;
 }
+*/
 
 int emmcDumpBoot(char *basePath){
     emmc_part_t bootPart;
@@ -152,7 +154,9 @@ int emmcDumpBoot(char *basePath){
         if (!existsCheck(path))
             continue;
 
+        SWAPCOLOR(COLOR_BLUE);
         gfx_printf("Dumping %s\n", bootPart.name);
+        RESETCOLOR;
  
         dump_emmc_part(path, &storage, &bootPart);
         free(path);
@@ -171,6 +175,9 @@ int emmcDumpSpecific(char *part, char *path){
         return 1;
     }
 
+    SWAPCOLOR(COLOR_VIOLET);
+    gfx_printf("Dumping %s\n", part);
+    RESETCOLOR;
     dump_emmc_part(path, &storage, system_part);
 
     return 0;

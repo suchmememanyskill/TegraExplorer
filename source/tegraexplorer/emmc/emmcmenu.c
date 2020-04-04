@@ -77,7 +77,7 @@ void addEntry(emmc_part_t *part, u8 property, int spot){
 }
 
 int fillMmcMenu(short mmcType){
-    int count = 3, i;
+    int count = 4, i;
 
     if (mmcMenuEntries != NULL)
         clearfileobjects(&mmcMenuEntries);
@@ -89,7 +89,7 @@ int fillMmcMenu(short mmcType){
 
     createfileobjects(count, &mmcMenuEntries);
 
-    for (i = 0; i < 3; i++){
+    for (i = 0; i < 4; i++){
         utils_copystring(mmcmenu_start[i].name, &mmcMenuEntries[i].name);
         mmcMenuEntries[i].property = mmcmenu_start[i].property;
         mmcMenuEntries[i].storage = mmcmenu_start[i].storage;
@@ -127,7 +127,7 @@ int handleEntries(short mmcType, menu_entry part){
             res = emmcDumpBoot("sd:/tegraexplorer/partition_dumps");
         }
         else {
-            gfx_printf("Dumping %s...\n", part.name);
+            //gfx_printf("Dumping %s...\n", part.name);
             res = emmcDumpSpecific(part.name, fsutil_getnextloc("sd:/tegraexplorer/partition_dumps", part.name));
         }
 
@@ -141,16 +141,19 @@ int handleEntries(short mmcType, menu_entry part){
 }
 
 emmc_part_t *mmcFindPart(char *path, short mmcType){
-    char *filename, *extention;
+    char *filename, *extention, *path_local;
     emmc_part_t *part;
-    filename = strrchr(path, '/') + 1;
-    extention = strrchr(path, '.');
+
+    utils_copystring(path, &path_local);
+    filename = strrchr(path_local, '/') + 1;
+    extention = strrchr(path_local, '.');
 
     if (extention != NULL)
         *extention = '\0';
 
     if (checkGptRules(filename)){
         gfx_errDisplay("mmcFindPart", ERR_CANNOT_COPY_FILE_TO_FS_PART, 1);
+        free(path_local);
         return NULL;
     }
 
@@ -158,6 +161,7 @@ emmc_part_t *mmcFindPart(char *path, short mmcType){
 
     if (part != NULL){
         emummc_storage_set_mmc_partition(&storage, 0);
+        free(path_local);
         return part;
     }
 
@@ -171,12 +175,14 @@ emmc_part_t *mmcFindPart(char *path, short mmcType){
         strcpy(part->name, filename);
 
         emummc_storage_set_mmc_partition(&storage, (!strcmp(filename, "BOOT0")) ? 1 : 2);
+        free(path_local);
         return part;
     }
 
     //gfx_printf("Path: %s\nFilename: %s", path, filename);
     //btn_wait();
     gfx_errDisplay("mmcFindPart", ERR_NO_DESTENATION, 2);
+    free(path_local);
     return NULL;
 }
 
@@ -201,6 +207,22 @@ int makeMmcMenu(short mmcType){
             case 0:
                 return 0;
             case 1:
+                gfx_clearscreen();
+                f_mkdir("sd:/tegraexplorer");
+                f_mkdir("sd:/tegraexplorer/partition_dumps");
+
+                for (int i = 0; i < count; i++){
+                    if (mmcMenuEntries[i].property & ISMENU || mmcMenuEntries[i].property & ISDIR)
+                        continue;
+
+                    //gfx_printf("Dumping %s...\n", mmcMenuEntries[i].name);
+                    emmcDumpSpecific(mmcMenuEntries[i].name, fsutil_getnextloc("sd:/tegraexplorer/partition_dumps", mmcMenuEntries[i].name));
+                }
+
+                gfx_printf("\nDone!");
+                btn_wait();
+                break;
+            case 2:
                 if (!(clipboardhelper & ISDIR) && (clipboardhelper & OPERATIONCOPY)){
                     gfx_clearscreen();
                     if (!mmcFlashFile(clipboard, mmcType)){
@@ -211,7 +233,7 @@ int makeMmcMenu(short mmcType){
                 }
                 else
                     gfx_errDisplay("mmcMenu", ERR_EMPTY_CLIPBOARD, 0);
-                break; 
+                break;
             default:
                 handleEntries(mmcType, mmcMenuEntries[selection]);
                 break;
