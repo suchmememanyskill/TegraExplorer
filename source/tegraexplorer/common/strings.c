@@ -50,7 +50,9 @@ const char *utils_err_codes_te[] = { // these start at 50
     "EMMC WRITE FAILED",
     "FILE TOO BIG FOR DEST",
     "SD EJECTED",
-    "PARSING FAILED"
+    "PARSING FAILED",
+    "CANNOT COPY FILE TO FS PART",
+    "NO DESTENATION"
 };
 
 const char *pkg2names[] = {

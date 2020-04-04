@@ -81,7 +81,7 @@ gpt_entry_rule gpt_fs_rules[] = {
 
 menu_entry mmcmenu_start[] = {
     {"Back", COLOR_ORANGE, ISMENU},
-    {"RESERVED\n", COLOR_ORANGE, ISMENU},
+    {"Clipboard -> Partition\n", COLOR_ORANGE, ISMENU},
     {"BOOT0/1", COLOR_BLUE, isBOOT | ISMENU}
 };
 
