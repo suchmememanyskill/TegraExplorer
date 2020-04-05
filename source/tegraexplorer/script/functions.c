@@ -493,6 +493,17 @@ int part_mmc_restorePart(){
     return mmcFlashFile(path, currentlyMounted);   
 }
 
+int part_fs_extractBisFile(){
+    char *path, *outfolder;
+
+    if (parseStringInput(argv[0], &path))
+        return -1;
+    if (parseStringInput(argv[1], &outfolder))
+        return -1;
+
+    return extract_bis_file(path, outfolder);
+}
+
 str_fnc_struct functions[] = {
     {"printf", part_printf, 1},
     {"printInt", part_print_int, 1},
@@ -519,6 +530,7 @@ str_fnc_struct functions[] = {
     {"fs_closeDir", part_fs_CloseDir, 0},
     {"fs_readDir", part_fs_ReadDir, 0},
     {"fs_combinePath", part_fs_combinePath, 3},
+    {"fs_extractBisFile", part_fs_extractBisFile, 2},
     {"mmc_connect", part_ConnectMMC, 1},
     {"mmc_mount", part_MountMMC, 1},
     {"mmc_dumpPart", part_mmc_dumpPart, 2},

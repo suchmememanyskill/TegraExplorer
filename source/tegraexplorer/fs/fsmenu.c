@@ -19,6 +19,9 @@ void fileexplorer(const char *startpath, int type){
     if (lastentry > 0 && lastentry == type)
         clipboardhelper = 0;
     
+    if (clipboardhelper & OPERATIONMOVE)
+        clipboardhelper = 0;
+    
     lastentry = type;
     
     fsreader_writecurpath(startpath);
