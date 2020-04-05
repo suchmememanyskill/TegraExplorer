@@ -194,6 +194,7 @@ int part_SetStringIndex(){
         return -1;
     if (str_str_index(index, &out))
         return -1;
+
     str_str_add(argv[1], out);
     return 0;
 }
@@ -504,10 +505,16 @@ int part_fs_extractBisFile(){
     return extract_bis_file(path, outfolder);
 }
 
+int part_clearscreen(){
+    gfx_clearscreen();
+    return 0;
+}
+
 str_fnc_struct functions[] = {
     {"printf", part_printf, 1},
     {"printInt", part_print_int, 1},
     {"setPrintPos", part_setPrintPos, 2},
+    {"clearscreen", part_clearscreen, 0},
     {"if", part_if, 1},
     {"math", part_Math, 3},
     {"check", part_Check, 3},
