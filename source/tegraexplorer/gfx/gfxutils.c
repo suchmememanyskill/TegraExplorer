@@ -25,7 +25,7 @@ void gfx_clearscreen(){
 
     gfx_box(0, 0, 719, 15, COLOR_WHITE);
     gfx_con_setpos(0, 0);
-    gfx_printf("Tegraexplorer v1.4.0\n");
+    gfx_printf("Tegraexplorer v1.5.0\n");
 
     RESETCOLOR;
 }

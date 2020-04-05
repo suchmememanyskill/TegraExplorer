@@ -228,7 +228,7 @@ int dump_biskeys(){
 
 void dumpEmuGpt(){
     connect_mmc(EMUMMC);
-    sdmmc_storage_set_mmc_partition(&storage, 0);
+    emummc_storage_set_mmc_partition(&storage, 0);
     nx_emmc_gpt_parse(&emu_gpt, &storage);
 }
 
