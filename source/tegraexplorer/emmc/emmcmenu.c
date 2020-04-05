@@ -3,21 +3,12 @@
 #include "../../mem/heap.h"
 #include "../../utils/types.h"
 #include "../../libs/fatfs/ff.h"
-#include "../../utils/sprintf.h"
 #include "../../utils/btn.h"
 #include "../../gfx/gfx.h"
 #include "../../utils/util.h"
-#include "../../hos/pkg1.h"
-#include "../../storage/sdmmc.h"
 #include "../../storage/nx_emmc.h"
-#include "../../sec/tsec.h"
-#include "../../soc/t210.h"
-#include "../../soc/fuse.h"
 #include "../../mem/mc.h"
-#include "../../sec/se.h"
-#include "../../soc/hw_init.h"
 #include "../../mem/emc.h"
-#include "../../mem/sdram.h"
 #include "../../storage/emummc.h"
 #include "../../config/config.h"
 #include "../common/common.h"
@@ -38,13 +29,6 @@ extern emmc_part_t *system_part;
 extern char *clipboard;
 extern u8 clipboardhelper;
 
-int checkGptRules(char *in){
-    for (int i = 0; gpt_fs_rules[i].name != NULL; i++){
-        if (!strcmp(in, gpt_fs_rules[i].name))
-            return gpt_fs_rules[i].property;
-    }
-    return 0;
-}
 
 void addEntry(emmc_part_t *part, u8 property, int spot){
     if (mmcMenuEntries[spot].name != NULL){
@@ -138,61 +122,6 @@ int handleEntries(short mmcType, menu_entry part){
     }
 
     return 0;
-}
-
-emmc_part_t *mmcFindPart(char *path, short mmcType){
-    char *filename, *extention, *path_local;
-    emmc_part_t *part;
-
-    utils_copystring(path, &path_local);
-    filename = strrchr(path_local, '/') + 1;
-    extention = strrchr(path_local, '.');
-
-    if (extention != NULL)
-        *extention = '\0';
-
-    if (checkGptRules(filename)){
-        gfx_errDisplay("mmcFindPart", ERR_CANNOT_COPY_FILE_TO_FS_PART, 1);
-        free(path_local);
-        return NULL;
-    }
-
-    part = nx_emmc_part_find(selectGpt(mmcType), filename);
-
-    if (part != NULL){
-        emummc_storage_set_mmc_partition(&storage, 0);
-        free(path_local);
-        return part;
-    }
-
-    if (!strcmp(filename, "BOOT0") || !strcmp(filename, "BOOT1")){
-        const u32 BOOT_PART_SIZE = storage.ext_csd.boot_mult << 17;
-        part = calloc(1, sizeof(emmc_part_t));
-
-        part->lba_start = 0;
-        part->lba_end = (BOOT_PART_SIZE / NX_EMMC_BLOCKSIZE) - 1;
-
-        strcpy(part->name, filename);
-
-        emummc_storage_set_mmc_partition(&storage, (!strcmp(filename, "BOOT0")) ? 1 : 2);
-        free(path_local);
-        return part;
-    }
-
-    //gfx_printf("Path: %s\nFilename: %s", path, filename);
-    //btn_wait();
-    gfx_errDisplay("mmcFindPart", ERR_NO_DESTENATION, 2);
-    free(path_local);
-    return NULL;
-}
-
-int mmcFlashFile(char *path, short mmcType){
-    emmc_part_t *part;
-    part = mmcFindPart(path, mmcType);
-    if (part != NULL){
-        return restore_emmc_part(path, &storage, part);
-    }
-    return 1;
 }
 
 int makeMmcMenu(short mmcType){

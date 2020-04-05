@@ -85,8 +85,7 @@ enum fs_menu_file_return {
     FILE_PAYLOAD,
     FILE_SCRIPT,
     FILE_HEXVIEW,
-    FILE_DUMPBIS,
-    FILE_RESTOREBIS
+    FILE_DUMPBIS
 };
 
 extern menu_entry fs_menu_file[];

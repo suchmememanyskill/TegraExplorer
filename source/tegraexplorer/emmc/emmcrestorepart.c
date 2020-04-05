@@ -18,7 +18,7 @@
 extern sdmmc_storage_t storage;
 extern emmc_part_t *system_part;
 
-int restore_emmc_part(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
+int emmcRestorePart(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
     FIL fp;
     FILINFO fno;
     u8 *buf;
@@ -106,6 +106,7 @@ int restore_emmc_part(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part
 }
 
 // function replaced by new mmc implementation. Will be removed at some point
+/*
 int restore_emmc_file(char *path, const char *target, u8 partition, u8 mmctype){
     connect_mmc(mmctype);
 
@@ -165,4 +166,64 @@ int restore_bis_using_file(char *path, u8 mmctype){
     btn_wait();
 
     return 0;
+}
+*/
+
+emmc_part_t *mmcFindPart(char *path, short mmcType){
+    char *filename, *extention, *path_local;
+    emmc_part_t *part;
+
+    utils_copystring(path, &path_local);
+    filename = strrchr(path_local, '/') + 1;
+    extention = strrchr(path_local, '.');
+
+    if (extention != NULL)
+        *extention = '\0';
+
+    if (checkGptRules(filename)){
+        gfx_errDisplay("mmcFindPart", ERR_CANNOT_COPY_FILE_TO_FS_PART, 1);
+        free(path_local);
+        return NULL;
+    }
+
+    part = nx_emmc_part_find(selectGpt(mmcType), filename);
+
+    if (part != NULL){
+        emummc_storage_set_mmc_partition(&storage, 0);
+        free(path_local);
+        return part;
+    }
+
+    if (!strcmp(filename, "BOOT0") || !strcmp(filename, "BOOT1")){
+        const u32 BOOT_PART_SIZE = storage.ext_csd.boot_mult << 17;
+        part = calloc(1, sizeof(emmc_part_t));
+
+        part->lba_start = 0;
+        part->lba_end = (BOOT_PART_SIZE / NX_EMMC_BLOCKSIZE) - 1;
+
+        strcpy(part->name, filename);
+
+        emummc_storage_set_mmc_partition(&storage, (!strcmp(filename, "BOOT0")) ? 1 : 2);
+        free(path_local);
+        return part;
+    }
+
+    //gfx_printf("Path: %s\nFilename: %s", path, filename);
+    //btn_wait();
+    gfx_errDisplay("mmcFindPart", ERR_NO_DESTENATION, 2);
+    free(path_local);
+    return NULL;
+}
+
+int mmcFlashFile(char *path, short mmcType){
+    emmc_part_t *part;
+    int res;
+
+    part = mmcFindPart(path, mmcType);
+    if (part != NULL){
+        res = emmcRestorePart(path, &storage, part);
+        emummc_storage_set_mmc_partition(&storage, 0);
+        return res;
+    }
+    return 1;
 }

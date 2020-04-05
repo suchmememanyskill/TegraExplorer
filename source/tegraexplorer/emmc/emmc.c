@@ -241,3 +241,11 @@ link_t *selectGpt(short mmcType){
     }
     return NULL;
 }
+
+int checkGptRules(char *in){
+    for (int i = 0; gpt_fs_rules[i].name != NULL; i++){
+        if (!strcmp(in, gpt_fs_rules[i].name))
+            return gpt_fs_rules[i].property;
+    }
+    return 0;
+}

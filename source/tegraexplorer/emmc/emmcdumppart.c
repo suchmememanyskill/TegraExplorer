@@ -18,7 +18,7 @@
 extern sdmmc_storage_t storage;
 extern emmc_part_t *system_part;
 
-int dump_emmc_part(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
+int emmcDumpPart(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
     FIL fp;
     u8 *buf;
 	u32 lba_curr = part->lba_start;
@@ -158,7 +158,7 @@ int emmcDumpBoot(char *basePath){
         gfx_printf("Dumping %s\n", bootPart.name);
         RESETCOLOR;
  
-        dump_emmc_part(path, &storage, &bootPart);
+        emmcDumpPart(path, &storage, &bootPart);
         free(path);
     }
     emummc_storage_set_mmc_partition(&storage, 0);
@@ -178,7 +178,7 @@ int emmcDumpSpecific(char *part, char *path){
     SWAPCOLOR(COLOR_VIOLET);
     gfx_printf("Dumping %s\n", part);
     RESETCOLOR;
-    dump_emmc_part(path, &storage, system_part);
+    emmcDumpPart(path, &storage, system_part);
 
     return 0;
 }

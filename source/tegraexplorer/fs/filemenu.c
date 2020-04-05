@@ -146,9 +146,8 @@ int filemenu(menu_entry file){
     SETBIT(fs_menu_file[7].property, ISHIDE, !(strstr(file.name, ".bin") != NULL && file.property & ISKB));
     SETBIT(fs_menu_file[8].property, ISHIDE, !(strstr(file.name, ".te") != NULL));
     SETBIT(fs_menu_file[10].property, ISHIDE, !(strstr(file.name, ".bis") != NULL));
-    SETBIT(fs_menu_file[11].property, ISHIDE, !(strstr(file.name, ".bis") != NULL));
 
-    temp = menu_make(fs_menu_file, 12, "-- File Menu --");
+    temp = menu_make(fs_menu_file, 11, "-- File Menu --");
 
     switch (temp){
         case FILE_COPY:
@@ -176,9 +175,6 @@ int filemenu(menu_entry file){
             extract_bis_file(fsutil_getnextloc(currentpath, file.name), currentpath);
             fsreader_readfolder(currentpath);
             btn_wait();
-            break;
-        case FILE_RESTOREBIS:
-            restore_bis_using_file(fsutil_getnextloc(currentpath, file.name), SYSMMC);
             break;
         case -1:
             return -1;

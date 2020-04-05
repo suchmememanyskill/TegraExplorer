@@ -18,6 +18,7 @@ void disconnect_mmc();
 int connect_part(const char *partition);
 void dumpEmuGpt();
 link_t *selectGpt(short mmcType);
+int checkGptRules(char *in);
 
 static const u8 zeros[0x10] = {0};
 
