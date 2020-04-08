@@ -30,7 +30,7 @@ extern short currentlyMounted;
 
 int parseIntInput(char *in, int *out){
     if (in[0] == '@'){
-        if (str_int_find(argv[0], out))
+        if (str_int_find(in, out))
             return -1;
     }
     else
@@ -41,7 +41,7 @@ int parseIntInput(char *in, int *out){
 
 int parseJmpInput(char *in, u64 *out){
     if (in[0] == '?'){
-        if (str_jmp_find(argv[0], out))
+        if (str_jmp_find(in, out))
             return -1;
         else
             return 0;
