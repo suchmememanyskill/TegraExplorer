@@ -120,12 +120,10 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
 
         res = 0;
         while (!res){
-            if (!res){
-                if (sd_inited && !!gpio_read(GPIO_PORT_Z, GPIO_PIN_1)){
-                    gfx_errDisplay("menu", ERR_SD_EJECTED, 0);
-                    sd_unmount();
-                    return -1;
-                }
+            if (sd_inited && !!gpio_read(GPIO_PORT_Z, GPIO_PIN_1)){
+                gfx_errDisplay("menu", ERR_SD_EJECTED, 0);
+                sd_unmount();
+                return -1;
             }
 
             res = btn_read();

@@ -70,7 +70,7 @@ u32 splitargs(char* in) {
             }
             i--;
         }
-        else if (in[i] >= '0' && in[i] <= '9')
+        else if ((in[i] >= '0' && in[i] <= '9') || (in[i] >= '<' && in[i] <= '>') || in[i] == '+' || in[i] == '-' || in[i] == '*' || in[i] == '/')
             argv[curcount][current++] = in[i];
         else if (in[i] == '"') {
             i++;
