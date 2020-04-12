@@ -103,6 +103,29 @@ int part_Wait(){
     return 0;
 }
 
+int part_Check(){
+    int left, right;
+    if (parseIntInput(argv[0], &left))
+        return -1;
+    if (parseIntInput(argv[2], &right))
+        return -1;
+
+    if (!strcmp(argv[1], "=="))
+        return (left == right);
+    else if (!strcmp(argv[1], "!="))
+        return (left != right);
+    else if (!strcmp(argv[1], ">="))
+        return (left >= right);
+    else if (!strcmp(argv[1], "<="))
+        return (left <= right);
+    else if (!strcmp(argv[1], ">"))
+        return (left > right);
+    else if (!strcmp(argv[1], "<"))
+        return (left < right);
+    else
+        return -1;
+}
+
 int part_if(){
     int condition;
     if (parseIntInput(argv[0], &condition))
@@ -125,6 +148,19 @@ int part_if(){
     */
 }
 
+int part_if_args(){
+    int condition;
+    if ((condition = part_Check()) < 0)
+        return -1;
+
+    getfollowingchar('{');
+
+    if (!condition)
+        skipbrackets();
+    
+    return 0;
+}
+
 int part_Math(){
     int left, right;
     if (parseIntInput(argv[0], &left))
@@ -143,29 +179,6 @@ int part_Math(){
             return left / right;
     }
     return -1;
-}
-
-int part_Check(){
-    int left, right;
-    if (parseIntInput(argv[0], &left))
-        return -1;
-    if (parseIntInput(argv[2], &right))
-        return -1;
-
-    if (!strcmp(argv[1], "=="))
-        return (left == right);
-    else if (!strcmp(argv[1], "!="))
-        return (left != right);
-    else if (!strcmp(argv[1], ">="))
-        return (left >= right);
-    else if (!strcmp(argv[1], "<="))
-        return (left <= right);
-    else if (!strcmp(argv[1], ">"))
-        return (left > right);
-    else if (!strcmp(argv[1], "<"))
-        return (left < right);
-    else
-        return -1;
 }
 
 int part_SetInt(){
@@ -200,8 +213,8 @@ int part_SetStringIndex(){
 }
 
 int part_goto(){
-    u64 target = 0;
-    if (parseJmpInput(argv[0], &target))
+    int target = 0;
+    if (parseIntInput(argv[0], &target))
         return -1;
     f_lseek(&scriptin, target);
     return 0;
@@ -510,12 +523,17 @@ int part_clearscreen(){
     return 0;
 }
 
+int part_getPos(){
+    return (int)f_tell(&scriptin);
+}
+
 str_fnc_struct functions[] = {
     {"printf", part_printf, 1},
     {"printInt", part_print_int, 1},
     {"setPrintPos", part_setPrintPos, 2},
     {"clearscreen", part_clearscreen, 0},
     {"if", part_if, 1},
+    {"if", part_if_args, 3}, // function overloading
     {"math", part_Math, 3},
     {"check", part_Check, 3},
     {"setInt", part_SetInt, 1},
@@ -542,6 +560,7 @@ str_fnc_struct functions[] = {
     {"mmc_mount", part_MountMMC, 1},
     {"mmc_dumpPart", part_mmc_dumpPart, 2},
     {"mmc_restorePart", part_mmc_restorePart, 1},
+    {"getPosition", part_getPos, 0},
     {"pause", part_Pause, 0},
     {"wait", part_Wait, 1},
     {"exit", part_Exit, 0},
@@ -552,12 +571,10 @@ int run_function(char *func_name, int *out){
     for (u32 i = 0; functions[i].key != NULL; i++){
         if (!strcmp(functions[i].key, func_name)){
             if (argc != functions[i].arg_count)
-                return -2;
+                continue;
 
             *out = functions[i].value();
-            if (*out < 0)
-                return -1;
-            return 0;
+            return (*out < 0) ? -1 : 0;
         }
     }
     return -1;

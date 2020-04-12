@@ -17,7 +17,7 @@
 
 static dict_str_int *str_int_table = NULL;
 static dict_str_str *str_str_table = NULL;
-static dict_str_loc *str_jmp_table = NULL;
+//static dict_str_loc *str_jmp_table = NULL;
 
 int str_int_add(char *key, int value){
     char *key_local;
@@ -91,7 +91,7 @@ void str_int_printall(){
         temp = temp->next;
     }
 }
-
+/*
 int str_jmp_add(char *key, u64 value){
     char *key_local;
     dict_str_loc *keyvaluepair;
@@ -161,6 +161,7 @@ void str_jmp_clear(){
     }
     str_jmp_table = NULL;
 }
+*/
 
 int str_str_add(char *key, char *value){
     char *key_local, *value_local;

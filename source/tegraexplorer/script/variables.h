@@ -23,9 +23,11 @@ int str_int_add(char *key, int value);
 int str_int_find(char *key, int *out);
 void str_int_clear();
 void str_int_printall();
+/*
 int str_jmp_add(char *key, u64 value);
 int str_jmp_find(char *key, u64 *out);
 void str_jmp_clear();
+*/
 int str_str_add(char *key, char *value);
 int str_str_find(char *key, char **out);
 int str_str_index(int index, char **out);

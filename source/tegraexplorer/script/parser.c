@@ -201,6 +201,7 @@ void mainparser(){
         getnextvalidchar();
     }
 
+    /*
     if (currentchar == '?'){
         char *jumpname;
         jumpname = readtilchar(';', ' ');
@@ -209,6 +210,7 @@ void mainparser(){
         getfollowingchar('\n');
         return;
     }
+    */
 
     functionparser();
 
@@ -301,7 +303,7 @@ void runScript(char *path){
 
     f_close(&scriptin);
     str_int_clear();
-    str_jmp_clear();
+    //str_jmp_clear();
     str_str_clear();
     free(path_local);
     //btn_wait();
