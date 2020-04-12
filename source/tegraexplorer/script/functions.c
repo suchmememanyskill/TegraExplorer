@@ -38,7 +38,7 @@ int parseIntInput(char *in, int *out){
     
     return 0;
 }
-
+/*
 int parseJmpInput(char *in, u64 *out){
     if (in[0] == '?'){
         if (str_jmp_find(in, out))
@@ -49,6 +49,7 @@ int parseJmpInput(char *in, u64 *out){
     else
         return -1;
 }
+*/
 
 int parseStringInput(char *in, char **out){
     if (in[0] == '$'){
