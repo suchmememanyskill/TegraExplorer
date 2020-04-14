@@ -90,6 +90,10 @@ int handleEntries(short mmcType, menu_entry part){
     int res = 0;
 
     if (part.property & ISDIR){
+        if (returnpkg1info().ver < 0){
+            gfx_errDisplay("emmcMakeMenu", ERR_BISKEY_DUMP_FAILED, 0);
+            return -1;
+        }
         if (!mount_mmc(part.name, part.storage))
             fileexplorer("emmc:/", 1);  
     }

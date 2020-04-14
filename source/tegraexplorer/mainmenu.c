@@ -154,14 +154,14 @@ void te_main(){
 
     if (dump_biskeys() == -1){
         gfx_errDisplay("dump_biskey", ERR_BISKEY_DUMP_FAILED, 0);
-        mainmenu_main[1].property |= ISHIDE;
+        //mainmenu_main[1].property |= ISHIDE;
     }
 
     if (emummc_load_cfg()){
         mainmenu_main[2].property |= ISHIDE;
     }
-    else
-        dumpEmuGpt();
+
+    dumpGpt();
 
     disconnect_mmc();
 

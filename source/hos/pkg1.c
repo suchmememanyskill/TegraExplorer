@@ -42,6 +42,7 @@ static const pkg1_id_t _pkg1_ids[] = {
 	{ "20190531152432", 8, {0x29c50,   0x6a73, 0,  8, 12, HASH_ORDER_700_9xx, 0x5563, 0x1d437} }, //8.1.0
 	{ "20190809135709", 9, {0x2ec10,   0x5573, 0,  1, 12, HASH_ORDER_700_9xx, 0x6495, 0x1d807} }, //9.0.0 - 9.0.1
 	{ "20191021113848", 10,{0x2ec10,   0x5573, 0,  1, 12, HASH_ORDER_700_9xx, 0x6495, 0x1d807} }, //9.1.0
+	{ "20200303104606", 11,{0x2ec10,   0x5573, 0,  1, 12, HASH_ORDER_700_9xx, 0x6495, 0x1d807} }, //10.0.0, May or may not be accurate. I just need to feed tsec anyway so this doesn't matter
 	{ NULL } //End.
 };
 

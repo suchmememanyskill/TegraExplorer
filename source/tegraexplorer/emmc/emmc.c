@@ -215,8 +215,8 @@ int dump_biskeys(){
         memcpy(bis_key[3], bis_key[2], 0x20);
     }
 
-    sdmmc_storage_set_mmc_partition(&storage, 0);
-    nx_emmc_gpt_parse(&sys_gpt, &storage);
+    //sdmmc_storage_set_mmc_partition(&storage, 0);
+    //nx_emmc_gpt_parse(&sys_gpt, &storage);
 
     se_aes_key_set(8, bis_key[2] + 0x00, 0x10);
     se_aes_key_set(9, bis_key[2] + 0x10, 0x10);
@@ -226,10 +226,16 @@ int dump_biskeys(){
     return 0;
 }
 
-void dumpEmuGpt(){
-    connect_mmc(EMUMMC);
-    emummc_storage_set_mmc_partition(&storage, 0);
-    nx_emmc_gpt_parse(&emu_gpt, &storage);
+void dumpGpt(){
+    connect_mmc(SYSMMC);
+    sdmmc_storage_set_mmc_partition(&storage, 0);
+    nx_emmc_gpt_parse(&sys_gpt, &storage);
+
+    if (emu_cfg.enabled){
+        connect_mmc(EMUMMC);
+        emummc_storage_set_mmc_partition(&storage, 0);
+        nx_emmc_gpt_parse(&emu_gpt, &storage);
+    }
 }
 
 link_t *selectGpt(short mmcType){

@@ -16,7 +16,7 @@ int mount_mmc(const char *partition, const int biskeynumb);
 void connect_mmc(short mmctype);
 void disconnect_mmc();
 int connect_part(const char *partition);
-void dumpEmuGpt();
+void dumpGpt();
 link_t *selectGpt(short mmcType);
 int checkGptRules(char *in);
 
