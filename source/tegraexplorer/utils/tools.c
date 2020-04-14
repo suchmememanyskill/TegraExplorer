@@ -35,7 +35,12 @@ void displayinfo(){
 
     SWAPCOLOR(COLOR_ORANGE);
 
-    gfx_printf("Fuse count: %d\nPKG1 version: %d\nPKG1 id: %s\n\n", fuse_count, pkg1.ver, pkg1.id);
+    gfx_printf("Fuse count: %d\nPKG1 id: %s\n", fuse_count, pkg1.id);
+    if (pkg1.ver >= 0)
+        gfx_printf("PKG1 version: %d\n", pkg1.ver);
+
+    gfx_printf("\n");
+
     print_biskeys();
 
     RESETCOLOR;
