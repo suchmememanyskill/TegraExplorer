@@ -66,12 +66,24 @@ int parseStringInput(char *in, char **out){
 
 u32 currentcolor = COLOR_WHITE;
 int part_printf(){
-    char *toprint;
-    if (parseStringInput(argv[0], &toprint))
-        return -1;
-
     SWAPCOLOR(currentcolor);
-    gfx_printf(toprint);
+    for (int i = 0; i < argc; i++){
+        if (argv[i][0] == '@'){
+            int toprintint;
+            if (parseIntInput(argv[i], &toprintint))
+                return -1;
+
+            gfx_printf("%d", toprintint);
+        }
+        else {
+            char *toprintstring;
+            if (parseStringInput(argv[i], &toprintstring))
+                return -1;
+
+            gfx_printf(toprintstring);
+        }
+    }
+
     gfx_printf("\n");
     return 0;
 }
@@ -529,7 +541,7 @@ int part_getPos(){
 }
 
 str_fnc_struct functions[] = {
-    {"printf", part_printf, 1},
+    {"printf", part_printf, 255},
     {"printInt", part_print_int, 1},
     {"setPrintPos", part_setPrintPos, 2},
     {"clearscreen", part_clearscreen, 0},
@@ -571,7 +583,7 @@ str_fnc_struct functions[] = {
 int run_function(char *func_name, int *out){
     for (u32 i = 0; functions[i].key != NULL; i++){
         if (!strcmp(functions[i].key, func_name)){
-            if (argc != functions[i].arg_count)
+            if (argc != functions[i].arg_count && functions[i].arg_count != 255)
                 continue;
 
             *out = functions[i].value();

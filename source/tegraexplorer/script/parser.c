@@ -56,7 +56,7 @@ u32 splitargs(char* in) {
     argv = calloc(count + 1, sizeof(char*));
 
     for (i = 0; i < count; i++)
-        argv[i] = calloc(128, sizeof(char));
+        argv[i] = calloc(96, sizeof(char));
     
 
     for (i = 0; i < len && curcount < count; i++) {
