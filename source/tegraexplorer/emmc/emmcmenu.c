@@ -45,7 +45,8 @@ void addEntry(emmc_part_t *part, u8 property, int spot){
         u64 size = 0;
         int sizes = 0;
         mmcMenuEntries[spot].property = 0;
-        size = (part->lba_end + 1 - part->lba_start) * NX_EMMC_BLOCKSIZE;
+        size = (u64)(part->lba_end + 1 - part->lba_start);
+        size *= (u64)NX_EMMC_BLOCKSIZE;
 
         while (size > 1024){
             size /= 1024;
