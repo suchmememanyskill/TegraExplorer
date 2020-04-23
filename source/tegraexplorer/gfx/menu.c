@@ -53,7 +53,10 @@ void _printentry(menu_entry entry, bool highlighted, bool refresh){
     else { 
         SWAPCOLOR(COLOR_BLUE);
         SWAPBGCOLOR(COLOR_DEFAULT);
-        gfx_printf("\a%d\e%s", entry.storage, gfx_file_size_names[size - 4]);
+        gfx_printf("\a%4d", entry.storage);
+        gfx_con.fntsz = 8;
+        gfx_printf("\n\e%s\n", gfx_file_size_names[size - 4]);
+        gfx_con.fntsz = 16;
     }   
 }
 

@@ -54,7 +54,7 @@ const char *utils_err_codes_te[] = { // these start at 50
     "CANNOT COPY FILE TO FS PART",
     "NO DESTENATION"
 };
-
+/*
 const char *pkg2names[] = {
     "BCPKG2-1-Normal-Main",
     "BCPKG2-2-Normal-Sub",
@@ -63,5 +63,5 @@ const char *pkg2names[] = {
     "BCPKG2-5-Repair-Main",
     "BCPKG2-6-Repair-Sub"
 };
-
+*/
 const char *mainmenu_credits = "\nTegraexplorer, made by:\nSuch Meme, Many Skill\n\nProject based on:\nLockpick_RCM\nHekate\n\nCool people:\nshchmue\ndennthecafebabe\nDax";

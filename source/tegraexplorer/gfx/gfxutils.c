@@ -115,8 +115,13 @@ void gfx_printandclear(char *in, int length){
     gfx_con_getpos(&x, &y);
     RESETCOLOR;
 
+
+    /*
     for (int i = (703 - x) / 16; i > 0; i--)
         gfx_printf(" ");
+    */
+
+   gfx_boxGrey(x, y, 703, y + 16, 0x1B);
 
     gfx_con_setpos(x, y);
 

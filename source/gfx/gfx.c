@@ -269,6 +269,12 @@ void gfx_putc(char c)
 			if (gfx_con.y > gfx_ctxt.height - 8)
 				gfx_con.y = 0;
 		}
+		else if (c == '\e')
+			gfx_con.x = 672;
+		else if (c == '\a')
+			gfx_con.x = 608;
+		else if (c == '\r')
+			gfx_con.x = 0;
 
 		break;
 	}
@@ -510,6 +516,12 @@ void gfx_set_rect_grey(const u8 *buf, u32 size_x, u32 size_y, u32 pos_x, u32 pos
 			memset(&gfx_ctxt.fb[x + y*gfx_ctxt.stride], buf[pos], 4);
 			pos++;
 		}
+	}
+}
+
+void gfx_boxGrey(int x0, int y0, int x1, int y1, u8 shade){
+	for (int y = y0; y <= y1; y++){
+		memset(gfx_ctxt.fb + y * gfx_ctxt.stride + x0, shade, (x1 - x0) * 4);
 	}
 }
 

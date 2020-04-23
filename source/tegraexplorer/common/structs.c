@@ -64,9 +64,9 @@ menu_entry fs_menu_folder[] = {
 };
 
 menu_entry fs_menu_startdir[] = {
-    {"Folder -> previous folder            ", COLOR_ORANGE, ISMENU},
-    {"Clipboard -> Current folder          ", COLOR_ORANGE, ISMENU},
-    {"Current folder menu                  ", COLOR_ORANGE, ISMENU}
+    {"Folder -> previous folder  ", COLOR_ORANGE, ISMENU},
+    {"Clipboard -> Current folder", COLOR_ORANGE, ISMENU},
+    {"Current folder menu        ", COLOR_ORANGE, ISMENU}
 };
 
 gpt_entry_rule gpt_fs_rules[] = {
