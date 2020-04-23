@@ -23,7 +23,7 @@ int emmcRestorePart(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
     FILINFO fno;
     u8 *buf;
 	u32 lba_curr = part->lba_start;
-	u32 bytesWritten = 0;
+	u64 bytesWritten = 0;
     u32 totalSectorsDest = part->lba_end - part->lba_start + 1;
     u64 totalSizeDest = (u64)((u64)totalSectorsDest << 9);
     u64 totalSize;
@@ -93,9 +93,9 @@ int emmcRestorePart(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
 
         lba_curr += num;
         totalSectors -= num;
-        bytesWritten += num * NX_EMMC_BLOCKSIZE;
+        bytesWritten += (u64)(num * NX_EMMC_BLOCKSIZE);
 
-        pct = (u64)((u64)(bytesWritten) * 100u) / (u64)(fno.fsize);
+        pct = (u64)(bytesWritten * (u64)100) / (u64)(fno.fsize);
         gfx_printf("Progress: %d%%\r", pct);
     }
 
