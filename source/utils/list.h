@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
+ * Copyright (c) 2020 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -33,9 +34,10 @@
 #define LIST_FOREACH_SAFE(iter, list) \
 	for(link_t *iter = (list)->next, *safe = iter->next; iter != (list); iter = safe, safe = iter->next)
 
-/*! Iterate over all list members. */
+/*! Iterate over all list members and make sure that the list has at least one entry. */
 #define LIST_FOREACH_ENTRY(etype, iter, list, mn) \
-	for(etype *iter = CONTAINER_OF((list)->next, etype, mn); &iter->mn != (list); iter = CONTAINER_OF(iter->mn.next, etype, mn))
+	if ((list)->next != (list)) \
+		for(etype *iter = CONTAINER_OF((list)->next, etype, mn); &iter->mn != (list); iter = CONTAINER_OF(iter->mn.next, etype, mn))
 
 typedef struct _link_t
 {

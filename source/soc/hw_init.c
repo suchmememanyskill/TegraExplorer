@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2019 CTCaer
+ * Copyright (c) 2018-2020 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -39,6 +39,7 @@
 
 extern sdmmc_t sd_sdmmc;
 extern boot_cfg_t b_cfg;
+extern volatile nyx_storage_t *nyx_str;
 
 /*
  * CLK_OSC - 38.4 MHz crystal.
@@ -78,8 +79,8 @@ void _config_gpios()
 	PINMUX_AUX(PINMUX_AUX_UART3_TX) = 0;
 
 	// Set Joy-Con IsAttached direction.
-	PINMUX_AUX(PINMUX_AUX_GPIO_PE6) = PINMUX_INPUT_ENABLE;
-	PINMUX_AUX(PINMUX_AUX_GPIO_PH6) = PINMUX_INPUT_ENABLE;
+	PINMUX_AUX(PINMUX_AUX_GPIO_PE6) = PINMUX_INPUT_ENABLE | PINMUX_TRISTATE;
+	PINMUX_AUX(PINMUX_AUX_GPIO_PH6) = PINMUX_INPUT_ENABLE | PINMUX_TRISTATE;
 
 	// Set pin mode for Joy-Con IsAttached and UARTB/C TX pins.
 #if !defined (DEBUG_UART_PORT) || DEBUG_UART_PORT != UART_B
@@ -109,7 +110,7 @@ void _config_gpios()
 	gpio_output_enable(GPIO_PORT_X, GPIO_PIN_7, GPIO_OUTPUT_DISABLE);
 
 	// Configure HOME as inputs.
-	// PINMUX_AUX(PINMUX_AUX_BUTTON_HOME) = PINMUX_PULL_UP | PINMUX_INPUT_ENABLE;
+	// PINMUX_AUX(PINMUX_AUX_BUTTON_HOME) = PINMUX_INPUT_ENABLE | PINMUX_TRISTATE;
 	// gpio_config(GPIO_PORT_Y, GPIO_PIN_1, GPIO_MODE_GPIO);
 }
 
@@ -160,7 +161,7 @@ void _mbist_workaround()
 	// Enable specific clocks and disable all others.
 	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_H) = 0xC0;       // Enable clock PMC, FUSE.
 	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_L) = 0x80000130; // Enable clock RTC, TMR, GPIO, BPMP_CACHE.
-	//CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_L) = 0x80400130; // Keep USB data ON.
+	//CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_L) = 0x80400130; // Keep USBD ON.
 	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_U) = 0x1F00200;  // Enable clock CSITE, IRAMA, IRAMB, IRAMC, IRAMD, BPMP_CACHE_RAM.
 	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) = 0x80400808; // Enable clock MSELECT, APB2APE, SPDIF_DOUBLER, SE.
 	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_W) = 0x402000FC; // Enable clock PCIERX0, PCIERX1, PCIERX2, PCIERX3, PCIERX4, PCIERX5, ENTROPY, MC1.
@@ -184,6 +185,9 @@ void _mbist_workaround()
 
 void _config_se_brom()
 {
+	// Enable fuse clock.
+	clock_enable_fuse(true);
+
 	// Skip SBK/SSK if sept was run.
 	if (!(b_cfg.boot_cfg & BOOT_CFG_SEPT_RUN))
 	{
@@ -217,10 +221,19 @@ void _config_se_brom()
 
 void _config_regulators()
 {
+	// Disable low battery shutdown monitor.
+	max77620_low_battery_monitor_config(false);
+
+	// Disable SDMMC1 IO power.
+	gpio_output_enable(GPIO_PORT_E, GPIO_PIN_4, GPIO_OUTPUT_DISABLE);
+	max77620_regulator_enable(REGULATOR_LDO2, 0);
+	sd_power_cycle_time_start = get_tmr_ms();
+
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_CNFGBBC, MAX77620_CNFGBBC_RESISTOR_1K);
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_ONOFFCNFG1,
 		(1 << 6) | (3 << MAX77620_ONOFFCNFG1_MRT_SHIFT)); // PWR delay for forced shutdown off.
 
+	// Configure all Flexible Power Sequencers.
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_FPS_CFG0,
 		(7 << MAX77620_FPS_TIME_PERIOD_SHIFT));
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_FPS_CFG1,
@@ -236,10 +249,10 @@ void _config_regulators()
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_FPS_GPIO3,
 		(4 << MAX77620_FPS_TIME_PERIOD_SHIFT) | (2 << MAX77620_FPS_PD_PERIOD_SHIFT)); // 3.x+
 
-	// Set vdd_core voltage to 1.125V
+	// Set vdd_core voltage to 1.125V.
 	max77620_regulator_set_voltage(REGULATOR_SD0, 1125000);
 
-	// Fix CPU/GPU after a Linux warmboot.
+	// Fix CPU/GPU after a L4T warmboot.
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_GPIO5, 2);
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_GPIO6, 2);
 
@@ -256,9 +269,6 @@ void _config_regulators()
 	i2c_send_byte(I2C_5, MAX77621_GPU_I2C_ADDR, MAX77621_CONTROL2_REG,
 		MAX77621_T_JUNCTION_120 | MAX77621_FT_ENABLE | MAX77621_CKKADV_TRIP_75mV_PER_US_HIST_DIS |
 		MAX77621_CKKADV_TRIP_150mV_PER_US | MAX77621_INDUCTOR_NOMINAL);
-
-	// Enable low battery shutdown monitor for < 2800mV.
-	max77620_low_battery_monitor_config();
 }
 
 void config_hw()
@@ -312,6 +322,7 @@ void reconfig_hw_workaround(bool extra_reconfig, u32 magic)
 	bpmp_mmu_disable();
 	bpmp_clk_rate_set(BPMP_CLK_NORMAL);
 	minerva_change_freq(FREQ_204);
+	nyx_str->mtc_cfg.init_done = 0;
 
 	// Re-enable clocks to Audio Processing Engine as a workaround to hanging.
 	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= (1 << 10); // Enable AHUB clock.

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (C) 2018-2019 CTCaer
+ * Copyright (C) 2018-2020 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -26,7 +26,7 @@
 #define PKG2_SEC_KERNEL 0
 #define PKG2_SEC_INI1 1
 
-#define PKG2_NEWKERN_GET_INI1 0x44
+#define PKG2_NEWKERN_GET_INI1_HEURISTIC 0xD2800015 // Offset of OP + 12 is the INI1 offset.
 
 u32 pkg2_newkern_ini1_val;
 u32 pkg2_newkern_ini1_start;
@@ -87,7 +87,7 @@ typedef struct _pkg2_kip1_info_t
 	link_t link;
 } pkg2_kip1_info_t;
 
-void pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2, bool *new_pkg2);
+bool pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2, bool *new_pkg2);
 int pkg2_decompress_kip(pkg2_kip1_info_t* ki, u32 sectsToDecomp);
 pkg2_hdr_t *pkg2_decrypt(void *data);
 

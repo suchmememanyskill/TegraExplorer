@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 CTCaer
+ * Copyright (c) 2018-2020 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -37,12 +37,12 @@ void set_default_configuration()
 	h_cfg.autoboot = 0;
 	h_cfg.autoboot_list = 0;
 	h_cfg.bootwait = 3;
-	h_cfg.verification = 1;
 	h_cfg.se_keygen_done = 0;
 	h_cfg.sbar_time_keeping = 0;
 	h_cfg.backlight = 100;
 	h_cfg.autohosoff = 0;
 	h_cfg.autonogc = 1;
+	h_cfg.updater2p = 0;
 	h_cfg.brand = NULL;
 	h_cfg.tagline = NULL;
 	h_cfg.errors = 0;
@@ -50,7 +50,7 @@ void set_default_configuration()
 	h_cfg.rcm_patched = true;
 	h_cfg.emummc_force_disable = false;
 
-	sd_power_cycle_time_start = 0xFFFFFFF;
+	sd_power_cycle_time_start = 0;
 }
 
 int create_config_entry()
@@ -96,9 +96,6 @@ int create_config_entry()
 	f_puts("\nbootwait=", &fp);
 	itoa(h_cfg.bootwait, lbuf, 10);
 	f_puts(lbuf, &fp);
-	f_puts("\nverification=", &fp);
-	itoa(h_cfg.verification, lbuf, 10);
-	f_puts(lbuf, &fp);
 	f_puts("\nbacklight=", &fp);
 	itoa(h_cfg.backlight, lbuf, 10);
 	f_puts(lbuf, &fp);
@@ -107,6 +104,9 @@ int create_config_entry()
 	f_puts(lbuf, &fp);
 	f_puts("\nautonogc=", &fp);
 	itoa(h_cfg.autonogc, lbuf, 10);
+	f_puts(lbuf, &fp);
+	f_puts("\nupdater2p=", &fp);
+	itoa(h_cfg.updater2p, lbuf, 10);
 	f_puts(lbuf, &fp);
 	if (h_cfg.brand)
 	{
@@ -281,10 +281,11 @@ void config_autoboot()
 	LIST_INIT(ini_sections);
 
 	u8 max_entries = 30;
+	u32 boot_text_size = 512;
 
 	ment_t *ments = (ment_t *)malloc(sizeof(ment_t) * (max_entries + 5));
 	u32 *boot_values = (u32 *)malloc(sizeof(u32) * max_entries);
-	char *boot_text = (char *)malloc(512 * max_entries);
+	char *boot_text = (char *)malloc(boot_text_size * max_entries);
 
 	for (u32 j = 0; j < max_entries; j++)
 		boot_values[j] = j;
@@ -330,12 +331,12 @@ void config_autoboot()
 					else
 					{
 						if (h_cfg.autoboot != (i - 4) || h_cfg.autoboot_list)
-							boot_text[(i - 4) * 512] = ' ';
+							boot_text[(i - 4) * boot_text_size] = ' ';
 
 						else
-							boot_text[(i - 4) * 512] = '*';
-						strcpy(boot_text + (i - 4) * 512 + 1, ini_sec->name);
-						ments[i].caption = &boot_text[(i - 4) * 512];
+							boot_text[(i - 4) * boot_text_size] = '*';
+						strcpy(boot_text + (i - 4) * boot_text_size + 1, ini_sec->name);
+						ments[i].caption = &boot_text[(i - 4) * boot_text_size];
 					}
 					ments[i].type = ini_sec->type;
 					ments[i].data = &boot_values[i - 4];
@@ -391,10 +392,11 @@ void config_bootdelay()
 	gfx_con_setpos(0, 0);
 
 	u32 delay_entries = 6;
+	u32 delay_text_size = 32;
 
 	ment_t *ments = (ment_t *)malloc(sizeof(ment_t) * (delay_entries + 3));
 	u32 *delay_values = (u32 *)malloc(sizeof(u32) * delay_entries);
-	char *delay_text = (char *)malloc(32 * delay_entries);
+	char *delay_text = (char *)malloc(delay_text_size * delay_entries);
 
 	for (u32 j = 0; j < delay_entries; j++)
 		delay_values[j] = j;
@@ -415,14 +417,14 @@ void config_bootdelay()
 	for (i = 1; i < delay_entries; i++)
 	{
 		if (h_cfg.bootwait != i)
-			delay_text[i * 32] = ' ';
+			delay_text[i * delay_text_size] = ' ';
 		else
-			delay_text[i * 32] = '*';
-		delay_text[i * 32 + 1] = i + '0';
-		strcpy(delay_text + i * 32 + 2, " seconds");
+			delay_text[i * delay_text_size] = '*';
+		delay_text[i * delay_text_size + 1] = i + '0';
+		strcpy(delay_text + i * delay_text_size + 2, " seconds");
 
 		ments[i + 2].type = MENT_DATA;
-		ments[i + 2].caption = delay_text + i * 32;
+		ments[i + 2].caption = delay_text + (i * delay_text_size);
 		ments[i + 2].data = &delay_values[i];
 	}
 
@@ -445,69 +447,17 @@ void config_bootdelay()
 	btn_wait();
 }
 
-void config_verification()
-{
-	gfx_clear_grey(0x1B);
-	gfx_con_setpos(0, 0);
-
-	ment_t *ments = (ment_t *)malloc(sizeof(ment_t) * 6);
-	u32 *vr_values = (u32 *)malloc(sizeof(u32) * 3);
-	char *vr_text = (char *)malloc(64 * 3);
-
-	for (u32 j = 0; j < 3; j++)
-	{
-		vr_values[j] = j;
-		ments[j + 2].type = MENT_DATA;
-		ments[j + 2].data = &vr_values[j];
-	}
-
-	ments[0].type = MENT_BACK;
-	ments[0].caption = "Back";
-
-	ments[1].type = MENT_CHGLINE;
-
-	strcpy(vr_text,       " Disable (Fastest - Unsafe)");
-	strcpy(vr_text + 64,  " Sparse  (Fast - Safe)");
-	strcpy(vr_text + 128, " Full    (Slow - Safe)");
-
-	for (u32 i = 0; i < 3; i++)
-	{
-		if (h_cfg.verification != i)
-			vr_text[64 * i] = ' ';
-		else
-			vr_text[64 * i] = '*';
-		ments[2 + i].caption = vr_text + (i * 64);
-	}
-
-	memset(&ments[5], 0, sizeof(ment_t));
-	menu_t menu = {ments, "Backup & Restore verification", 0, 0};
-
-	u32 *temp_verification = (u32 *)tui_do_menu(&menu);
-	if (temp_verification != NULL)
-	{
-		h_cfg.verification = *(u32 *)temp_verification;
-		_save_config();
-	}
-
-	free(ments);
-	free(vr_values);
-	free(vr_text);
-
-	if (temp_verification == NULL)
-		return;
-	btn_wait();
-}
-
 void config_backlight()
 {
 	gfx_clear_grey(0x1B);
 	gfx_con_setpos(0, 0);
 
+	u32 bri_text_size = 8;
 	u32 bri_entries = 11;
 
 	ment_t *ments = (ment_t *)malloc(sizeof(ment_t) * (bri_entries + 3));
 	u32 *bri_values = (u32 *)malloc(sizeof(u32) * bri_entries);
-	char *bri_text = (char *)malloc(8 * bri_entries);
+	char *bri_text = (char *)malloc(bri_text_size * bri_entries);
 
 	for (u32 j = 1; j < bri_entries; j++)
 		bri_values[j] = j * 10;
@@ -521,20 +471,20 @@ void config_backlight()
 	for (i = 1; i < bri_entries; i++)
 	{
 		if ((h_cfg.backlight / 20) != i)
-			bri_text[i * 32] = ' ';
+			bri_text[i * bri_text_size] = ' ';
 		else
-			bri_text[i * 32] = '*';
+			bri_text[i * bri_text_size] = '*';
 
 		if (i < 10)
 		{
-			bri_text[i * 32 + 1] = i + '0';
-			strcpy(bri_text + i * 32 + 2, "0%");
+			bri_text[i * bri_text_size + 1] = i + '0';
+			strcpy(bri_text + i * bri_text_size + 2, "0%");
 		}
 		else
-			strcpy(bri_text + i * 32 + 1, "100%");
+			strcpy(bri_text + i * bri_text_size + 1, "100%");
 
 		ments[i + 1].type = MENT_DATA;
-		ments[i + 1].caption = bri_text + i * 32;
+		ments[i + 1].caption = bri_text + (i * bri_text_size);
 		ments[i + 1].data = &bri_values[i];
 	}
 

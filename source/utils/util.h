@@ -33,15 +33,22 @@ typedef struct _cfg_op_t
 	u32 val;
 } cfg_op_t;
 
+typedef struct _nyx_info_t
+{
+	u32 rsvd;
+	u32 errors;
+} nyx_info_t;
+
 typedef struct _nyx_storage_t
 {
 	u32 version;
 	u32 cfg;
 	u8  irama[0x8000];
 	u8  hekate[0x30000];
-	u8  rsvd[0x800000];
+	u8  rsvd[0x800000 - sizeof(nyx_info_t)];
+	nyx_info_t info;
 	mtc_config_t mtc_cfg;
-	emc_table_t mtc_table;
+	emc_table_t mtc_table[10];
 } nyx_storage_t;
 
 u32 get_tmr_us();

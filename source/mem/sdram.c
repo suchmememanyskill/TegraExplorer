@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018 naehrwert
  * Copyright (c) 2018 balika011
- * Copyright (c) 2019 CTCaer
+ * Copyright (c) 2019-2020 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -696,7 +696,6 @@ sdram_params_t *sdram_get_params_patched()
 
 void sdram_init()
 {
-	//TODO: sdram_id should be in [0,4].
 	const sdram_params_t *params = (const sdram_params_t *)sdram_get_params();
 
 	// Set DRAM voltage.
