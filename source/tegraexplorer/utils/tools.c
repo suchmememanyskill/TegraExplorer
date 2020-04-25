@@ -1,3 +1,4 @@
+#include <string.h>
 #include "tools.h"
 #include "../gfx/gfxutils.h"
 #include "../../libs/fatfs/ff.h"
@@ -13,6 +14,9 @@
 #include "../emmc/emmc.h"
 #include "../common/common.h"
 #include "../fs/fsactions.h"
+#include "../fs/fsutils.h"
+#include "../../mem/heap.h"
+#include "../utils/utils.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
@@ -96,10 +100,8 @@ int dumpfirmware(int mmc){
     FILINFO fno;
     bool fail = false;
     int ret, amount = 0;
-    char path[100] = "emmc:/Contents/registered";
-    char sdfolderpath[100] = "";
-    char syspath[100] = "";
-    char sdpath[100] = "";
+    char sysbase[] = "emmc:/Contents/registered";
+    char *syspathtemp, *syspath, *sdpath, *sdbase;
     pkg1_info pkg1 = returnpkg1info();
     u32 timer = get_tmr_s();
 
@@ -109,26 +111,33 @@ int dumpfirmware(int mmc){
 
     gfx_printf("PKG1 version: %d\n", pkg1.ver);
 
-    ret = f_mkdir("sd:/tegraexplorer");
-    gfx_printf("Creating sd:/tegraexplorer %d\n", ret);
+    gfx_printf("Creating folders...\n");
+    f_mkdir("sd:/tegraexplorer");
+    f_mkdir("sd:/tegraexplorer/Firmware");
 
-    ret = f_mkdir("sd:/tegraexplorer/Firmware");
-    gfx_printf("Creating sd:/tegraexplorer/Firmware %d\n", ret);
+    sdbase = calloc(32 + strlen(pkg1.id), sizeof(char));
+    sprintf(sdbase, "sd:/tegraexplorer/Firmware/%d (%s)", pkg1.ver, pkg1.id);
+    gfx_printf("Out: %s\n", sdbase);
+    f_mkdir(sdbase);
 
-    sprintf(sdfolderpath, "sd:/tegraexplorer/Firmware/%d (%s)", pkg1.ver, pkg1.id);
-    ret = f_mkdir(sdfolderpath);
-    gfx_printf("Creating %s %d\n", sdfolderpath, ret);
+    if ((ret = f_opendir(&dir, sysbase)))
+        fail = true;
 
-    ret = f_opendir(&dir, path);
-    gfx_printf("Result opening system:/ %d\n\n%k", ret, COLOR_GREEN);
+    gfx_printf("Starting dump...\n");
+    SWAPCOLOR(COLOR_GREEN);
+    
+    printerrors = 0;
 
     while(!f_readdir(&dir, &fno) && fno.fname[0] && !fail){
-        sprintf(sdpath, "%s/%s", sdfolderpath, fno.fname);
-
-        if (fno.fattrib & AM_DIR)
-            sprintf(syspath, "%s/%s/00", path, fno.fname);
+        utils_copystring(fsutil_getnextloc(sdbase, fno.fname), &sdpath);
+        utils_copystring(fsutil_getnextloc(sysbase, fno.fname), &syspathtemp);
+    
+        if (fno.fattrib & AM_DIR){
+            utils_copystring(fsutil_getnextloc(syspathtemp, "00"), &syspath);
+            free(syspathtemp);
+        }
         else
-            sprintf(syspath, "%s/%s", path, fno.fname);
+            syspath = syspathtemp;
 
         ret = fsact_copy(syspath, sdpath, 0);
 
@@ -136,42 +145,40 @@ int dumpfirmware(int mmc){
 
         if (ret != 0)
             fail = true;
+
+        free(sdpath);
+        free(syspath);
     }
+
+    printerrors = 1;
 
     if (fail)
         gfx_printf("%k\n\nDump failed! Aborting (%d)", COLOR_RED, ret);
 
     gfx_printf("%k\n\nPress any button to continue...\nTime taken: %ds", COLOR_WHITE, get_tmr_s() - timer);
-
+    free(sdbase);
     btn_wait();
 
     return fail;
 }
 
 void dumpusersaves(int mmc){
-    int res;
-
     connect_mmc(mmc);
     mount_mmc("USER", 2);
     gfx_clearscreen();
 
-    res = f_mkdir("sd:/tegraexplorer");
-    gfx_printf("Creating sd:/tegraexplorer, res: %d\nCopying:\n", res);
+    gfx_printf("Creating folders...\n");
+    f_mkdir("sd:/tegraexplorer");
+
+    gfx_printf("Starting dump...\n");
 
     SWAPCOLOR(COLOR_GREEN);
 
-    res = fsact_copy_recursive("emmc:/save", "sd:/tegraexplorer");
+    if(fsact_copy_recursive("emmc:/save", "sd:/tegraexplorer"))
+        return;
 
-    SWAPCOLOR(COLOR_ORANGE);
-    gfx_printf("\rResult copy_recursive() %d\n\n", res);
-
-    if (res){
-        SWAPCOLOR(COLOR_RED);
-        gfx_printf("Dump failed!\n");
-    }
-    else
-        gfx_printf("Saves are located in SD:/tegraexplorer/save\n");
-
+    RESETCOLOR;
+    gfx_printf("\n\nSaves are located in SD:/tegraexplorer/save\n");
     gfx_printf("Press any key to continue");
     btn_wait();
 }

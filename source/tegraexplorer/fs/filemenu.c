@@ -47,7 +47,7 @@ void viewbytes(char *path){
         return;
     }
 
-    msleep(200);
+    while (btn_read() & BTN_POWER);
 
     while (1){
         f_lseek(&in, offset * 16);
@@ -143,9 +143,9 @@ int filemenu(menu_entry file){
         (attribs.fattrib & AM_ARC) ? 'A' : '-');
     }
 
-    SETBIT(fs_menu_file[7].property, ISHIDE, !(strstr(file.name, ".bin") != NULL && file.property & ISKB));
-    SETBIT(fs_menu_file[8].property, ISHIDE, !(strstr(file.name, ".te") != NULL));
-    SETBIT(fs_menu_file[10].property, ISHIDE, !(strstr(file.name, ".bis") != NULL));
+    SETBIT(fs_menu_file[7].property, ISHIDE, !(strstr(file.name, ".bin") != NULL && file.property & ISKB) && strstr(file.name, ".rom") == NULL);
+    SETBIT(fs_menu_file[8].property, ISHIDE, strstr(file.name, ".te") == NULL);
+    SETBIT(fs_menu_file[10].property, ISHIDE, strstr(file.name, ".bis") == NULL);
 
     temp = menu_make(fs_menu_file, 11, "-- File Menu --");
 

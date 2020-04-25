@@ -347,7 +347,7 @@ void dump_sysnand()
 {
 	h_cfg.emummc_force_disable = true;
 	b_cfg.extra_cfg &= ~EXTRA_CFG_DUMP_EMUMMC;
-	dump_keys();
+	//dump_keys();
 }
 
 void dump_emunand()
@@ -356,7 +356,7 @@ void dump_emunand()
 		return;
 	emu_cfg.enabled = 1;
 	b_cfg.extra_cfg |= EXTRA_CFG_DUMP_EMUMMC;
-	dump_keys();
+	//dump_keys();
 }
 
 ment_t ment_top[] = {
