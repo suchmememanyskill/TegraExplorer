@@ -57,7 +57,7 @@ int emmcRestorePart(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
 
     if (totalSize < totalSizeDest){
         SWAPCOLOR(COLOR_ORANGE);
-        gfx_printf("File is too small for destenation.\nDo you want to flash it anyway?\n\nVol +/- to Cancel\n");
+        gfx_printf("File is too small for destination.\nDo you want to flash it anyway?\n\nVol +/- to Cancel\n");
         u8 btnres = gfx_makewaitmenu(
             "Power to Confirm",
             2
@@ -210,7 +210,7 @@ emmc_part_t *mmcFindPart(char *path, short mmcType){
 
     //gfx_printf("Path: %s\nFilename: %s", path, filename);
     //btn_wait();
-    gfx_errDisplay("mmcFindPart", ERR_NO_DESTENATION, 2);
+    gfx_errDisplay("mmcFindPart", ERR_NO_DESTINATION, 2);
     free(path_local);
     return NULL;
 }
