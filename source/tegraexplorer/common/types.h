@@ -40,14 +40,14 @@
 #define BCPKG2_3_ARG 0x10
 
 typedef struct {
-    char *name;
-    u32 storage;
-    u16 property;
+	char *name;
+	u32 storage;
+	u16 property;
 } menu_entry; 
 
 typedef struct {
-    const char *name;
-    u8 property;
+	const char *name;
+	u8 property;
 } gpt_entry_rule;
 
 #define isFS 0x80

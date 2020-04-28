@@ -27,160 +27,160 @@ extern bool sd_mounted;
 int res = 0, meter = 0;
 
 void MainMenu_SDCard(){
-    fileexplorer("SD:/", 0);
+	fileexplorer("SD:/", 0);
 }
 
 void MainMenu_EMMC(){
-    gfx_clearscreen();
-    gfx_printf("You're about to enter EMMC\nModifying anything here\n        can result in a BRICK!\n\nPlease only continue\n    if you know what you're doing\n\nPress Vol+/- to return\n");
-    if (gfx_makewaitmenu("Press Power to enter", 4)){
-        /*
-        connect_mmc(SYSMMC);
+	gfx_clearscreen();
+	gfx_printf("You're about to enter EMMC\nModifying anything here\n        can result in a BRICK!\n\nPlease only continue\n    if you know what you're doing\n\nPress Vol+/- to return\n");
+	if (gfx_makewaitmenu("Press Power to enter", 4)){
+		/*
+		connect_mmc(SYSMMC);
 
-        if (!mount_mmc(emmc_fs_entries[res - 2], res - 1))
-            fileexplorer("emmc:/", 1);
-        */
-       makeMmcMenu(SYSMMC);
-    }
+		if (!mount_mmc(emmc_fs_entries[res - 2], res - 1))
+			fileexplorer("emmc:/", 1);
+		*/
+	   makeMmcMenu(SYSMMC);
+	}
 }
 
 void MainMenu_EMUMMC(){
-    /*
-    connect_mmc(EMUMMC);
+	/*
+	connect_mmc(EMUMMC);
 
-    if (!mount_mmc(emmc_fs_entries[res - 5], res - 4))
-        fileexplorer("emmc:/", 1);
-    */
+	if (!mount_mmc(emmc_fs_entries[res - 5], res - 4))
+		fileexplorer("emmc:/", 1);
+	*/
    makeMmcMenu(EMUMMC);
 }
 
 void MainMenu_MountSD(){
-    (sd_mounted) ? sd_unmount() : sd_mount();
+	(sd_mounted) ? sd_unmount() : sd_mount();
 }
 
 void MainMenu_Tools(){
-    //res = makemenu(toolsmenu, 8);
-    res = menu_make(mainmenu_tools, 5, "-- Tools Menu --");
+	//res = makemenu(toolsmenu, 8);
+	res = menu_make(mainmenu_tools, 5, "-- Tools Menu --");
 
-    switch(res){
-        case TOOLS_DISPLAY_INFO:
-            displayinfo();
-            break;
-        case TOOLS_DISPLAY_GPIO:
-            displaygpio();
-            //makeMmcMenu(SYSMMC);
-            break;
-        case TOOLS_DUMPFIRMWARE:
-            dumpfirmware(SYSMMC);
-            break;
-        case TOOLS_DUMPUSERSAVE:
-            if ((res = utils_mmcMenu()) > 0)
-                dumpusersaves(res);
+	switch(res){
+		case TOOLS_DISPLAY_INFO:
+			displayinfo();
+			break;
+		case TOOLS_DISPLAY_GPIO:
+			displaygpio();
+			//makeMmcMenu(SYSMMC);
+			break;
+		case TOOLS_DUMPFIRMWARE:
+			dumpfirmware(SYSMMC);
+			break;
+		case TOOLS_DUMPUSERSAVE:
+			if ((res = utils_mmcMenu()) > 0)
+				dumpusersaves(res);
 
-            break;
-    }
+			break;
+	}
 }
 
 void MainMenu_SDFormat(){
-    //res = makemenu(formatmenu, 4);
-    res = menu_make(mainmenu_format, 3, "-- Format Menu --");
+	//res = makemenu(formatmenu, 4);
+	res = menu_make(mainmenu_format, 3, "-- Format Menu --");
 
-    if (res > 0){
-        gfx_clearscreen();
-        gfx_printf("Are you sure you want to format your sd?\nThis will delete everything on your SD card\nThis action is irreversible!\n\nPress Vol+/- to cancel\n");
-        if(gfx_makewaitmenu("Press Power to continue", 10)){
-            if (format(res)){
-                sd_unmount();
-            }
-        }
-    }
+	if (res > 0){
+		gfx_clearscreen();
+		gfx_printf("Are you sure you want to format your sd?\nThis will delete everything on your SD card\nThis action is irreversible!\n\nPress Vol+/- to cancel\n");
+		if(gfx_makewaitmenu("Press Power to continue", 10)){
+			if (format(res)){
+				sd_unmount();
+			}
+		}
+	}
 }
 
 void MainMenu_Credits(){
-    if (++meter >= 3)
-        gfx_errDisplay("credits", 53, 0);
-    gfx_message(COLOR_WHITE, mainmenu_credits);
+	if (++meter >= 3)
+		gfx_errDisplay("credits", 53, 0);
+	gfx_message(COLOR_WHITE, mainmenu_credits);
 }
 
 void MainMenu_Exit(){
-    if (sd_mounted){
-        SETBIT(mainmenu_shutdown[4].property, ISHIDE, !fsutil_checkfile("/bootloader/update.bin"));
-        SETBIT(mainmenu_shutdown[5].property, ISHIDE, !fsutil_checkfile("/atmosphere/reboot_payload.bin"));
-    }
-    else {
-        for (int i = 4; i <= 5; i++)
-            SETBIT(mainmenu_shutdown[i].property, ISHIDE, 1);
-    }
+	if (sd_mounted){
+		SETBIT(mainmenu_shutdown[4].property, ISHIDE, !fsutil_checkfile("/bootloader/update.bin"));
+		SETBIT(mainmenu_shutdown[5].property, ISHIDE, !fsutil_checkfile("/atmosphere/reboot_payload.bin"));
+	}
+	else {
+		for (int i = 4; i <= 5; i++)
+			SETBIT(mainmenu_shutdown[i].property, ISHIDE, 1);
+	}
 
-    res = menu_make(mainmenu_shutdown, 6, "-- Shutdown Menu --");
+	res = menu_make(mainmenu_shutdown, 6, "-- Shutdown Menu --");
 
-    switch(res){
-        case SHUTDOWN_REBOOT_RCM:
-            reboot_rcm();
-                    
-        case SHUTDOWN_REBOOT_NORMAL:
-            reboot_normal();
+	switch(res){
+		case SHUTDOWN_REBOOT_RCM:
+			reboot_rcm();
+					
+		case SHUTDOWN_REBOOT_NORMAL:
+			reboot_normal();
 
-        case SHUTDOWN_POWER_OFF:
-            power_off();
+		case SHUTDOWN_POWER_OFF:
+			power_off();
 
-        case SHUTDOWN_HEKATE:
-            launch_payload("/bootloader/update.bin");
-                    
-        case SHUTDOWN_AMS:
-            launch_payload("/atmosphere/reboot_payload.bin");
-    } //todo declock bpmp
+		case SHUTDOWN_HEKATE:
+			launch_payload("/bootloader/update.bin");
+					
+		case SHUTDOWN_AMS:
+			launch_payload("/atmosphere/reboot_payload.bin");
+	} //todo declock bpmp
 }
 
 func_void_ptr mainmenu_functions[] = {
-    MainMenu_SDCard,
-    MainMenu_EMMC,
-    MainMenu_EMUMMC,
-    MainMenu_MountSD,
-    MainMenu_Tools,
-    MainMenu_SDFormat,
-    MainMenu_Credits,
-    MainMenu_Exit,
+	MainMenu_SDCard,
+	MainMenu_EMMC,
+	MainMenu_EMUMMC,
+	MainMenu_MountSD,
+	MainMenu_Tools,
+	MainMenu_SDFormat,
+	MainMenu_Credits,
+	MainMenu_Exit,
 };
 
 void RunMenuOption(int option){
-    if (option != 7)
-        meter = 0;
-    if (option > 0)
-        mainmenu_functions[option - 1]();
+	if (option != 7)
+		meter = 0;
+	if (option > 0)
+		mainmenu_functions[option - 1]();
 }
 void te_main(){
-    int setter;
+	int setter;
 
-    if (dump_biskeys() == -1){
-        gfx_errDisplay("dump_biskey", ERR_BISKEY_DUMP_FAILED, 0);
-        //mainmenu_main[1].property |= ISHIDE;
-    }
+	if (dump_biskeys() == -1){
+		gfx_errDisplay("dump_biskey", ERR_BISKEY_DUMP_FAILED, 0);
+		//mainmenu_main[1].property |= ISHIDE;
+	}
 
-    if (emummc_load_cfg()){
-        mainmenu_main[2].property |= ISHIDE;
-    }
+	if (emummc_load_cfg()){
+		mainmenu_main[2].property |= ISHIDE;
+	}
 
-    dumpGpt();
+	dumpGpt();
 
-    disconnect_mmc();
+	disconnect_mmc();
 
-    while (1){
-        //fillmainmenu();
+	while (1){
+		//fillmainmenu();
 
-        setter = sd_mounted;
+		setter = sd_mounted;
 
-        if (emu_cfg.enabled){
-            SETBIT(mainmenu_main[2].property, ISHIDE, !setter);
-        }
+		if (emu_cfg.enabled){
+			SETBIT(mainmenu_main[2].property, ISHIDE, !setter);
+		}
 
-        SETBIT(mainmenu_main[0].property, ISHIDE, !setter);
-        mainmenu_main[3].name = (menu_sd_states[!setter]);
+		SETBIT(mainmenu_main[0].property, ISHIDE, !setter);
+		mainmenu_main[3].name = (menu_sd_states[!setter]);
 
-        setter = sd_inited;
-        SETBIT(mainmenu_main[5].property, ISHIDE, !setter);
+		setter = sd_inited;
+		SETBIT(mainmenu_main[5].property, ISHIDE, !setter);
 
-        res = menu_make(mainmenu_main, 8, "-- Main Menu --") + 1;
-        RunMenuOption(res);
-    }
+		res = menu_make(mainmenu_main, 8, "-- Main Menu --") + 1;
+		RunMenuOption(res);
+	}
 }

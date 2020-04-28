@@ -2,21 +2,21 @@
 #include "../../utils/types.h"
 
 typedef struct _dict_str_int {
-    char *key;
-    int value;
-    struct _dict_str_int *next;
+	char *key;
+	int value;
+	struct _dict_str_int *next;
 } dict_str_int;
 
 typedef struct _dict_str_str {
-    char *key;
-    char *value;
-    struct _dict_str_str *next;
+	char *key;
+	char *value;
+	struct _dict_str_str *next;
 } dict_str_str;
 
 typedef struct _dict_str_loc {
-    char *key;
-    u64 value;
-    struct _dict_str_loc *next;
+	char *key;
+	u64 value;
+	struct _dict_str_loc *next;
 } dict_str_loc;
 
 int str_int_add(char *key, int value);
