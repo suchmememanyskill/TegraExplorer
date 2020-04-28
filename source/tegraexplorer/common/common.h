@@ -23,7 +23,7 @@ enum utils_err_codes_te_call {
     ERR_SD_EJECTED,
     ERR_PARSE_FAIL,
     ERR_CANNOT_COPY_FILE_TO_FS_PART,
-    ERR_NO_DESTENATION
+    ERR_NO_DESTINATION
 };
 
 extern const char *utils_err_codes_te[];
