@@ -5,7 +5,7 @@ A payload-based file explorer for your switch!
 1. Get your favorite payload injector
 2. Inject TegraExplorer as a payload
 
-Navigate around the menu's using the vol+, vol- and power buttons
+Navigate around the menus using the vol+, vol- and power buttons
 
 ## Functions
 - Navigate the SD card
