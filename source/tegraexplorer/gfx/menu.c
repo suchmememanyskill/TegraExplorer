@@ -61,7 +61,7 @@ void _printentry(menu_entry entry, bool highlighted, bool refresh){
 }
 
 int menu_make(menu_entry *entries, int amount, char *toptext){
-    int currentpos = 0, res = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 59, calculatedamount = 0;
+    int currentpos = 0, res = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 29, calculatedamount = 0;
     u32 scrolltimer, timer;
     bool refresh = false;
 
@@ -71,7 +71,7 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
         if (!(entries[i].property & ISMENU))
             calculatedamount++;
 
-    gfx_con_setpos(512, 0);
+    gfx_con_setpos(1071, 0);
     if (calculatedamount){
         SWAPCOLOR(COLOR_DEFAULT);
         SWAPBGCOLOR(COLOR_WHITE);
@@ -113,11 +113,11 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
             refresh = true;
         }
 
-        for (int i = 0 + offset; i < amount && i < 60 + offset; i++)
+        for (int i = 0 + offset; i < amount && i < 30 + offset; i++)
             if (!(entries[i].property & ISHIDE))
                 _printentry(entries[i], (i == currentpos), refresh);
 
-        gfx_printf("\n%k%K %s %s\n\nTime taken for screen draw: %dms", COLOR_BLUE, COLOR_DEFAULT, (offset + 60 < amount) ? "v" : " ", (offset > 0) ? "^" : " ", get_tmr_ms() - timer);
+        gfx_printf("\n%k%K %s %s\n\nTime taken for screen draw: %dms ", COLOR_BLUE, COLOR_DEFAULT, (offset + 30 < amount) ? "v" : " ", (offset > 0) ? "^" : " ", get_tmr_ms() - timer);
 
         while (btn_read() & BTN_POWER);
 
