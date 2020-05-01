@@ -1,7 +1,7 @@
 /*
  * BPMP-Lite Cache/MMU and Frequency driver for Tegra X1
  *
- * Copyright (c) 2019 CTCaer
+ * Copyright (c) 2019-2020 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -21,14 +21,24 @@
 
 #include "../utils/types.h"
 
-#define BPMP_MMU_MAINT_CLEAN_WAY   17
-#define BPMP_MMU_MAINT_INVALID_WAY 18
-#define BPMP_MMU_MAINT_CLN_INV_WAY 19
+typedef enum
+{
+	BPMP_MMU_MAINT_NOP                =  0,
+	BPMP_MMU_MAINT_CLEAN_PHY          =  1,
+	BPMP_MMU_MAINT_INVALID_PHY        =  2,
+	BPMP_MMU_MAINT_CLEAN_INVALID_PHY  =  3,
+	BPMP_MMU_MAINT_CLEAN_LINE         =  9,
+	BPMP_MMU_MAINT_INVALID_LINE       = 10,
+	BPMP_MMU_MAINT_CLEAN_INVALID_LINE = 11,
+	BPMP_MMU_MAINT_CLEAN_WAY          = 17,
+	BPMP_MMU_MAINT_INVALID_WAY        = 18,
+	BPMP_MMU_MAINT_CLN_INV_WAY        = 19
+} bpmp_maintenance_t;
 
 typedef struct _bpmp_mmu_entry_t
 {
-	u32 min_addr;
-	u32 max_addr;
+	u32 start_addr;
+	u32 end_addr;
 	u32 attr;
 	u32 enable;
 } bpmp_mmu_entry_t;
@@ -49,6 +59,7 @@ void bpmp_mmu_maintenance(u32 op, bool force);
 void bpmp_mmu_set_entry(int idx, bpmp_mmu_entry_t *entry, bool apply);
 void bpmp_mmu_enable();
 void bpmp_mmu_disable();
+void bpmp_clk_rate_get();
 void bpmp_clk_rate_set(bpmp_freq_t fid);
 void bpmp_usleep(u32 us);
 void bpmp_msleep(u32 ms);

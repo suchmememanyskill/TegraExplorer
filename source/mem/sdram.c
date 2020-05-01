@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string.h>
+
 #include "mc.h"
 #include "emc.h"
 #include "sdram_param_t210.h"
@@ -29,7 +31,7 @@
 #include "../soc/t210.h"
 #include "../utils/util.h"
 
-#define CONFIG_SDRAM_COMPRESS_CFG
+#define CONFIG_SDRAM_KEEP_ALIVE
 
 #ifdef CONFIG_SDRAM_COMPRESS_CFG
 #include "../libs/compr/lz.h"
@@ -40,13 +42,57 @@
 
 static u32 _get_sdram_id()
 {
-	u32 sdram_id = (fuse_read_odm(4) & 0x38) >> 3;
+	return ((fuse_read_odm(4) & 0x38) >> 3);
+}
 
-	// Check if id is proper.
-	if (sdram_id > 7)
-		sdram_id = 0;
+static bool _sdram_wait_emc_status(u32 reg_offset, u32 bit_mask, bool updated_state, s32 emc_channel)
+{
+	bool err = true;
 
-	return sdram_id;
+	for (s32 i = 0; i < EMC_STATUS_UPDATE_TIMEOUT; i++)
+	{
+		if (emc_channel)
+		{
+			if (emc_channel != 1)
+				goto done;
+
+			if (((EMC_CH1(reg_offset) & bit_mask) != 0) == updated_state)
+			{
+				err = false;
+				break;
+			}
+		}
+		else if (((EMC(reg_offset) & bit_mask) != 0) == updated_state)
+		{
+			err = false;
+			break;
+		}
+		usleep(1);
+	}
+
+done:
+	return err;
+}
+
+static void _sdram_req_mrr_data(u32 data, bool dual_channel)
+{
+	EMC(EMC_MRR) = data;
+	_sdram_wait_emc_status(EMC_EMC_STATUS, EMC_STATUS_MRR_DIVLD, true, EMC_CHAN0);
+	if (dual_channel)
+		_sdram_wait_emc_status(EMC_EMC_STATUS, EMC_STATUS_MRR_DIVLD, true, EMC_CHAN1);
+}
+
+emc_mr_data_t sdram_read_mrx(emc_mr_t mrx)
+{
+	emc_mr_data_t data;
+	_sdram_req_mrr_data((1 << 31) | (mrx << 16), EMC_CHAN0);
+	data.dev0_ch0 = EMC(EMC_MRR) & 0xFF;
+	data.dev0_ch1 = (EMC(EMC_MRR) & 0xFF00 >> 8);
+	_sdram_req_mrr_data((1 << 30) | (mrx << 16), EMC_CHAN1);
+	data.dev1_ch0 = EMC(EMC_MRR) & 0xFF;
+	data.dev1_ch1 = (EMC(EMC_MRR) & 0xFF00 >> 8);
+
+	return data;
 }
 
 static void _sdram_config(const sdram_params_t *params)
@@ -73,10 +119,14 @@ static void _sdram_config(const sdram_params_t *params)
 	CLOCK(CLK_RST_CONTROLLER_PLLM_MISC1) = params->pllm_setup_control;
 	CLOCK(CLK_RST_CONTROLLER_PLLM_MISC2) = 0;
 
-	// u32 tmp = (params->pllm_feedback_divider << 8) | params->pllm_input_divider | ((params->pllm_post_divider & 0xFFFF) << 20);
-	// CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) = tmp;
-	// CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) = tmp | 0x40000000;
-	CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) = (params->pllm_feedback_divider << 8) | params->pllm_input_divider | 0x40000000 | ((params->pllm_post_divider & 0xFFFF) << 20);
+#ifdef CONFIG_SDRAM_KEEP_ALIVE
+	CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) =
+		(params->pllm_feedback_divider << 8) | params->pllm_input_divider | ((params->pllm_post_divider & 0xFFFF) << 20) | PLLCX_BASE_ENABLE;
+#else
+	u32 pllm_div = (params->pllm_feedback_divider << 8) | params->pllm_input_divider | ((params->pllm_post_divider & 0xFFFF) << 20);
+	CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) = pllm_div;
+	CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) = pllm_div | PLLCX_BASE_ENABLE;
+#endif
 
 	u32 wait_end = get_tmr_us() + 300;
 	while (!(CLOCK(CLK_RST_CONTROLLER_PLLM_BASE) & 0x8000000))
@@ -91,7 +141,7 @@ break_nosleep:
 	if (params->emc_clock_source_dll)
 		CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_EMC_DLL) = params->emc_clock_source_dll;
 	if (params->clear_clock2_mc1)
-		CLOCK(CLK_RST_CONTROLLER_CLK_ENB_W_CLR) = 0x40000000;
+		CLOCK(CLK_RST_CONTROLLER_CLK_ENB_W_CLR) = 0x40000000; // Clear Reset to MC1.
 
 	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_H_SET) = 0x2000001; // Enable EMC and MEM clocks.
 	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_X_SET) = 0x4000;    // Enable EMC_DLL clock.
@@ -509,9 +559,9 @@ break_nosleep:
 	// ZQ CAL setup (not actually issuing ZQ CAL now).
 	if (params->emc_zcal_warm_cold_boot_enables & 1)
 	{
-		if (params->memory_type == 2)
+		if (params->memory_type == MEMORY_TYPE_DDR3L)
 			EMC(EMC_ZCAL_WAIT_CNT) = params->emc_zcal_wait_cnt << 3;
-		if (params->memory_type == 3)
+		if (params->memory_type == MEMORY_TYPE_LPDDR4)
 		{
 			EMC(EMC_ZCAL_WAIT_CNT) = params->emc_zcal_wait_cnt;
 			EMC(EMC_ZCAL_MRW_CMD) = params->emc_zcal_mrw_cmd;
@@ -527,7 +577,7 @@ break_nosleep:
 
 	// Set clock enable signal.
 	u32 pin_gpio_cfg = (params->emc_pin_gpio_enable << 16) | (params->emc_pin_gpio << 12);
-	if (params->memory_type == 2 || params->memory_type == 3)
+	if (params->memory_type == MEMORY_TYPE_DDR3L || params->memory_type == MEMORY_TYPE_LPDDR4)
 	{
 		EMC(EMC_PIN) = pin_gpio_cfg;
 		(void)EMC(EMC_PIN);
@@ -536,9 +586,9 @@ break_nosleep:
 		(void)EMC(EMC_PIN);
 	}
 
-	if (params->memory_type == 3)
+	if (params->memory_type == MEMORY_TYPE_LPDDR4)
 		usleep(params->emc_pin_extra_wait + 2000);
-	else if (params->memory_type == 2)
+	else if (params->memory_type == MEMORY_TYPE_DDR3L)
 		usleep(params->emc_pin_extra_wait + 500);
 
 	// Enable clock enable signal.
@@ -547,15 +597,15 @@ break_nosleep:
 	usleep(params->emc_pin_program_wait);
 
 	// Send NOP (trigger just needs to be non-zero).
-	if (params->memory_type != 3)
+	if (params->memory_type != MEMORY_TYPE_LPDDR4)
 		EMC(EMC_NOP) = (params->emc_dev_select << 30) + 1;
 
 	// On coldboot w/LPDDR2/3, wait 200 uSec after asserting CKE high.
-	if (params->memory_type == 1)
+	if (params->memory_type == MEMORY_TYPE_LPDDR2)
 		usleep(params->emc_pin_extra_wait + 200);
 
 	// Init zq calibration,
-	if (params->memory_type == 3)
+	if (params->memory_type == MEMORY_TYPE_LPDDR4)
 	{
 		// Patch 6 using BCT spare variables.
 		if (params->emc_bct_spare10)
@@ -596,7 +646,7 @@ break_nosleep:
 	PMC(APBDEV_PMC_DDR_CFG) = params->pmc_ddr_cfg;
 
 	// Start periodic ZQ calibration (LPDDRx only).
-	if (params->memory_type - 1 <= 2)
+	if (params->memory_type && params->memory_type <= MEMORY_TYPE_LPDDR4)
 	{
 		EMC(EMC_ZCAL_INTERVAL) = params->emc_zcal_interval;
 		EMC(EMC_ZCAL_WAIT_CNT) = params->emc_zcal_wait_cnt;
@@ -641,18 +691,47 @@ break_nosleep:
 	MC(MC_SEC_CARVEOUT_REG_CTRL) = params->mc_sec_carveout_protect_write_access;
 	MC(MC_MTS_CARVEOUT_REG_CTRL) = params->mc_mts_carveout_reg_ctrl;
 
-	//Disable write access to a bunch of EMC registers.
+	// Disable write access to a bunch of EMC registers.
 	MC(MC_EMEM_CFG_ACCESS_CTRL) = 1;
 }
 
+#ifndef CONFIG_SDRAM_COMPRESS_CFG
+static void _sdram_patch_model_params(u32 dramid, u32 *params)
+{
+	for (u32 i = 0; i < sizeof(sdram_cfg_vendor_patches) / sizeof(sdram_vendor_patch_t); i++)
+		if (sdram_cfg_vendor_patches[i].dramid & DRAM_ID(dramid))
+			params[sdram_cfg_vendor_patches[i].addr] = sdram_cfg_vendor_patches[i].val;
+}
+#endif
+
 sdram_params_t *sdram_get_params()
 {
+	// Check if id is proper.
+	u32 dramid = _get_sdram_id();
+	if (dramid > 6)
+		dramid = 0;
+
 #ifdef CONFIG_SDRAM_COMPRESS_CFG
 	u8 *buf = (u8 *)SDRAM_PARAMS_ADDR;
 	LZ_Uncompress(_dram_cfg_lz, buf, sizeof(_dram_cfg_lz));
-	return (sdram_params_t *)&buf[sizeof(sdram_params_t) * _get_sdram_id()];
+	return (sdram_params_t *)&buf[sizeof(sdram_params_t) * dramid];
 #else
-	return _dram_cfgs[_get_sdram_id()];
+	sdram_params_t *buf = (sdram_params_t *)SDRAM_PARAMS_ADDR;
+	memcpy(buf, &_dram_cfg_0_samsung_4gb, sizeof(sdram_params_t));
+	switch (dramid)
+	{
+	case DRAM_4GB_SAMSUNG_K4F6E304HB_MGCH:
+	case DRAM_4GB_MICRON_MT53B512M32D2NP_062_WT:
+		break;
+	case DRAM_4GB_HYNIX_H9HCNNNBPUMLHR_NLN:
+	case DRAM_4GB_COPPER_UNK_3:
+	case DRAM_6GB_SAMSUNG_K4FHE3D4HM_MFCH:
+	case DRAM_4GB_COPPER_UNK_5:
+	case DRAM_4GB_COPPER_UNK_6:
+		_sdram_patch_model_params(dramid, (u32 *)buf);
+		break;
+	}
+	return buf;
 #endif
 }
 

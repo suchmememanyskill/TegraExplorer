@@ -39,6 +39,8 @@
 #include "utils/sprintf.h"
 #include "utils/util.h"
 #include "tegraexplorer/mainmenu.h"
+#include "tegraexplorer/gfx/gfxutils.h"
+#include "storage/nx_sd.h"
 
 //#include "keys/keys.h"
 
@@ -50,6 +52,7 @@ volatile nyx_storage_t *nyx_str = (nyx_storage_t *)NYX_STORAGE_ADDR;
 hekate_config h_cfg;
 boot_cfg_t __attribute__((section ("._boot_cfg"))) b_cfg;
 
+/*
 bool sd_mount()
 {
 	if (sd_mounted)
@@ -131,6 +134,7 @@ int sd_save_to_file(void *buf, u32 size, const char *filename)
 
 	return 0;
 }
+*/
 
 // This is a safe and unused DRAM region for our payloads.
 #define RELOC_META_OFF      0x7C
@@ -229,6 +233,7 @@ int launch_payload(char *path)
 	return 1;
 }
 
+/*
 void launch_tools()
 {
 	u8 max_entries = 61;
@@ -403,9 +408,55 @@ void _get_key_generations(char *sysnand_label, char *emunand_label) {
 	free(pkg1);
 	ment_top[1].caption = emunand_label;
 }
+*/
 
-#define IPL_STACK_TOP  0x90010000
-#define IPL_HEAP_START 0x90020000
+#define EXCP_EN_ADDR   0x4003FFFC
+#define  EXCP_MAGIC 0x30505645 // EVP0
+#define EXCP_TYPE_ADDR 0x4003FFF8
+#define  EXCP_TYPE_RESET 0x545352 // RST
+#define  EXCP_TYPE_UNDEF 0x464455 // UDF
+#define  EXCP_TYPE_PABRT 0x54424150 // PABT
+#define  EXCP_TYPE_DABRT 0x54424144 // DABT
+#define EXCP_LR_ADDR   0x4003FFF4
+
+static void _show_errors(){
+	u32 *excp_enabled = (u32 *)EXCP_EN_ADDR;
+	u32 *excp_type = (u32 *)EXCP_TYPE_ADDR;
+	u32 *excp_lr = (u32 *)EXCP_LR_ADDR;
+
+	if (*excp_enabled == EXCP_MAGIC)
+		h_cfg.errors |= ERR_EXCEPT_ENB;
+
+	if (h_cfg.errors & ERR_EXCEPT_ENB){
+		gfx_clearscreen();
+		SWAPCOLOR(COLOR_ORANGE);
+		gfx_printf("\nAn exception has occured while running TegraExplorer!\n(LR %08X)\n\n", *excp_lr);
+
+		SWAPCOLOR(COLOR_VIOLET);
+		gfx_printf("Exception: ");
+		SWAPCOLOR(COLOR_YELLOW);
+		switch (*excp_type){
+			case EXCP_TYPE_RESET:
+				gfx_printf("Reset");
+				break;
+			case EXCP_TYPE_UNDEF:
+				gfx_printf("Undefined instruction");
+				break;
+			case EXCP_TYPE_PABRT:
+				gfx_printf("Prefetch abort");
+				break;
+			case EXCP_TYPE_DABRT:
+				gfx_printf("Data abort");
+				break;
+		}
+
+		RESETCOLOR;
+		gfx_printf("\n\nPress any key to continue...");
+
+		*excp_enabled = 0;
+		btn_wait();
+	}
+}
 
 extern void pivot_stack(u32 stack_top);
 
@@ -454,6 +505,8 @@ void ipl_main()
 	while (true)
 		tui_do_menu(&menu_top);
 	*/
+
+	_show_errors();
 
 	te_main();
 

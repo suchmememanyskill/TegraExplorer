@@ -29,6 +29,7 @@
 #include "../mem/heap.h"
 #include "../mem/mc.h"
 #include "../utils/util.h"
+#include "../hos/hos.h"
 
 // #include "../gfx/gfx.h"
 
@@ -80,7 +81,7 @@ int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 
 	kfuse_wait_ready();
 
-	//Configure Falcon.
+	// Configure Falcon.
 	TSEC(TSEC_DMACTL) = 0;
 	TSEC(TSEC_IRQMSET) =
 		TSEC_IRQMSET_EXT(0xFF) |
@@ -102,7 +103,7 @@ int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 		goto out;
 	}
 
-	//Load firmware or emulate memio environment for newer TSEC fw.
+	// Load firmware or emulate memio environment for newer TSEC fw.
 	if (kb == KB_FIRMWARE_VERSION_620)
 		TSEC(TSEC_DMATRFBASE) = (u32)tsec_ctxt->fw >> 8;
 	else
@@ -126,7 +127,7 @@ int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 	{
 		// Init SMMU translation for TSEC.
 		pdir = smmu_init_for_tsec();
-		smmu_init(0x4002B000);
+		smmu_init(tsec_ctxt->secmon_base);
 		// Enable SMMU
 		if (!smmu_is_used())
 			smmu_enable();
@@ -169,7 +170,7 @@ int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 		iram = page_alloc(0x30);
 		memcpy(iram, tsec_ctxt->pkg1, 0x30000);
 		// PKG1.1 magic offset.
-		pkg11_magic_off = (u32 *)(iram + (0x7000 / 4));
+		pkg11_magic_off = (u32 *)(iram + ((tsec_ctxt->pkg11_off + 0x20) / 4));
 		smmu_map(pdir, 0x40010000, (u32)iram, 0x30, _READABLE | _WRITABLE | _NONSECURE);
 
 		// Exception vectors
@@ -177,7 +178,7 @@ int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 		smmu_map(pdir, EXCP_VEC_BASE, (u32)evec, 1, _READABLE | _WRITABLE | _NONSECURE);
 	}
 
-	//Execute firmware.
+	// Execute firmware.
 	HOST1X(HOST1X_CH0_SYNC_SYNCPT_160) = 0x34C2E1DA;
 	TSEC(TSEC_STATUS) = 0;
 	TSEC(TSEC_BOOTKEYVER) = 1; // HOS uses key version 1.
@@ -254,7 +255,7 @@ int tsec_query(u8 *tsec_keys, u8 kb, tsec_ctxt_t *tsec_ctxt)
 			goto out_free;
 		}
 
-		//Fetch result.
+		// Fetch result.
 		HOST1X(HOST1X_CH0_SYNC_SYNCPT_160) = 0;
 		u32 buf[4];
 		buf[0] = SOR1(SOR_NV_PDISP_SOR_DP_HDCP_BKSV_LSB);
@@ -274,7 +275,7 @@ out_free:;
 
 out:;
 
-	//Disable clocks.
+	// Disable clocks.
 	clock_disable_kfuse();
 	clock_disable_sor1();
 	clock_disable_sor0();

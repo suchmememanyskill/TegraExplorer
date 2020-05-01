@@ -17,9 +17,11 @@
 #include "fs/fsmenu.h"
 #include "emmc/emmcoperations.h"
 #include "emmc/emmcmenu.h"
-
+#include "../storage/nx_sd.h"
+/*
 extern bool sd_mount();
 extern void sd_unmount();
+*/
 extern int launch_payload(char *path);
 extern bool sd_inited;
 extern bool sd_mounted;
@@ -100,6 +102,8 @@ void MainMenu_Credits(){
     if (++meter >= 3)
         gfx_errDisplay("credits", 53, 0);
     gfx_message(COLOR_WHITE, mainmenu_credits);
+    int frii = 10/0;
+    gfx_printf("%d", frii);
 }
 
 void MainMenu_Exit(){
@@ -156,6 +160,9 @@ void te_main(){
         gfx_errDisplay("dump_biskey", ERR_BISKEY_DUMP_FAILED, 0);
         //mainmenu_main[1].property |= ISHIDE;
     }
+
+    //gfx_message(COLOR_ORANGE, "%d %d %d", sd_mount(), sd_mounted, sd_inited);
+    sd_mount();
 
     if (emummc_load_cfg()){
         mainmenu_main[2].property |= ISHIDE;

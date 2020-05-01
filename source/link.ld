@@ -6,6 +6,7 @@ SECTIONS {
 	.text : {
 		*(.text._start);
 		*(._boot_cfg);
+		*(.text._irq_setup);
 		*(.text*);
 	}
 	.data : {

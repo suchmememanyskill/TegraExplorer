@@ -26,6 +26,7 @@
 #include "pinmux.h"
 #include "pmc.h"
 #include "t210.h"
+#include "uart.h"
 #include "../gfx/di.h"
 #include "../mem/mc.h"
 #include "../mem/minerva.h"
@@ -34,10 +35,10 @@
 #include "../power/max7762x.h"
 #include "../sec/se.h"
 #include "../sec/se_t210.h"
+#include "../storage/nx_sd.h"
 #include "../storage/sdmmc.h"
 #include "../utils/util.h"
 
-extern sdmmc_t sd_sdmmc;
 extern boot_cfg_t b_cfg;
 extern volatile nyx_storage_t *nyx_str;
 
@@ -101,7 +102,7 @@ void _config_gpios()
 
 	pinmux_config_i2c(I2C_1);
 	pinmux_config_i2c(I2C_5);
-	pinmux_config_uart(0);
+	pinmux_config_uart(UART_A);
 
 	// Configure volume up/down as inputs.
 	gpio_config(GPIO_PORT_X, GPIO_PIN_6, GPIO_MODE_GPIO);
@@ -294,6 +295,11 @@ void config_hw()
 	APB_MISC(APB_MISC_PP_PINMUX_GLOBAL) = 0;
 	_config_gpios();
 
+#ifdef DEBUG_UART_PORT
+	clock_enable_uart(DEBUG_UART_PORT);
+	uart_init(DEBUG_UART_PORT, 115200);
+#endif
+
 	clock_enable_cl_dvfs();
 
 	clock_enable_i2c(I2C_1);
@@ -313,7 +319,9 @@ void config_hw()
 	sdram_init();
 
 	bpmp_mmu_enable();
-	mc_enable_ahb_redirect();
+
+	// Clear flags from PMC_SCRATCH0
+	PMC(APBDEV_PMC_SCRATCH0) &= ~PMC_SCRATCH0_MODE_PAYLOAD;
 }
 
 void reconfig_hw_workaround(bool extra_reconfig, u32 magic)
@@ -326,7 +334,7 @@ void reconfig_hw_workaround(bool extra_reconfig, u32 magic)
 
 	// Re-enable clocks to Audio Processing Engine as a workaround to hanging.
 	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= (1 << 10); // Enable AHUB clock.
-	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= (1 <<  6);  // Enable APE clock.
+	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= (1 <<  6); // Enable APE clock.
 
 	if (extra_reconfig)
 	{
@@ -349,7 +357,7 @@ void reconfig_hw_workaround(bool extra_reconfig, u32 magic)
 	if (magic == 0xBAADF00D)
 	{
 		CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_L) |= (1 << 22);
-		sdmmc_init(&sd_sdmmc, SDMMC_1, SDMMC_POWER_3_3, SDMMC_BUS_WIDTH_1, 5, 0);
+		sdmmc_init(&sd_sdmmc, SDMMC_1, SDMMC_POWER_3_3, SDMMC_BUS_WIDTH_1, SDHCI_TIMING_SD_ID, 0);
 		clock_disable_cl_dvfs();
 
 		msleep(200);
