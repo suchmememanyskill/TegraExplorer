@@ -1,3 +1,4 @@
+#include <string.h>
 #include "menu.h"
 #include "gfxutils.h"
 #include "../common/types.h"
@@ -43,9 +44,11 @@ void _printentry(menu_entry entry, bool highlighted, bool refresh){
    SWAPCOLOR((highlighted) ? COLOR_DEFAULT : color);
    SWAPBGCOLOR((highlighted) ? color : COLOR_DEFAULT);
         
+    if (!(entry.property & ISMENU))
+        gfx_printf("%c ", (entry.property & ISDIR) ? 30 : 31);
 
     if (refresh)
-        gfx_printandclear(entry.name, 37);
+        gfx_printandclear(entry.name, 37, 720);
     else
         gfx_printlength(37, entry.name);
 
@@ -61,9 +64,10 @@ void _printentry(menu_entry entry, bool highlighted, bool refresh){
     }   
 }
 
+
 bool disableB = false;
 int menu_make(menu_entry *entries, int amount, char *toptext){
-    int currentpos = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 29, calculatedamount = 0;
+    int currentpos = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 39, calculatedamount = 0;
     u32 scrolltimer, timer;
     bool refresh = false;
     Inputs *input = hidRead();
@@ -75,7 +79,8 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
         if (!(entries[i].property & ISMENU))
             calculatedamount++;
 
-    gfx_con_setpos(1071, 0);
+    gfx_con_setpos(0, 16);
+    /*
     if (calculatedamount){
         SWAPCOLOR(COLOR_DEFAULT);
         SWAPBGCOLOR(COLOR_WHITE);
@@ -84,13 +89,28 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
     }
     else
         gfx_printf("\n");
+    */
+    
+
 
     SWAPCOLOR(COLOR_GREEN);
     gfx_printlength(42, toptext);
     RESETCOLOR;
 
+    char *currentfolder = strrchr(toptext, '/');
+    if (currentfolder != NULL){
+        gfx_con_setpos(800, 48);
+        if (calculatedamount)
+            gfx_printf("%d items in curr. folder\n%j", calculatedamount, 800);
+        gfx_printf("Current directory:\n%j", 800);
+        if (*(currentfolder + 1) != 0)
+            currentfolder++;
+        SWAPCOLOR(COLOR_GREEN);
+        gfx_printlength(28, currentfolder);
+    }
+
     while (!(input->a)){
-        gfx_con_setpos(0, 47);
+        gfx_con_setpos(0, 48);
         timer = get_tmr_ms();
         refresh = false;
 
@@ -117,11 +137,28 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
             refresh = true;
         }
 
-        for (int i = 0 + offset; i < amount && i < 30 + offset; i++)
+        for (int i = 0 + offset; i < amount && i < 40 + offset; i++)
             if (!(entries[i].property & ISHIDE))
                 _printentry(entries[i], (i == currentpos), refresh);
 
-        gfx_printf("\n%k%K %s %s\n\nTime taken for screen draw: %dms ", COLOR_BLUE, COLOR_DEFAULT, (offset + 30 < amount) ? "v" : " ", (offset > 0) ? "^" : " ", get_tmr_ms() - timer);
+        RESETCOLOR;
+
+        if (!(entries[currentpos].property & ISMENU)){
+            gfx_con_setpos(800, 144);
+            gfx_printf("Current selection:\n%j", 800);
+            SWAPCOLOR(COLOR_YELLOW);
+            gfx_printandclear(entries[currentpos].name, 28, 1279);
+            RESETCOLOR;
+            gfx_con_setpos(800, 175);
+            gfx_printf("Type: %s", (entries[currentpos].property & ISDIR) ? "Dir " : "File");
+        }
+        else
+            gfx_boxGrey(800, 223, 1279, 271, 0x1B);
+
+        gfx_con_setpos(0, 703);
+        SWAPCOLOR(COLOR_DEFAULT);
+        SWAPBGCOLOR(COLOR_WHITE);
+        gfx_printf("%s %s | Time taken for screen draw: %dms  ", (offset + 40 < amount) ? "v" : " ", (offset > 0) ? "^" : " ", get_tmr_ms() - timer);
 
         while ((input = hidRead())->buttons & (KEY_B | KEY_A));
 

@@ -20,12 +20,9 @@ void gfx_clearscreen(){
     SWAPBGCOLOR(COLOR_WHITE);
 
     gfx_boxGrey(0, 703, 1279, 719, 0xFF);
-    gfx_con_setpos(0, 703);
-    gfx_printf("Move: Vol+/- | Select: Pow | Battery: %3d%%", battery >> 8);
-
     gfx_boxGrey(0, 0, 1279, 15, 0xFF);
     gfx_con_setpos(0, 0);
-    gfx_printf("Tegraexplorer v1.5.2\n");
+    gfx_printf("Tegraexplorer v1.5.2 | Battery: %3d%%", battery >> 8);
 
     RESETCOLOR;
 }
@@ -108,7 +105,7 @@ void gfx_printlength(int size, char *toprint){
     free(temp);
 }
 
-void gfx_printandclear(char *in, int length){
+void gfx_printandclear(char *in, int length, int endX){
     u32 x, y;
 
     gfx_printlength(length, in);
@@ -121,7 +118,7 @@ void gfx_printandclear(char *in, int length){
         gfx_printf(" ");
     */
 
-   gfx_boxGrey(x, y, 687, y + 15, 0x1B);
+    gfx_boxGrey(x, y, endX, y + 15, 0x1B);
 
     gfx_con_setpos(x, y);
 

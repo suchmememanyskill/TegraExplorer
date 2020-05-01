@@ -11,7 +11,7 @@ int gfx_message(u32 color, const char* message, ...);
 int gfx_errDisplay(char *src_func, int err, int loc);
 int gfx_makewaitmenu(char *hiddenmessage, int timer);
 void gfx_printlength(int size, char *toprint);
-void gfx_printandclear(char *in, int length);
+void gfx_printandclear(char *in, int length, int endX);
 void gfx_printfilesize(int size, char *type);
 
 extern int printerrors;

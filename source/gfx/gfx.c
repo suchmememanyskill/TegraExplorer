@@ -21,6 +21,8 @@
 #include "gfx.h"
 
 static const u8 _gfx_font[] = {
+	0x00, 0x0C, 0x12, 0x7E, 0x42, 0x42, 0x7E, 0x00, // Char 030 (folder)
+	0x00, 0x0E, 0x12, 0x22, 0x22, 0x22, 0x3E, 0x00, // Char 031 (file)
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Char 032 ( )
 	0x00, 0x30, 0x30, 0x18, 0x18, 0x00, 0x0C, 0x00, // Char 033 (!)
 	0x00, 0x22, 0x22, 0x22, 0x00, 0x00, 0x00, 0x00, // Char 034 (")
@@ -181,9 +183,9 @@ void gfx_putc(char c)
 	switch (gfx_con.fntsz)
 	{
 	case 16:
-		if (c >= 32 && c <= 126)
+		if (c >= 30 && c <= 126)
 		{
-			u8 *cbuf = (u8 *)&_gfx_font[8 * (c - 32)];
+			u8 *cbuf = (u8 *)&_gfx_font[8 * (c - 30)];
 			u32 *fb = gfx_ctxt.fb + gfx_con.x + gfx_con.y * gfx_ctxt.stride;
 
 			for (u32 i = 0; i < 16; i+=2)
@@ -238,18 +240,18 @@ void gfx_putc(char c)
 				gfx_con.x = 0;
 		}
 		else if (c == '\e')
-			gfx_con.y = 607;
+			gfx_con.y = 575;
 		else if (c == '\a')
-			gfx_con.y = 671;
+			gfx_con.y = 639;
 		else if (c == '\r')
 			gfx_con.y = YLEFT;
 
 		break;
 	case 8:
 	default:
-		if (c >= 32 && c <= 126)
+		if (c >= 30 && c <= 126)
 		{
-			u8 *cbuf = (u8 *)&_gfx_font[8 * (c - 32)];
+			u8 *cbuf = (u8 *)&_gfx_font[8 * (c - 30)];
 			u32 *fb = gfx_ctxt.fb + gfx_con.x + gfx_con.y * gfx_ctxt.stride;
 			for (u32 i = 0; i < 8; i++)
 			{
@@ -280,10 +282,10 @@ void gfx_putc(char c)
 			if (gfx_con.x > gfx_ctxt.width - 8)
 				gfx_con.x = 0;
 		}
-				else if (c == '\e')
-			gfx_con.y = 607;
+		else if (c == '\e')
+			gfx_con.y = 575;
 		else if (c == '\a')
-			gfx_con.y = 671;
+			gfx_con.y = 639;
 		else if (c == '\r')
 			gfx_con.y = YLEFT;
 
@@ -401,6 +403,8 @@ void gfx_vprintf(const char *fmt, va_list ap)
 			case '%':
 				gfx_putc('%');
 				break;
+			case 'j':
+				gfx_con.y = YLEFT - va_arg(ap, u32);
 			case '\0':
 				return;
 			default:

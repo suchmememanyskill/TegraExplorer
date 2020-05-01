@@ -26,7 +26,7 @@ Inputs *hidRead(){
     inputs.cap = controller->cap;
 
     if (controller->conn_l){
-        if (LbaseX == 0 || LbaseY == 0){
+        if ((LbaseX == 0 || LbaseY == 0) || controller->l3){
             LbaseX = controller->lstick_x;
             LbaseY = controller->lstick_y;
         }
@@ -38,7 +38,7 @@ Inputs *hidRead(){
     }
 
     if (controller->conn_r){
-        if (RbaseX == 0 || RbaseY == 0){
+        if ((RbaseX == 0 || RbaseY == 0) || controller->r3){
             RbaseX = controller->rstick_x;
             RbaseY = controller->rstick_y;
         }

@@ -113,7 +113,7 @@ int fsact_del_recursive(char *path){
         else {
             SWAPCOLOR(COLOR_RED);
             gfx_printf("\r");
-            gfx_printandclear(fno.fname, 37);
+            gfx_printandclear(fno.fname, 37, 720);
 
             if ((res = f_unlink(fsutil_getnextloc(localpath, fno.fname)))){
                 gfx_errDisplay("del_recursive", res, 2);
@@ -160,7 +160,7 @@ int fsact_copy_recursive(char *path, char *dstpath){
         else {
             SWAPCOLOR(COLOR_GREEN);
             gfx_printf("\r");
-            gfx_printandclear(fno.fname, 37);
+            gfx_printandclear(fno.fname, 37, 720);
 
             utils_copystring(fsutil_getnextloc(startpath, fno.fname), &temp);
 
