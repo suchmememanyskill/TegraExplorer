@@ -6,6 +6,7 @@
 #include "../../utils/util.h"
 #include "../../mem/minerva.h"
 #include "../../soc/gpio.h"
+#include "../../hid/hid.h"
 
 extern void sd_unmount();
 extern bool sd_inited;
@@ -60,10 +61,13 @@ void _printentry(menu_entry entry, bool highlighted, bool refresh){
     }   
 }
 
+bool disableB = false;
 int menu_make(menu_entry *entries, int amount, char *toptext){
-    int currentpos = 0, res = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 29, calculatedamount = 0;
+    int currentpos = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 29, calculatedamount = 0;
     u32 scrolltimer, timer;
     bool refresh = false;
+    Inputs *input = hidRead();
+    input->buttons = 0;
 
     gfx_clearscreen();
 
@@ -85,7 +89,7 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
     gfx_printlength(42, toptext);
     RESETCOLOR;
 
-    while (!(res & BTN_POWER)){
+    while (!(input->a)){
         gfx_con_setpos(0, 47);
         timer = get_tmr_ms();
         refresh = false;
@@ -119,47 +123,54 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
 
         gfx_printf("\n%k%K %s %s\n\nTime taken for screen draw: %dms ", COLOR_BLUE, COLOR_DEFAULT, (offset + 30 < amount) ? "v" : " ", (offset > 0) ? "^" : " ", get_tmr_ms() - timer);
 
-        while (btn_read() & BTN_POWER);
+        while ((input = hidRead())->buttons & (KEY_B | KEY_A));
 
-        res = 0;
-        while (!res){
+        input->buttons = 0;
+        while (!(input->buttons & (KEY_A | KEY_LDOWN | KEY_LUP | KEY_B | KEY_RUP | KEY_RDOWN))){
             if (sd_inited && !!gpio_read(GPIO_PORT_Z, GPIO_PIN_1)){
                 gfx_errDisplay("menu", ERR_SD_EJECTED, 0);
                 sd_unmount();
                 return -1;
             }
 
-            res = btn_read();
+            input = hidRead();
 
-            if (!res)
+            if (!(input->buttons & (KEY_A | KEY_LDOWN | KEY_LUP | KEY_B | KEY_RUP | KEY_RDOWN)))
                 delay = 300;
             
             if (delay < 300){
                 scrolltimer = get_tmr_ms();
-                while (res){
+                while (input->buttons & (KEY_A | KEY_LDOWN | KEY_LUP | KEY_B | KEY_RUP | KEY_RDOWN)){
                     if (scrolltimer + delay <= get_tmr_ms())
                         break;
 
-                    res = btn_read();         
+                    input = hidRead();       
                 }
             }
 
-            if (delay > 46 && res)
+            if (delay > 46 && input->buttons & (KEY_A | KEY_LDOWN | KEY_LUP | KEY_B | KEY_RUP | KEY_RDOWN))
                 delay -= 45;
+
+            if (input->buttons & (KEY_RUP | KEY_RDOWN))
+                delay = 1;
         }
 
-        if (res & BTN_VOL_UP && currentpos >= 1){
+        if (input->buttons & (KEY_LUP | KEY_RUP) && currentpos >= 1){
             currentpos--;
             while(entries[currentpos].property & (ISSKIP | ISHIDE) && currentpos >= 1)
                 currentpos--;
         }
             
-        else if (res & BTN_VOL_DOWN && currentpos < amount - 1){
+        else if (input->buttons & (KEY_LDOWN | KEY_RDOWN) && currentpos < amount - 1){
             currentpos++;
             while(entries[currentpos].property & (ISSKIP | ISHIDE) && currentpos < amount - 1)
                 currentpos++;
         }
 
+        else if (input->b && !disableB){
+            currentpos = 0;
+            break;
+        }
     }
 
     minerva_periodic_training();

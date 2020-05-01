@@ -18,6 +18,8 @@
 #include "emmc/emmcoperations.h"
 #include "emmc/emmcmenu.h"
 #include "../storage/nx_sd.h"
+//#include "../hid/joycon.h"
+#include "../hid/hid.h"
 /*
 extern bool sd_mount();
 extern void sd_unmount();
@@ -25,6 +27,7 @@ extern void sd_unmount();
 extern int launch_payload(char *path);
 extern bool sd_inited;
 extern bool sd_mounted;
+extern bool disableB;
 
 int res = 0, meter = 0;
 
@@ -102,8 +105,6 @@ void MainMenu_Credits(){
     if (++meter >= 3)
         gfx_errDisplay("credits", 53, 0);
     gfx_message(COLOR_WHITE, mainmenu_credits);
-    int frii = 10/0;
-    gfx_printf("%d", frii);
 }
 
 void MainMenu_Exit(){
@@ -172,6 +173,8 @@ void te_main(){
 
     disconnect_mmc();
 
+    hidInit();
+
     while (1){
         //fillmainmenu();
 
@@ -187,7 +190,10 @@ void te_main(){
         setter = sd_inited;
         SETBIT(mainmenu_main[5].property, ISHIDE, !setter);
 
+        disableB = true;
         res = menu_make(mainmenu_main, 8, "-- Main Menu --") + 1;
+        disableB = false;
+
         RunMenuOption(res);
     }
 }
