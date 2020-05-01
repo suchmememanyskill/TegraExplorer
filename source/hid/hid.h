@@ -8,6 +8,9 @@
 #define KEY_LDOWN BIT(17)
 #define KEY_RUP BIT(7)
 #define KEY_RDOWN BIT(6)
+#define KEY_VOLP BIT(14)
+#define KEY_VOLM BIT(15)
+#define KEY_POW BIT(16)
 
 typedef struct _inputs {
     union {
@@ -47,4 +50,5 @@ typedef struct _inputs {
 
 void hidInit();
 Inputs *hidRead();
-Inputs *hidWaitForButton(u32 mask);
+Inputs *hidWait();
+Inputs *hidWaitMask(u32 mask);

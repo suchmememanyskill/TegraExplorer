@@ -8,6 +8,7 @@
 #include "../../utils/util.h"
 #include "../../mem/heap.h"
 #include "../common/common.h"
+#include "../../hid/hid.h"
 
 int printerrors = true;
 
@@ -22,12 +23,12 @@ void gfx_clearscreen(){
     gfx_boxGrey(0, 703, 1279, 719, 0xFF);
     gfx_boxGrey(0, 0, 1279, 15, 0xFF);
     gfx_con_setpos(0, 0);
-    gfx_printf("Tegraexplorer v1.5.2 | Battery: %3d%%", battery >> 8);
+    gfx_printf("Tegraexplorer v1.5.2 | Battery: %3d%%\n", battery >> 8);
 
     RESETCOLOR;
 }
 
-int gfx_message(u32 color, const char* message, ...){
+u32 gfx_message(u32 color, const char* message, ...){
     va_list ap;
     va_start(ap, message);
 
@@ -37,10 +38,10 @@ int gfx_message(u32 color, const char* message, ...){
     gfx_vprintf(message, ap);
 
     va_end(ap);
-    return btn_wait();
+    return hidWait()->buttons;
 }
 
-int gfx_errDisplay(char *src_func, int err, int loc){
+u32 gfx_errDisplay(char *src_func, int err, int loc){
     if (!printerrors)
         return 0;
 
@@ -61,27 +62,24 @@ int gfx_errDisplay(char *src_func, int err, int loc){
 
     RESETCOLOR;
 
-    while (btn_read() != 0);
-
-    return btn_wait();
+    return hidWait()->buttons;
 }
 
 int gfx_makewaitmenu(char *hiddenmessage, int timer){
     int res;
     u32 start = get_tmr_s();
-
-    while (btn_read() != 0);
+    Inputs *input = NULL;
 
     while(1){
-        res = btn_read();
+        input = hidRead();
 
-        if (res & BTN_VOL_DOWN || res & BTN_VOL_UP)
+        if (input->buttons & (KEY_VOLM | KEY_VOLP | KEY_B))
             return 0;
 
         if (start + timer > get_tmr_s())
             gfx_printf("\r<Wait %d seconds> ", timer + start - get_tmr_s());
 
-        else if (res & BTN_POWER)
+        else if (input->a)
             return 1;
 
         else 

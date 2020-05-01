@@ -15,6 +15,7 @@
 #include "../../utils/sprintf.h"
 #include "../script/parser.h"
 #include "../emmc/emmcoperations.h"
+#include "../../hid/hid.h"
 
 extern char *currentpath;
 extern char *clipboard;
@@ -36,23 +37,25 @@ int delfile(const char *path, const char *filename){
 
 void viewbytes(char *path){
     FIL in;
-    u8 print[2048];
+    u8 print[1024];
     u32 size;
     QWORD offset = 0;
     int res;
+    Inputs *input = hidRead();
+
+    while (input->buttons & (KEY_POW | KEY_B));
 
     gfx_clearscreen();
+
     if ((res = f_open(&in, path, FA_READ | FA_OPEN_EXISTING))){
         gfx_errDisplay("viewbytes", res, 1);
         return;
     }
 
-    while (btn_read() & BTN_POWER);
-
     while (1){
         f_lseek(&in, offset * 16);
 
-        if ((res = f_read(&in, &print, 2048 * sizeof(u8), &size))){
+        if ((res = f_read(&in, &print, 1024 * sizeof(u8), &size))){
             gfx_errDisplay("viewbytes", res, 2);
             return;
         }
@@ -60,16 +63,16 @@ void viewbytes(char *path){
         gfx_con_setpos(0, 31);
         gfx_hexdump(offset * 16, print, size * sizeof(u8));
 
-        res = btn_read();
+        input = hidRead();
 
-        if (!res)
-            res = btn_wait();
+        if (!(input->buttons))
+            input = hidWait();
 
-        if (res & BTN_VOL_DOWN && 2048 * sizeof(u8) == size)
+        if (input->Ldown && 1024 * sizeof(u8) == size)
             offset++;
-        if (res & BTN_VOL_UP && offset > 0)
+        if (input->Lup && offset > 0)
             offset--;
-        if (res & BTN_POWER)
+        if (input->buttons & (KEY_POW | KEY_B))
             break;
     }
     f_close(&in);

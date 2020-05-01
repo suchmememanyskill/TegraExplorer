@@ -7,8 +7,8 @@
 #define RESETCOLOR gfx_printf("%k%K", COLOR_WHITE, COLOR_DEFAULT)
 
 void gfx_clearscreen();
-int gfx_message(u32 color, const char* message, ...);
-int gfx_errDisplay(char *src_func, int err, int loc);
+u32 gfx_message(u32 color, const char* message, ...);
+u32 gfx_errDisplay(char *src_func, int err, int loc);
 int gfx_makewaitmenu(char *hiddenmessage, int timer);
 void gfx_printlength(int size, char *toprint);
 void gfx_printandclear(char *in, int length, int endX);

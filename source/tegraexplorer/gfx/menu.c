@@ -153,7 +153,7 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
             gfx_printf("Type: %s", (entries[currentpos].property & ISDIR) ? "Dir " : "File");
         }
         else
-            gfx_boxGrey(800, 223, 1279, 271, 0x1B);
+            gfx_boxGrey(800, 144, 1279, 190, 0x1B);
 
         gfx_con_setpos(0, 703);
         SWAPCOLOR(COLOR_DEFAULT);
