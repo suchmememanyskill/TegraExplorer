@@ -3,7 +3,7 @@
 #include "../gfx/gfxutils.h"
 #include "../../libs/fatfs/ff.h"
 #include "../../gfx/gfx.h"
-#include "../../utils/btn.h"
+#include "../../hid/hid.h"
 #include "../../soc/gpio.h"
 #include "../../utils/util.h"
 #include "../../utils/types.h"
@@ -71,11 +71,10 @@ void displayinfo(){
 
     RESETCOLOR;
     gfx_printf("Press any key to continue");
-    btn_wait();
+    hidWait();
 }
 
 void displaygpio(){
-    int res;
     gfx_clearscreen();
     gfx_printf("Updates gpio pins every 50ms:\nPress power to exit");
     msleep(200);
@@ -89,8 +88,7 @@ void displaygpio(){
                 gfx_printf("%d", gpio_read(i, (1 << i2)));
         }
 
-        res = btn_read();
-        if (res & BTN_POWER)
+        if (hidRead()->pow)
             break;
     }
 }
@@ -157,7 +155,7 @@ int dumpfirmware(int mmc){
 
     gfx_printf("%k\n\nPress any button to continue...\nTime taken: %ds", COLOR_WHITE, get_tmr_s() - timer);
     free(sdbase);
-    btn_wait();
+    hidWait();
 
     return fail;
 }
@@ -180,7 +178,7 @@ void dumpusersaves(int mmc){
     RESETCOLOR;
     gfx_printf("\n\nSaves are located in SD:/tegraexplorer/save\n");
     gfx_printf("Press any key to continue");
-    btn_wait();
+    hidWait();
 }
 
 int format(int mode){
@@ -256,6 +254,6 @@ int format(int mode){
     connect_mmc(SYSMMC);
 
     gfx_printf("\nPress any button to return%k\nTotal time taken: %ds", COLOR_WHITE, (get_tmr_s() - timer));
-    btn_wait();
+    hidWait();
     return fatalerror;
 }
