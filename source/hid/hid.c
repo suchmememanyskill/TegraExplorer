@@ -83,6 +83,10 @@ Inputs *hidRead(){
 
 Inputs *hidWaitMask(u32 mask){
     Inputs *in = hidRead();
+
+    while (in->buttons)
+        hidRead();
+
     while ((in->buttons & mask) == 0){
         in = hidRead();
     }
