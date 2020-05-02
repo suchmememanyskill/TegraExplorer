@@ -48,6 +48,7 @@ menu_entry fs_menu_file[] = {
     {"\n\n\nBack", COLOR_WHITE, ISMENU},
     {"\nCopy to clipboard", COLOR_BLUE, ISMENU},
     {"Move to clipboard", COLOR_BLUE, ISMENU},
+    {"Rename file", COLOR_BLUE, ISMENU},
     {"\nDelete file\n", COLOR_RED, ISMENU},
     {"Launch Payload", COLOR_ORANGE, ISMENU},
     {"Launch Script", COLOR_YELLOW, ISMENU},
@@ -60,7 +61,9 @@ menu_entry fs_menu_folder[] = {
     {"\nBack", COLOR_WHITE, ISMENU},
     {"Return to main menu\n", COLOR_BLUE, ISMENU},
     {"Copy to clipboard", COLOR_VIOLET, ISMENU},
-    {"Delete folder", COLOR_RED, ISMENU}
+    {"Delete folder", COLOR_RED, ISMENU},
+    {"Rename folder", COLOR_BLUE, ISMENU},
+    {"Create folder", COLOR_BLUE, ISMENU}
 };
 
 menu_entry fs_menu_startdir[] = {

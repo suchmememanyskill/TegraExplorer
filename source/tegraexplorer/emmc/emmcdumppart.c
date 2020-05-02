@@ -8,7 +8,6 @@
 #include "../common/common.h"
 #include "../../libs/fatfs/ff.h"
 #include "../../utils/sprintf.h"
-#include "../../utils/btn.h"
 #include "../../mem/heap.h"
 #include "../../storage/nx_emmc.h"
 #include "../common/types.h"
@@ -72,8 +71,8 @@ int existsCheck(char *path){
     int res = 0;
 
     if (fsutil_checkfile(path)){
-        gfx_printf("File already exists! Overwrite?\nVol +/- to cancel\n");
-        res = gfx_makewaitmenu("Power to continue", 3);
+        gfx_printf("File already exists! Overwrite?\nBto cancel\n");
+        res = gfx_makewaitmenu("A to continue", 3);
         gfx_printf("\r                 \r");
         return res;
     }

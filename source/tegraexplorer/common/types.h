@@ -12,6 +12,7 @@
 #define ISMB (1 << 6)
 #define ISKB (1 << 5)
 #define ISB  (1 << 4)
+#define ISNULL (1 << 3)
 
 #define SETBIT(object, shift, value) ((value) ? (object |= shift) : (object &= ~shift))
 

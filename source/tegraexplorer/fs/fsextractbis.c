@@ -7,7 +7,6 @@
 #include "../common/common.h"
 #include "../../libs/fatfs/ff.h"
 #include "../../utils/sprintf.h"
-#include "../../utils/btn.h"
 #include "../../mem/heap.h"
 #include "../../storage/nx_emmc.h"
 #include "../common/types.h"

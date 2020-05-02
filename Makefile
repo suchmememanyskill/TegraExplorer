@@ -8,7 +8,7 @@ include $(DEVKITARM)/base_rules
 
 ################################################################################
 
-IPL_LOAD_ADDR := 0x40003000
+IPL_LOAD_ADDR := 0x40008000
 LPVERSION_MAJOR := 2
 LPVERSION_MINOR := 5
 LPVERSION_BUGFX := 2

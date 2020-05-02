@@ -81,6 +81,7 @@ extern menu_entry utils_mmcChoice[];
 enum fs_menu_file_return {
     FILE_COPY = 4,
     FILE_MOVE,
+    FILE_RENAME,
     FILE_DELETE,
     FILE_PAYLOAD,
     FILE_SCRIPT,
@@ -93,7 +94,9 @@ extern menu_entry fs_menu_file[];
 enum fs_menu_folder_return {
     DIR_EXITFOLDER = 2,
     DIR_COPYFOLDER,
-    DIR_DELETEFOLDER
+    DIR_DELETEFOLDER,
+    DIR_RENAME,
+    DIR_CREATE
 };
 
 extern menu_entry fs_menu_folder[];

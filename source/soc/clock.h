@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
+ * Copyright (c) 2018-2020 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -35,11 +36,19 @@
 #define CLK_RST_CONTROLLER_MISC_CLK_ENB 0x48
 #define CLK_RST_CONTROLLER_OSC_CTRL 0x50
 #define CLK_RST_CONTROLLER_PLLC_BASE 0x80
+#define CLK_RST_CONTROLLER_PLLC_OUT 0x84
 #define CLK_RST_CONTROLLER_PLLC_MISC 0x88
+#define CLK_RST_CONTROLLER_PLLC_MISC_1 0x8C
 #define CLK_RST_CONTROLLER_PLLM_BASE 0x90
 #define CLK_RST_CONTROLLER_PLLM_MISC1 0x98
 #define CLK_RST_CONTROLLER_PLLM_MISC2 0x9C
 #define CLK_RST_CONTROLLER_PLLP_BASE 0xA0
+#define CLK_RST_CONTROLLER_PLLA_BASE 0xB0
+#define CLK_RST_CONTROLLER_PLLA_OUT 0xB4
+#define CLK_RST_CONTROLLER_PLLA_MISC1 0xB8
+#define CLK_RST_CONTROLLER_PLLA_MISC 0xBC
+#define CLK_RST_CONTROLLER_PLLU_BASE 0xC0
+#define CLK_RST_CONTROLLER_PLLU_MISC 0xCC
 #define CLK_RST_CONTROLLER_PLLD_BASE 0xD0
 #define CLK_RST_CONTROLLER_PLLD_MISC1 0xD8
 #define CLK_RST_CONTROLLER_PLLD_MISC 0xDC
@@ -49,6 +58,7 @@
 #define CLK_RST_CONTROLLER_PLLE_MISC 0xEC
 #define CLK_RST_CONTROLLER_LVL2_CLK_GATE_OVRA 0xF8
 #define CLK_RST_CONTROLLER_LVL2_CLK_GATE_OVRB 0xFC
+#define CLK_RST_CONTROLLER_CLK_SOURCE_I2S2 0x100
 #define CLK_RST_CONTROLLER_CLK_SOURCE_PWM 0x110
 #define CLK_RST_CONTROLLER_CLK_SOURCE_I2C1 0x124
 #define CLK_RST_CONTROLLER_CLK_SOURCE_I2C5 0x128
@@ -67,6 +77,7 @@
 #define CLK_RST_CONTROLLER_CLK_SOURCE_SDMMC3 0x1BC
 #define CLK_RST_CONTROLLER_CLK_SOURCE_UARTD 0x1C0
 #define CLK_RST_CONTROLLER_CLK_SOURCE_CSITE 0x1D4
+#define CLK_RST_CONTROLLER_CLK_SOURCE_I2S1 0x1D8
 #define CLK_RST_CONTROLLER_CLK_SOURCE_TSEC 0x1F4
 #define CLK_RST_CONTROLLER_CLK_OUT_ENB_X 0x280
 #define CLK_RST_CONTROLLER_CLK_ENB_X_SET 0x284
@@ -101,24 +112,32 @@
 #define CLK_RST_CONTROLLER_LVL2_CLK_GATE_OVRD 0x3A4
 #define CLK_RST_CONTROLLER_CLK_SOURCE_MSELECT 0x3B4
 #define CLK_RST_CONTROLLER_CLK_SOURCE_I2C4 0x3C4
+#define CLK_RST_CONTROLLER_CLK_SOURCE_EXTPERIPH1 0x3EC
 #define CLK_RST_CONTROLLER_CLK_SOURCE_SYS 0x400
 #define CLK_RST_CONTROLLER_CLK_SOURCE_SOR1 0x410
 #define CLK_RST_CONTROLLER_CLK_SOURCE_SE 0x42C
+#define CLK_RST_CONTROLLER_RST_DEV_V_SET 0x430
 #define CLK_RST_CONTROLLER_RST_DEV_V_CLR 0x434
+#define CLK_RST_CONTROLLER_RST_DEV_W_SET 0x438
+#define CLK_RST_CONTROLLER_RST_DEV_W_CLR 0x43C
 #define CLK_RST_CONTROLLER_CLK_ENB_V_SET 0x440
 #define CLK_RST_CONTROLLER_CLK_ENB_V_CLR 0x444
 #define CLK_RST_CONTROLLER_CLK_ENB_W_SET 0x448
 #define CLK_RST_CONTROLLER_CLK_ENB_W_CLR 0x44C
 #define CLK_RST_CONTROLLER_RST_CPUG_CMPLX_SET 0x450
 #define CLK_RST_CONTROLLER_RST_CPUG_CMPLX_CLR 0x454
+#define CLK_RST_CONTROLLER_UTMIP_PLL_CFG0 0x480
+#define CLK_RST_CONTROLLER_UTMIP_PLL_CFG1 0x484
 #define CLK_RST_CONTROLLER_UTMIP_PLL_CFG2 0x488
 #define CLK_RST_CONTROLLER_PLLE_AUX 0x48C
 #define CLK_RST_CONTROLLER_AUDIO_SYNC_CLK_I2S0 0x4A0
 #define CLK_RST_CONTROLLER_PLLX_MISC_3 0x518
+#define CLK_RST_CONTROLLER_UTMIPLL_HW_PWRDN_CFG0 0x52C
 #define CLK_RST_CONTROLLER_LVL2_CLK_GATE_OVRE 0x554
 #define CLK_RST_CONTROLLER_SPARE_REG0 0x55C
 #define CLK_RST_CONTROLLER_PLLC4_BASE 0x5A4
 #define CLK_RST_CONTROLLER_PLLC4_MISC 0x5A8
+#define CLK_RST_CONTROLLER_PLLC_MISC_2 0x5D0
 #define CLK_RST_CONTROLLER_PLLC4_OUT 0x5E4
 #define CLK_RST_CONTROLLER_PLLMB_BASE 0x5E8
 #define CLK_RST_CONTROLLER_CLK_SOURCE_DSIA_LP 0x620
@@ -127,16 +146,27 @@
 #define CLK_RST_CONTROLLER_CLK_SOURCE_UART_FST_MIPI_CAL 0x66C
 #define CLK_RST_CONTROLLER_CLK_SOURCE_SDMMC_LEGACY_TM 0x694
 #define CLK_RST_CONTROLLER_CLK_SOURCE_NVENC 0x6A0
+#define CLK_RST_CONTROLLER_CLK_SOURCE_USB2_HSIC_TRK 0x6CC
 #define CLK_RST_CONTROLLER_SE_SUPER_CLK_DIVIDER 0x704
 #define CLK_RST_CONTROLLER_CLK_SOURCE_UARTAPE 0x710
 
 #define CLK_NO_SOURCE 0x0
 
 /*! PLL control and status bits */
-#define PLL_BASE_ENABLE      (1 << 30)
+#define PLLCX_BASE_ENABLE    (1 << 30)
+#define PLLCX_BASE_REF_DIS   (1 << 29)
+#define PLLCX_BASE_LOCK      (1 << 27)
+
+#define PLLA_BASE_IDDQ       (1 << 25)
+#define PLLA_OUT0_CLKEN      (1 << 1)
+#define PLLA_OUT0_RSTN_CLR   (1 << 0)
+
+#define PLLC_MISC_RESET      (1 << 30)
+#define PLLC_MISC1_IDDQ      (1 << 27)
+#define PLLC_OUT1_CLKEN      (1 << 1)
+#define PLLC_OUT1_RSTN_CLR   (1 << 0)
 
 #define PLLC4_MISC_EN_LCKDET (1 << 30)
-#define PLLC4_BASE_LOCK      (1 << 27)
 #define PLLC4_BASE_IDDQ      (1 << 18)
 #define PLLC4_OUT3_CLKEN     (1 << 1)
 #define PLLC4_OUT3_RSTN_CLR  (1 << 0)
@@ -159,6 +189,8 @@ void clock_disable(const clock_t *clk);
 /*! Clock control for specific hardware portions. */
 void clock_enable_fuse(bool enable);
 void clock_enable_uart(u32 idx);
+void clock_disable_uart(u32 idx);
+int  clock_uart_use_src_div(u32 idx, u32 baud);
 void clock_enable_i2c(u32 idx);
 void clock_disable_i2c(u32 idx);
 void clock_enable_se();
@@ -181,9 +213,11 @@ void clock_enable_coresight();
 void clock_disable_coresight();
 void clock_enable_pwm();
 void clock_disable_pwm();
-void clock_sdmmc_config_clock_source(u32 *pout, u32 id, u32 val);
-void clock_sdmmc_get_card_clock_div(u32 *pout, u16 *pdivisor, u32 type);
-int clock_sdmmc_is_not_reset_and_enabled(u32 id);
+void clock_enable_pllc(u32 divn);
+void clock_disable_pllc();
+void clock_sdmmc_config_clock_source(u32 *pclock, u32 id, u32 val);
+void clock_sdmmc_get_card_clock_div(u32 *pclock, u16 *pdivisor, u32 type);
+int  clock_sdmmc_is_not_reset_and_enabled(u32 id);
 void clock_sdmmc_enable(u32 id, u32 val);
 void clock_sdmmc_disable(u32 id);
 

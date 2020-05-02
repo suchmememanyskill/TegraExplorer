@@ -17,12 +17,17 @@
 #include "fs/fsmenu.h"
 #include "emmc/emmcoperations.h"
 #include "emmc/emmcmenu.h"
-
+#include "../storage/nx_sd.h"
+//#include "../hid/joycon.h"
+#include "../hid/hid.h"
+/*
 extern bool sd_mount();
 extern void sd_unmount();
+*/
 extern int launch_payload(char *path);
 extern bool sd_inited;
 extern bool sd_mounted;
+extern bool disableB;
 
 int res = 0, meter = 0;
 
@@ -31,9 +36,7 @@ void MainMenu_SDCard(){
 }
 
 void MainMenu_EMMC(){
-    gfx_clearscreen();
-    gfx_printf("You're about to enter EMMC\nModifying anything here\n        can result in a BRICK!\n\nPlease only continue\n    if you know what you're doing\n\nPress Vol+/- to return\n");
-    if (gfx_makewaitmenu("Press Power to enter", 4)){
+    if (gfx_defaultWaitMenu("You're about to enter EMMC\nModifying anything here can result in a BRICK!\n\nPlease only continue if you know what you're doing", 4)){
         /*
         connect_mmc(SYSMMC);
 
@@ -86,9 +89,7 @@ void MainMenu_SDFormat(){
     res = menu_make(mainmenu_format, 3, "-- Format Menu --");
 
     if (res > 0){
-        gfx_clearscreen();
-        gfx_printf("Are you sure you want to format your sd?\nThis will delete everything on your SD card\nThis action is irreversible!\n\nPress Vol+/- to cancel\n");
-        if(gfx_makewaitmenu("Press Power to continue", 10)){
+        if(gfx_defaultWaitMenu("Are you sure you want to format your sd?\nThis will delete everything on your SD card!\nThis action is irreversible!", 10)){
             if (format(res)){
                 sd_unmount();
             }
@@ -157,6 +158,9 @@ void te_main(){
         //mainmenu_main[1].property |= ISHIDE;
     }
 
+    //gfx_message(COLOR_ORANGE, "%d %d %d", sd_mount(), sd_mounted, sd_inited);
+    sd_mount();
+
     if (emummc_load_cfg()){
         mainmenu_main[2].property |= ISHIDE;
     }
@@ -164,6 +168,8 @@ void te_main(){
     dumpGpt();
 
     disconnect_mmc();
+
+    hidInit();
 
     while (1){
         //fillmainmenu();
@@ -180,7 +186,10 @@ void te_main(){
         setter = sd_inited;
         SETBIT(mainmenu_main[5].property, ISHIDE, !setter);
 
+        disableB = true;
         res = menu_make(mainmenu_main, 8, "-- Main Menu --") + 1;
+        disableB = false;
+
         RunMenuOption(res);
     }
 }

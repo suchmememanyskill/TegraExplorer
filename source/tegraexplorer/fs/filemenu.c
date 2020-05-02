@@ -2,7 +2,6 @@
 #include "entrymenu.h"
 #include "../common/common.h"
 #include "../../libs/fatfs/ff.h"
-#include "../../utils/btn.h"
 #include "../../gfx/gfx.h"
 #include "fsutils.h"
 #include "fsactions.h"
@@ -15,6 +14,7 @@
 #include "../../utils/sprintf.h"
 #include "../script/parser.h"
 #include "../emmc/emmcoperations.h"
+#include "../../hid/hid.h"
 
 extern char *currentpath;
 extern char *clipboard;
@@ -24,8 +24,8 @@ extern int launch_payload(char *path);
 int delfile(const char *path, const char *filename){
     gfx_clearscreen();
     SWAPCOLOR(COLOR_ORANGE);
-    gfx_printf("Are you sure you want to delete:\n%s\n\nPress vol+/- to cancel\n", filename);
-    if (gfx_makewaitmenu("Press power to delete", 3)){
+    gfx_printf("Are you sure you want to delete:\n%s\n\nPress B to cancel\n", filename);
+    if (gfx_makewaitmenu("Press A to delete", 3)){
         f_unlink(path);
         fsreader_readfolder(currentpath);
         return 0;
@@ -36,23 +36,26 @@ int delfile(const char *path, const char *filename){
 
 void viewbytes(char *path){
     FIL in;
-    u8 print[2048];
+    u8 *print;
     u32 size;
     QWORD offset = 0;
     int res;
+    Inputs *input = hidRead();
+
+    while (input->buttons & (KEY_POW | KEY_B));
 
     gfx_clearscreen();
+    print = malloc (1024);
+
     if ((res = f_open(&in, path, FA_READ | FA_OPEN_EXISTING))){
         gfx_errDisplay("viewbytes", res, 1);
         return;
     }
 
-    while (btn_read() & BTN_POWER);
-
     while (1){
         f_lseek(&in, offset * 16);
 
-        if ((res = f_read(&in, &print, 2048 * sizeof(u8), &size))){
+        if ((res = f_read(&in, print, 1024 * sizeof(u8), &size))){
             gfx_errDisplay("viewbytes", res, 2);
             return;
         }
@@ -60,19 +63,20 @@ void viewbytes(char *path){
         gfx_con_setpos(0, 31);
         gfx_hexdump(offset * 16, print, size * sizeof(u8));
 
-        res = btn_read();
+        input = hidRead();
 
-        if (!res)
-            res = btn_wait();
+        if (!(input->buttons))
+            input = hidWait();
 
-        if (res & BTN_VOL_DOWN && 2048 * sizeof(u8) == size)
+        if (input->Ldown && 1024 * sizeof(u8) == size)
             offset++;
-        if (res & BTN_VOL_UP && offset > 0)
+        if (input->Lup && offset > 0)
             offset--;
-        if (res & BTN_POWER)
+        if (input->buttons & (KEY_POW | KEY_B))
             break;
     }
     f_close(&in);
+    free(print);
 }
 
 void copyfile(const char *src_in, const char *outfolder){
@@ -143,12 +147,11 @@ int filemenu(menu_entry file){
         (attribs.fattrib & AM_ARC) ? 'A' : '-');
     }
 
-    SETBIT(fs_menu_file[7].property, ISHIDE, !(strstr(file.name, ".bin") != NULL && file.property & ISKB) && strstr(file.name, ".rom") == NULL);
-    SETBIT(fs_menu_file[8].property, ISHIDE, strstr(file.name, ".te") == NULL);
-    SETBIT(fs_menu_file[10].property, ISHIDE, strstr(file.name, ".bis") == NULL);
+    SETBIT(fs_menu_file[8].property, ISHIDE, !(strstr(file.name, ".bin") != NULL && file.property & ISKB) && strstr(file.name, ".rom") == NULL);
+    SETBIT(fs_menu_file[9].property, ISHIDE, strstr(file.name, ".te") == NULL);
+    SETBIT(fs_menu_file[11].property, ISHIDE, strstr(file.name, ".bis") == NULL);
 
-    temp = menu_make(fs_menu_file, 11, "-- File Menu --");
-
+    temp = menu_make(fs_menu_file, 12, "-- File Menu --");
     switch (temp){
         case FILE_COPY:
             fsreader_writeclipboard(fsutil_getnextloc(currentpath, file.name), OPERATIONCOPY);
@@ -158,6 +161,28 @@ int filemenu(menu_entry file){
             break;
         case FILE_DELETE:
             delfile(fsutil_getnextloc(currentpath, file.name), file.name);
+            break;
+        case FILE_RENAME:;
+            char *name, *curPath;
+            gfx_clearscreen();
+            gfx_printf("Renaming %s...\n\n", file.name);
+            name = utils_InputText(file.name, 32);
+            if (name == NULL)
+                break;
+            
+            utils_copystring(fsutil_getnextloc(currentpath, file.name), &curPath);
+
+            temp = f_rename(curPath, fsutil_getnextloc(currentpath, name));
+            
+            free(curPath);
+            free(name);
+
+            if (temp){
+                gfx_errDisplay("fileMenu", temp, 0);
+                break;
+            }
+
+            fsreader_readfolder(currentpath);
             break;
         case FILE_PAYLOAD:
             launch_payload(fsutil_getnextloc(currentpath, file.name));
@@ -174,7 +199,7 @@ int filemenu(menu_entry file){
             gfx_clearscreen();
             extract_bis_file(fsutil_getnextloc(currentpath, file.name), currentpath);
             fsreader_readfolder(currentpath);
-            btn_wait();
+            hidWait();
             break;
         case -1:
             return -1;

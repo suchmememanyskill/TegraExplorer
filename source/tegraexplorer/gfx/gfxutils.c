@@ -8,6 +8,7 @@
 #include "../../utils/util.h"
 #include "../../mem/heap.h"
 #include "../common/common.h"
+#include "../../hid/hid.h"
 
 int printerrors = true;
 
@@ -19,18 +20,15 @@ void gfx_clearscreen(){
     SWAPCOLOR(COLOR_DEFAULT);
     SWAPBGCOLOR(COLOR_WHITE);
 
-    gfx_box(0, 1263, 719, 1279, COLOR_WHITE);
-    gfx_con_setpos(0, 1263);
-    gfx_printf("Move: Vol+/- | Select: Pow | Battery: %3d%%", battery >> 8);
-
-    gfx_box(0, 0, 719, 15, COLOR_WHITE);
+    gfx_boxGrey(0, 703, 1279, 719, 0xFF);
+    gfx_boxGrey(0, 0, 1279, 15, 0xFF);
     gfx_con_setpos(0, 0);
-    gfx_printf("Tegraexplorer v1.5.2\n");
+    gfx_printf("Tegraexplorer v1.5.2 | Battery: %3d%%\n", battery >> 8);
 
     RESETCOLOR;
 }
 
-int gfx_message(u32 color, const char* message, ...){
+u32 gfx_message(u32 color, const char* message, ...){
     va_list ap;
     va_start(ap, message);
 
@@ -40,10 +38,10 @@ int gfx_message(u32 color, const char* message, ...){
     gfx_vprintf(message, ap);
 
     va_end(ap);
-    return btn_wait();
+    return hidWait()->buttons;
 }
 
-int gfx_errDisplay(char *src_func, int err, int loc){
+u32 gfx_errDisplay(char *src_func, int err, int loc){
     if (!printerrors)
         return 0;
 
@@ -64,27 +62,23 @@ int gfx_errDisplay(char *src_func, int err, int loc){
 
     RESETCOLOR;
 
-    while (btn_read() != 0);
-
-    return btn_wait();
+    return hidWait()->buttons;
 }
 
 int gfx_makewaitmenu(char *hiddenmessage, int timer){
-    int res;
     u32 start = get_tmr_s();
-
-    while (btn_read() != 0);
+    Inputs *input = NULL;
 
     while(1){
-        res = btn_read();
+        input = hidRead();
 
-        if (res & BTN_VOL_DOWN || res & BTN_VOL_UP)
+        if (input->buttons & (KEY_VOLM | KEY_VOLP | KEY_B))
             return 0;
 
         if (start + timer > get_tmr_s())
             gfx_printf("\r<Wait %d seconds> ", timer + start - get_tmr_s());
 
-        else if (res & BTN_POWER)
+        else if (input->a)
             return 1;
 
         else 
@@ -108,7 +102,7 @@ void gfx_printlength(int size, char *toprint){
     free(temp);
 }
 
-void gfx_printandclear(char *in, int length){
+void gfx_printandclear(char *in, int length, int endX){
     u32 x, y;
 
     gfx_printlength(length, in);
@@ -121,7 +115,7 @@ void gfx_printandclear(char *in, int length){
         gfx_printf(" ");
     */
 
-   gfx_boxGrey(x, y, 703, y + 16, 0x1B);
+    gfx_boxGrey(x, y, endX, y + 15, 0x1B);
 
     gfx_con_setpos(x, y);
 
@@ -136,4 +130,60 @@ void gfx_printfilesize(int size, char *type){
     SWAPCOLOR(COLOR_VIOLET);
     gfx_printf("\a%4d\e%s", size, type);
     RESETCOLOR;
+}
+
+static u32 sideY = 0;
+void _gfx_sideSetYAuto(){
+    u32 getX, getY;
+    gfx_con_getpos(&getX, &getY);
+    sideY = getY;
+}
+
+void gfx_sideSetY(u32 setY){
+    sideY = setY;
+}
+
+u32 gfx_sideGetY(){
+    return sideY;
+}
+
+void gfx_sideprintf(char* message, ...){
+    va_list ap;
+    va_start(ap, message);
+
+    gfx_con_setpos(800, sideY);
+    gfx_vprintf(message, ap);
+    _gfx_sideSetYAuto();
+
+    va_end(ap);
+}
+
+void gfx_sideprintandclear(char* message, int length){
+    gfx_con_setpos(800, sideY);
+    gfx_printandclear(message, length, 1279);
+    gfx_putc('\n');
+    _gfx_sideSetYAuto();
+}
+
+void gfx_drawScrollBar(int minView, int maxView, int count){
+    int curScrollCount = 1 + maxView - minView;
+    if (curScrollCount >= count)
+        return;
+
+    int barSize = (703 * (curScrollCount * 100 / count)) / 100;
+    int offsetSize = (703 * (minView * 100/ count)) / 100;
+
+    gfx_boxGrey(740, 16, 755, 702, 0x1B);
+    if ((16 + barSize + offsetSize) > 702)
+        gfx_boxGrey(740, 16 + offsetSize, 755, 702, 0x66);
+    else
+        gfx_boxGrey(740, 16 + offsetSize, 755, 16 + barSize + offsetSize, 0x66);
+}
+
+int gfx_defaultWaitMenu(char *message, int time){
+    gfx_clearscreen();
+    SWAPCOLOR(COLOR_ORANGE);
+    gfx_printf("\n%s\n\nPress B to return\n", message);
+    SWAPCOLOR(COLOR_RED);
+    return gfx_makewaitmenu("Press A to continue", time);
 }

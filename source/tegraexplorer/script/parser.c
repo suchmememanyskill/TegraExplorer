@@ -287,9 +287,6 @@ void runScript(char *path){
     //add builtin vars
     str_int_add("@EMUMMC", emu_cfg.enabled);
     str_int_add("@RESULT", 0);
-    str_int_add("@BTN_POWER", 0);
-    str_int_add("@BTN_VOL+", 0);
-    str_int_add("@BTN_VOL-", 0);
     str_str_add("$CURRENTPATH", currentpath);
 
     //str_int_printall();
