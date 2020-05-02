@@ -2,7 +2,6 @@
 #include "entrymenu.h"
 #include "../common/common.h"
 #include "../../libs/fatfs/ff.h"
-#include "../../utils/btn.h"
 #include "../../gfx/gfx.h"
 #include "fsutils.h"
 #include "fsactions.h"
@@ -25,8 +24,8 @@ extern int launch_payload(char *path);
 int delfile(const char *path, const char *filename){
     gfx_clearscreen();
     SWAPCOLOR(COLOR_ORANGE);
-    gfx_printf("Are you sure you want to delete:\n%s\n\nPress vol+/- to cancel\n", filename);
-    if (gfx_makewaitmenu("Press power to delete", 3)){
+    gfx_printf("Are you sure you want to delete:\n%s\n\nPress B to cancel\n", filename);
+    if (gfx_makewaitmenu("Press A to delete", 3)){
         f_unlink(path);
         fsreader_readfolder(currentpath);
         return 0;
@@ -177,7 +176,7 @@ int filemenu(menu_entry file){
             gfx_clearscreen();
             extract_bis_file(fsutil_getnextloc(currentpath, file.name), currentpath);
             fsreader_readfolder(currentpath);
-            btn_wait();
+            hidWait();
             break;
         case -1:
             return -1;

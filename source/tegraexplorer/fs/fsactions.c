@@ -7,7 +7,7 @@
 #include "../gfx/gfxutils.h"
 #include "../utils/utils.h"
 #include "../../mem/heap.h"
-#include "../../utils/btn.h"
+#include "../../hid/hid.h"
 #include "fsutils.h"
 
 int fsact_copy(const char *locin, const char *locout, u8 options){
@@ -71,7 +71,7 @@ int fsact_copy(const char *locin, const char *locout, u8 options){
             i = 0;
 
             if (options & COPY_MODE_CANCEL)
-                if (btn_read() & BTN_VOL_DOWN){
+                if (hidRead()->buttons & (KEY_VOLP | KEY_VOLM)){
                     f_unlink(locout);
                     break;
                 }

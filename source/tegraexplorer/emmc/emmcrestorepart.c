@@ -8,7 +8,6 @@
 #include "../common/common.h"
 #include "../../libs/fatfs/ff.h"
 #include "../../utils/sprintf.h"
-#include "../../utils/btn.h"
 #include "../../mem/heap.h"
 #include "../../storage/nx_emmc.h"
 #include "../common/types.h"
@@ -57,10 +56,10 @@ int emmcRestorePart(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
 
     if (totalSize < totalSizeDest){
         SWAPCOLOR(COLOR_ORANGE);
-        gfx_printf("File is too small for destination.\nDo you want to flash it anyway?\n\nVol +/- to Cancel\n");
+        gfx_printf("File is too small for destination.\nDo you want to flash it anyway?\n\nB to Cancel\n");
         u8 btnres = gfx_makewaitmenu(
-            "Power to Confirm",
-            2
+            "A to Confirm",
+            3
         );
 
         RESETCOLOR;

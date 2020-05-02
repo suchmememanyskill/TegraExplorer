@@ -18,5 +18,6 @@ u32 gfx_sideGetY();
 void gfx_sideprintf(char* message, ...);
 void gfx_sideprintandclear(char* message, int length);
 void gfx_drawScrollBar(int minView, int maxView, int count);
+int gfx_defaultWaitMenu(char *message, int time);
 
 extern int printerrors;

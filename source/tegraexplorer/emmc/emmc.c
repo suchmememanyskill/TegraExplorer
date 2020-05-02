@@ -4,7 +4,6 @@
 #include "../../utils/types.h"
 #include "../../libs/fatfs/ff.h"
 #include "../../utils/sprintf.h"
-#include "../../utils/btn.h"
 #include "../../gfx/gfx.h"
 #include "../../utils/util.h"
 #include "../../hos/pkg1.h"

@@ -46,8 +46,10 @@ void createfileobjects(int size, menu_entry **menu){
 }
 
 void addobject(char* name, int spot, u8 attribs){
+    /*
     u64 size = 0;
     int sizes = 0;
+    */
     fsreader_files[spot].property = 0;
 
     if (fsreader_files[spot].name != NULL){

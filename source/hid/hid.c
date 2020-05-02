@@ -40,8 +40,11 @@ Inputs *hidRead(){
         }
     }
     else {
+        u32 x, y;
+        gfx_con_getpos(&x, &y);
         gfx_con_setpos(1008, 703);
         gfx_printf("%k%K%s %s MISS%k%K", COLOR_DEFAULT, COLOR_WHITE, (controller->conn_l) ? "    " : "JOYL", (controller->conn_r) ? "    " : "JOYR", COLOR_WHITE, COLOR_DEFAULT);
+        gfx_con_setpos(x, y);
         errPrint = true;
     }
 

@@ -179,3 +179,11 @@ void gfx_drawScrollBar(int minView, int maxView, int count){
     else
         gfx_boxGrey(740, 16 + offsetSize, 755, 16 + barSize + offsetSize, 0x66);
 }
+
+int gfx_defaultWaitMenu(char *message, int time){
+    gfx_clearscreen();
+    SWAPCOLOR(COLOR_ORANGE);
+    gfx_printf("\n%s\n\nPress B to return\n", message);
+    SWAPCOLOR(COLOR_RED);
+    return gfx_makewaitmenu("Press A to continue", time);
+}
