@@ -9,6 +9,7 @@
 #include "fsactions.h"
 #include "fsutils.h"
 #include "../../utils/sprintf.h"
+#include "../utils/utils.h"
 
 extern char *currentpath;
 extern char *clipboard;
@@ -39,6 +40,7 @@ void copyfolder(char *in, char *out){
 
 int foldermenu(){
     int res;
+    char *name;
     FILINFO attribs;
 
     if (fs_menu_folder[0].name != NULL)
@@ -50,6 +52,7 @@ int foldermenu(){
 
     SETBIT(fs_menu_folder[3].property, ISHIDE, (*(currentpath + res - 1) == '/'));
     SETBIT(fs_menu_folder[4].property, ISHIDE, (*(currentpath + res - 1) == '/'));
+    SETBIT(fs_menu_folder[5].property, ISHIDE, (*(currentpath + res - 1) == '/'));
   
     if (f_stat(currentpath, &attribs))
         SETBIT(fs_menu_folder[0].property, ISHIDE, 1);
@@ -62,7 +65,7 @@ int foldermenu(){
         (attribs.fattrib & AM_ARC) ? 'A' : '-');
     }
 
-    res = menu_make(fs_menu_folder, 5, currentpath);
+    res = menu_make(fs_menu_folder, 7, currentpath);
 
     switch (res){
         case DIR_EXITFOLDER:
@@ -73,8 +76,7 @@ int foldermenu(){
             break;
         case DIR_DELETEFOLDER:
             gfx_clearscreen();
-            gfx_printf("Do you want to delete this folder?\nThe entire folder, with all subcontents\n     will be deleted!!!\n\nPress vol+/- to cancel\n");
-            if (gfx_makewaitmenu("Press power to contine...", 3)){
+            if (gfx_defaultWaitMenu("Do you want to delete this folder?\nThe entire folder, with all subcontents will be deleted!!!", 4)){
                 gfx_clearscreen();
                 gfx_printf("\nDeleting folder, please wait...\n");
 
@@ -83,6 +85,49 @@ int foldermenu(){
                 fsreader_writecurpath(fsutil_getprevloc(currentpath));
                 fsreader_readfolder(currentpath);
             }
+            break;
+        case DIR_RENAME:;
+            char *prevLoc, *dirName;
+
+            dirName = strrchr(currentpath, '/') + 1;
+
+            gfx_clearscreen();
+            gfx_printf("Renaming %s...\n\n", dirName); 
+            name = utils_InputText(dirName, 32);
+            if (name == NULL)
+                break;
+            
+            utils_copystring(fsutil_getprevloc(currentpath), &prevLoc);
+            res = f_rename(currentpath, fsutil_getnextloc(prevLoc, name));
+
+            free(prevLoc);
+            free(name);
+
+            if (res){
+                gfx_errDisplay("folderMenu", res, 1);
+                break;
+            }
+
+            fsreader_writecurpath(fsutil_getprevloc(currentpath));
+            fsreader_readfolder(currentpath);
+
+            break;
+        case DIR_CREATE:;
+            gfx_clearscreen();
+            gfx_printf("Give a name for your new folder\n\n");
+            name = utils_InputText("New Folder", 32);
+            if (name == NULL)
+                break;
+
+            res = f_mkdir(fsutil_getnextloc(currentpath, name));
+            free(name);
+
+            if (res){
+                gfx_errDisplay("folderMenu", res, 1);
+                break;
+            }
+
+            fsreader_readfolder(currentpath);
             break;
     }
 

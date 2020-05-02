@@ -171,9 +171,17 @@ int filemenu(menu_entry file){
                 break;
             
             utils_copystring(fsutil_getnextloc(currentpath, file.name), &curPath);
-            f_rename(curPath, fsutil_getnextloc(currentpath, name));
+
+            temp = f_rename(curPath, fsutil_getnextloc(currentpath, name));
+            
             free(curPath);
             free(name);
+
+            if (temp){
+                gfx_errDisplay("fileMenu", temp, 0);
+                break;
+            }
+
             fsreader_readfolder(currentpath);
             break;
         case FILE_PAYLOAD:

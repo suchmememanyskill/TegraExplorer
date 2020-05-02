@@ -55,7 +55,7 @@ void fileexplorer(const char *startpath, int type){
                 break;
             
             case FILEMENU_CURFOLDER:
-                if (foldermenu())
+                if (foldermenu() < 0)
                     return;
                 break;
             case -1:
