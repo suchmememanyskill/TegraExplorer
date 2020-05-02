@@ -6,7 +6,7 @@
 #include "../../utils/types.h"
 #include "../../libs/fatfs/ff.h"
 #include "../../utils/sprintf.h"
-#include "../../utils/btn.h"
+#include "../../hid/hid.h"
 #include "../../gfx/gfx.h"
 #include "../../utils/util.h"
 #include "../../storage/emummc.h"
@@ -269,17 +269,21 @@ int part_MountMMC(){
 }
 
 int part_Pause(){
-    int res;
+    Inputs *input = hidWait();
 
-    while (btn_read() != 0);
-
-    res = btn_wait();  
-
-    str_int_add("@BTN_POWER", (res & BTN_POWER));
-    str_int_add("@BTN_VOL+", (res & BTN_VOL_UP));
-    str_int_add("@BTN_VOL-", (res & BTN_VOL_DOWN));
+    str_int_add("@BTN_POWER", input->pow);
+    str_int_add("@BTN_VOL+", input->volp);
+    str_int_add("@BTN_VOL-", input->volm);
+    str_int_add("@BTN_A", input->a);
+    str_int_add("@BTN_B", input->b);
+    str_int_add("@BTN_X", input->x);
+    str_int_add("@BTN_Y", input->y);
+    str_int_add("@BTN_UP", input->Lup);
+    str_int_add("@BTN_DOWN", input->Ldown);
+    str_int_add("@BTN_LEFT", input->Lleft);
+    str_int_add("@BTN_RIGHT", input->Lright);
     
-    return res;
+    return input->buttons;
 }
 
 int part_addstrings(){

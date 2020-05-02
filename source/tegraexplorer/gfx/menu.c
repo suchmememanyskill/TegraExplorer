@@ -49,7 +49,6 @@ void _printentry(menu_entry *entry, bool highlighted, bool refresh, char *path){
                 break;
    }
 
-        
     /*
     if (highlighted){
         SWAPBGCOLOR(COLOR_WHITE);
