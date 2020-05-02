@@ -10,6 +10,7 @@
 #include "fsutils.h"
 #include "../../utils/sprintf.h"
 #include "../utils/utils.h"
+#include "../../hid/hid.h"
 
 extern char *currentpath;
 extern char *clipboard;
@@ -39,7 +40,7 @@ void copyfolder(char *in, char *out){
 }
 
 int foldermenu(){
-    int res;
+    int res, hidConn;
     char *name;
     FILINFO attribs;
 
@@ -48,11 +49,13 @@ int foldermenu(){
 
     fs_menu_folder[0].name = malloc(16);
 
-    res = strlen(currentpath);
+    hidConn = hidConnected();
 
+    res = strlen(currentpath);
     SETBIT(fs_menu_folder[3].property, ISHIDE, (*(currentpath + res - 1) == '/'));
     SETBIT(fs_menu_folder[4].property, ISHIDE, (*(currentpath + res - 1) == '/'));
-    SETBIT(fs_menu_folder[5].property, ISHIDE, (*(currentpath + res - 1) == '/'));
+    SETBIT(fs_menu_folder[5].property, ISHIDE, (*(currentpath + res - 1) == '/') || !hidConn);
+    SETBIT(fs_menu_folder[6].property, ISHIDE, !hidConn);
   
     if (f_stat(currentpath, &attribs))
         SETBIT(fs_menu_folder[0].property, ISHIDE, 1);
@@ -93,7 +96,7 @@ int foldermenu(){
 
             gfx_clearscreen();
             gfx_printf("Renaming %s...\n\n", dirName); 
-            name = utils_InputText(dirName, 32);
+            name = utils_InputText(dirName, 39);
             if (name == NULL)
                 break;
             
@@ -115,7 +118,7 @@ int foldermenu(){
         case DIR_CREATE:;
             gfx_clearscreen();
             gfx_printf("Give a name for your new folder\n\n");
-            name = utils_InputText("New Folder", 32);
+            name = utils_InputText("New Folder", 39);
             if (name == NULL)
                 break;
 

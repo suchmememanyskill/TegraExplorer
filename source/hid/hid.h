@@ -52,3 +52,4 @@ void hidInit();
 Inputs *hidRead();
 Inputs *hidWait();
 Inputs *hidWaitMask(u32 mask);
+bool hidConnected();

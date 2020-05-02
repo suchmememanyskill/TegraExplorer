@@ -459,10 +459,10 @@ int part_setPrintPos(){
     if (parseIntInput(argv[1], &right))
         return -1;
 
-    if (left > 42)
+    if (left > 78)
         return -1;
 
-    if (right > 78)
+    if (right > 42)
         return -1;
 
     gfx_con_setpos(left * 16, right * 16);

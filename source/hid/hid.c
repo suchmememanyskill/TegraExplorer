@@ -99,3 +99,8 @@ Inputs *hidWait(){
         hidRead();
     return in;
 }
+
+bool hidConnected(){
+    jc_gamepad_rpt_t *controller = joycon_poll();
+    return (controller->conn_l && controller->conn_r) ? 1 : 0;
+}

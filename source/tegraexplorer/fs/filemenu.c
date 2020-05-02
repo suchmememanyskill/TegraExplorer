@@ -147,6 +147,7 @@ int filemenu(menu_entry file){
         (attribs.fattrib & AM_ARC) ? 'A' : '-');
     }
 
+    SETBIT(fs_menu_file[6].property, ISHIDE, !hidConnected());
     SETBIT(fs_menu_file[8].property, ISHIDE, !(strstr(file.name, ".bin") != NULL && file.property & ISKB) && strstr(file.name, ".rom") == NULL);
     SETBIT(fs_menu_file[9].property, ISHIDE, strstr(file.name, ".te") == NULL);
     SETBIT(fs_menu_file[11].property, ISHIDE, strstr(file.name, ".bis") == NULL);
@@ -166,7 +167,7 @@ int filemenu(menu_entry file){
             char *name, *curPath;
             gfx_clearscreen();
             gfx_printf("Renaming %s...\n\n", file.name);
-            name = utils_InputText(file.name, 32);
+            name = utils_InputText(file.name, 39);
             if (name == NULL)
                 break;
             

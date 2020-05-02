@@ -40,6 +40,9 @@ void utils_takeScreenshot(){
 */
 
 char *utils_InputText(char *start, int maxLen){
+    if (!hidConnected())
+        return NULL;
+
     int offset = -1, currentPos = 0, len;
     char temp;
     Inputs *input = hidRead();

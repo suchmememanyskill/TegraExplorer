@@ -451,7 +451,7 @@ static void _show_errors(){
 		}
 
 		RESETCOLOR;
-		gfx_printf("\n\nPress any key to continue...");
+		gfx_printf("\n\nPress vol+/- or power to continue");
 
 		*excp_enabled = 0;
 		btn_wait();
