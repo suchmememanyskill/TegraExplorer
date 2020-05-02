@@ -403,8 +403,6 @@ void gfx_vprintf(const char *fmt, va_list ap)
 			case '%':
 				gfx_putc('%');
 				break;
-			case 'j':
-				gfx_con.y = YLEFT - va_arg(ap, u32);
 			case '\0':
 				return;
 			default:

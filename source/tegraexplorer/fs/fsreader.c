@@ -60,6 +60,7 @@ void addobject(char* name, int spot, u8 attribs){
     if (attribs & AM_DIR)
         fsreader_files[spot].property |= (ISDIR);
     else {
+        /*
         size = fsutil_getfilesize(fsutil_getnextloc(currentpath, name));
         
         while (size > 1024){
@@ -72,6 +73,9 @@ void addobject(char* name, int spot, u8 attribs){
 
         fsreader_files[spot].property |= (1 << (4 + sizes));
         fsreader_files[spot].storage = size;
+        */
+       fsreader_files[spot].storage = 0;
+       fsreader_files[spot].property = ISNULL;
     }
 
     if (attribs & AM_ARC)

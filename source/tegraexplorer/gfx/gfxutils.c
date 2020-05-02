@@ -66,7 +66,6 @@ u32 gfx_errDisplay(char *src_func, int err, int loc){
 }
 
 int gfx_makewaitmenu(char *hiddenmessage, int timer){
-    int res;
     u32 start = get_tmr_s();
     Inputs *input = NULL;
 
@@ -131,4 +130,52 @@ void gfx_printfilesize(int size, char *type){
     SWAPCOLOR(COLOR_VIOLET);
     gfx_printf("\a%4d\e%s", size, type);
     RESETCOLOR;
+}
+
+static u32 sideY = 0;
+void _gfx_sideSetYAuto(){
+    u32 getX, getY;
+    gfx_con_getpos(&getX, &getY);
+    sideY = getY;
+}
+
+void gfx_sideSetY(u32 setY){
+    sideY = setY;
+}
+
+u32 gfx_sideGetY(){
+    return sideY;
+}
+
+void gfx_sideprintf(char* message, ...){
+    va_list ap;
+    va_start(ap, message);
+
+    gfx_con_setpos(800, sideY);
+    gfx_vprintf(message, ap);
+    _gfx_sideSetYAuto();
+
+    va_end(ap);
+}
+
+void gfx_sideprintandclear(char* message, int length){
+    gfx_con_setpos(800, sideY);
+    gfx_printandclear(message, length, 1279);
+    gfx_putc('\n');
+    _gfx_sideSetYAuto();
+}
+
+void gfx_drawScrollBar(int minView, int maxView, int count){
+    int curScrollCount = 1 + maxView - minView;
+    if (curScrollCount >= count)
+        return;
+
+    int barSize = (703 * (curScrollCount * 100 / count)) / 100;
+    int offsetSize = (703 * (minView * 100/ count)) / 100;
+
+    gfx_boxGrey(740, 16, 755, 702, 0x1B);
+    if ((16 + barSize + offsetSize) > 702)
+        gfx_boxGrey(740, 16 + offsetSize, 755, 702, 0x66);
+    else
+        gfx_boxGrey(740, 16 + offsetSize, 755, 16 + barSize + offsetSize, 0x66);
 }
