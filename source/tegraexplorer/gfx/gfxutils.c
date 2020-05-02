@@ -170,8 +170,8 @@ void gfx_drawScrollBar(int minView, int maxView, int count){
     if (curScrollCount >= count)
         return;
 
-    int barSize = (703 * (curScrollCount * 100 / count)) / 100;
-    int offsetSize = (703 * (minView * 100/ count)) / 100;
+    u32 barSize = (703 * (curScrollCount * 1000 / count)) / 1000;
+    u32 offsetSize = (703 * (minView * 1000 / count)) / 1000;
 
     gfx_boxGrey(740, 16, 755, 702, 0x1B);
     if ((16 + barSize + offsetSize) > 702)
