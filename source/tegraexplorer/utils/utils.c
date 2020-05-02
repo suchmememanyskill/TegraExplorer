@@ -100,13 +100,13 @@ char *utils_InputText(char *start, int maxLen){
 
         if (input->buttons & (KEY_LDOWN | KEY_RDOWN) && buff[currentPos] < 126){
             temp = ++buff[currentPos];
-            while (temp == '\\' || temp == '/' || temp == ':' || temp == '*' || temp == '?' || temp == '"' || temp == '<' || temp == '>' || temp == '|')
+            while (strchr("\\\"*/:<=>?|+;=[]", temp) != NULL)
                 temp = ++buff[currentPos];
         }
         
         if (input->buttons & (KEY_LUP | KEY_RUP) && buff[currentPos] > 32){
             temp = --buff[currentPos];
-            while (temp == '\\' || temp == '/' || temp == ':' || temp == '*' || temp == '?' || temp == '"' || temp == '<' || temp == '>' || temp == '|')
+            while (strchr("\\\"*/:<=>?|+;=[]", temp) != NULL)
                 temp = --buff[currentPos];
         }
 

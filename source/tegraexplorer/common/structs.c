@@ -61,7 +61,7 @@ menu_entry fs_menu_folder[] = {
     {"\nBack", COLOR_WHITE, ISMENU},
     {"Return to main menu\n", COLOR_BLUE, ISMENU},
     {"Copy to clipboard", COLOR_VIOLET, ISMENU},
-    {"Delete folder", COLOR_RED, ISMENU},
+    {"Delete folder\n", COLOR_RED, ISMENU},
     {"Rename folder", COLOR_BLUE, ISMENU},
     {"Create folder", COLOR_BLUE, ISMENU}
 };
