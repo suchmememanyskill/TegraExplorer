@@ -3,7 +3,7 @@
 #include "../../mem/heap.h"
 #include "../../utils/types.h"
 #include "../../libs/fatfs/ff.h"
-#include "../../utils/btn.h"
+#include "../../hid/hid.h"
 #include "../../gfx/gfx.h"
 #include "../../utils/util.h"
 #include "../../storage/nx_emmc.h"
@@ -122,7 +122,7 @@ int handleEntries(short mmcType, menu_entry part){
 
         if (!res){
             gfx_printf("\nDone!");
-            btn_wait();
+            hidWait();
         }
     }
 
@@ -154,14 +154,14 @@ int makeMmcMenu(short mmcType){
                 }
 
                 gfx_printf("\nDone!");
-                btn_wait();
+                hidWait();
                 break;
             case 2:
                 if (!(clipboardhelper & ISDIR) && (clipboardhelper & OPERATIONCOPY)){
                     gfx_clearscreen();
                     if (!mmcFlashFile(clipboard, mmcType)){
                         gfx_printf("\nDone!");
-                        btn_wait();
+                        hidWait();
                     }   
                     clipboardhelper = 0;
                 }
