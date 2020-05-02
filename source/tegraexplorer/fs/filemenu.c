@@ -191,6 +191,10 @@ int filemenu(menu_entry file){
             break;
         case FILE_SCRIPT:
             //ParseScript(fsutil_getnextloc(currentpath, file.name));
+            gfx_printf(" %kRelease any buttons if held!", COLOR_RED);
+
+            while (hidRead()->buttons);
+
             runScript(fsutil_getnextloc(currentpath, file.name));
             fsreader_readfolder(currentpath);
             break;

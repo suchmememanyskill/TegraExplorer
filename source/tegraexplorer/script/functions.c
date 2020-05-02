@@ -269,7 +269,7 @@ int part_MountMMC(){
 }
 
 int part_Pause(){
-    Inputs *input = hidWait();
+    Inputs *input = hidWaitMask(KEY_A | KEY_B | KEY_X | KEY_Y | KEY_POW | KEY_VOLP | KEY_VOLM | KEY_LUP | KEY_LDOWN | KEY_LLEFT | KEY_LRIGHT);
 
     str_int_add("@BTN_POWER", input->pow);
     str_int_add("@BTN_VOL+", input->volp);
