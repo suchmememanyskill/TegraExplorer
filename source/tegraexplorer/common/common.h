@@ -81,6 +81,7 @@ extern menu_entry utils_mmcChoice[];
 enum fs_menu_file_return {
     FILE_COPY = 4,
     FILE_MOVE,
+    FILE_RENAME,
     FILE_DELETE,
     FILE_PAYLOAD,
     FILE_SCRIPT,

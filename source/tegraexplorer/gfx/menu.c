@@ -201,7 +201,7 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
         if (refresh)
             gfx_drawScrollBar(minscreen, maxscreen, amount);
 
-        while ((input = hidRead())->buttons & (KEY_B | KEY_A));
+        while (hidRead()->buttons & (KEY_B | KEY_A));
 
         input->buttons = 0;
         while (!(input->buttons & (KEY_A | KEY_LDOWN | KEY_LUP | KEY_B | KEY_RUP | KEY_RDOWN))){
