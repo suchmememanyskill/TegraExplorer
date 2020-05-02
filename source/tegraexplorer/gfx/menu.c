@@ -160,7 +160,7 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
             refresh = true;
         }
 
-        if (refresh || currentfolder == NULL){
+        if (refresh || currentfolder == NULL || !calculatedamount){
             for (int i = 0 + offset; i < amount && i < 40 + offset; i++)
                 if (!(entries[i].property & ISHIDE))
                     _printentry(&entries[i], (i == currentpos), refresh, toptext);
