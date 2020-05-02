@@ -42,7 +42,8 @@ void viewbytes(char *path){
     int res;
     Inputs *input = hidRead();
 
-    while (input->buttons & (KEY_POW | KEY_B));
+    while (input->buttons & (KEY_POW | KEY_B))
+        hidRead();
 
     gfx_clearscreen();
     print = malloc (1024);
