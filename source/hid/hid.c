@@ -3,6 +3,7 @@
 #include "../utils/btn.h"
 #include "../gfx/gfx.h"
 #include "../utils/types.h"
+#include "../tegraexplorer/utils/utils.h"
 
 static Inputs inputs = {0};
 u16 LbaseX = 0, LbaseY = 0, RbaseX = 0, RbaseY = 0;
@@ -14,6 +15,10 @@ void hidInit(){
 Inputs *hidRead(){
     jc_gamepad_rpt_t *controller = joycon_poll();
     static bool errPrint = false;
+
+    if (controller->cap)
+        utils_takeScreenshot();
+
 
     u8 btn = btn_read();
     inputs.volp = (btn & BTN_VOL_UP) ? 1 : 0;

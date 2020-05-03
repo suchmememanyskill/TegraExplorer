@@ -79,7 +79,7 @@ int foldermenu(){
             break;
         case DIR_DELETEFOLDER:
             gfx_clearscreen();
-            if (gfx_defaultWaitMenu("Do you want to delete this folder?\nThe entire folder, with all subcontents will be deleted!!!", 4)){
+            if (gfx_defaultWaitMenu("Do you want to delete this folder?\nThe entire folder, with all subcontents will be deleted!", 2)){
                 gfx_clearscreen();
                 gfx_printf("\nDeleting folder, please wait...\n");
 
