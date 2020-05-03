@@ -17,7 +17,6 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-#include "../hos/hos.h"
 #include "../utils/types.h"
 
 typedef struct _hekate_config
@@ -39,7 +38,6 @@ typedef struct _hekate_config
 	bool rcm_patched;
 	u32  sbar_time_keeping;
 	u32  errors;
-	hos_eks_mbr_t *eks;
 } hekate_config;
 
 void set_default_configuration();

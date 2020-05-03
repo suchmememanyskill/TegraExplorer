@@ -19,46 +19,25 @@
 
 #include "../utils/types.h"
 
-typedef struct _patch_t
+typedef struct _key_info_t
 {
-	u32 off;
-	u32 val;
-} patch_t;
-
-#define PATCHSET_DEF(name, ...) \
-	patch_t name[] = { \
-		__VA_ARGS__, \
-		{ 0xFFFFFFFF, 0xFFFFFFFF } \
-	}
+	u32 start_offset;
+	u32 hks_offset;
+	bool hks_offset_is_from_end;
+	u32 alignment;
+	u32 hash_max;
+	u8 hash_order[13];
+	u32 es_offset;
+	u32 ssl_offset;
+} key_info_t;
 
 typedef struct _pkg1_id_t
 {
 	const char *id;
 	u32 kb;
-	u32 tsec_off;
-	u32 pkg11_off;
-	u32 sec_map[3];
-	u32 secmon_base;
-	u32 warmboot_base;
-	bool set_warmboot;
-	patch_t *secmon_patchset;
-	patch_t *warmboot_patchset;
+	key_info_t key_info;
 } pkg1_id_t;
 
-typedef struct _pk11_hdr_t
-{
-	u32 magic;
-	u32 wb_size;
-	u32 wb_off;
-	u32 pad;
-	u32 ldr_size;
-	u32 ldr_off;
-	u32 sm_size;
-	u32 sm_off;
-} pk11_hdr_t;
-
 const pkg1_id_t *pkg1_identify(u8 *pkg1);
-void pkg1_decrypt(const pkg1_id_t *id, u8 *pkg1);
-void pkg1_unpack(void *warmboot_dst, void *secmon_dst, void *ldr_dst, const pkg1_id_t *id, u8 *pkg1);
 
 #endif

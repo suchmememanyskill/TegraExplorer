@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2020 CTCaer
+ * Copyright (C) 2018-2020 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -26,40 +26,11 @@
 #define PKG2_SEC_KERNEL 0
 #define PKG2_SEC_INI1 1
 
-#define INI1_MAGIC 0x31494E49
 #define PKG2_NEWKERN_GET_INI1_HEURISTIC 0xD2800015 // Offset of OP + 12 is the INI1 offset.
-#define PKG2_NEWKERN_START 0x800
 
 u32 pkg2_newkern_ini1_val;
 u32 pkg2_newkern_ini1_start;
 u32 pkg2_newkern_ini1_end;
-
-typedef struct _kernel_patch_t
-{
-	u32 id;
-	u32 off;
-	u32 val;
-	u32 *ptr;
-} kernel_patch_t;
-
-#define KERNEL_PATCHSET_DEF(name, ...) \
-	kernel_patch_t name[] = { \
-		__VA_ARGS__, \
-		{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, (u32 *)0xFFFFFFFF} \
-	}
-
-enum
-{
-	// Always applied.
-	SVC_GENERIC   = 0,
-	// Generic instruction patches.
-	SVC_VERIFY_DS = 0x10,
-	DEBUG_MODE_EN = 0x11,
-	ATM_GEN_PATCH = 0x12,
-	ATM_SYSM_INCR = ATM_GEN_PATCH,
-	// >4 bytes patches. Value is a pointer of a u32 array.
-	ATM_ARR_PATCH = 0x13,
-};
 
 typedef struct _pkg2_hdr_t
 {
@@ -116,44 +87,8 @@ typedef struct _pkg2_kip1_info_t
 	link_t link;
 } pkg2_kip1_info_t;
 
-typedef struct _pkg2_kernel_id_t
-{
-	u8 hash[8];
-	kernel_patch_t *kernel_patchset;
-} pkg2_kernel_id_t;
-
-typedef struct _kip1_patch_t
-{
-	u32 offset; // section+offset of patch to apply.
-	u32 length; // In bytes, 0 means last patch.
-	char* srcData; // That must match.
-	char* dstData; // That it gets replaced by.
-} kip1_patch_t;
-
-typedef struct _kip1_patchset_t
-{
-	char* name; // NULL means end.
-	kip1_patch_t* patches; // NULL means not necessary.
-} kip1_patchset_t;
-
-typedef struct _kip1_id_t
-{
-	const char* name;
-	u8 hash[8];
-	kip1_patchset_t* patchset;
-} kip1_id_t;
-
-void pkg2_get_newkern_info(u8 *kern_data);
 bool pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2, bool *new_pkg2);
-int  pkg2_has_kip(link_t *info, u64 tid);
-void pkg2_replace_kip(link_t *info, u64 tid, pkg2_kip1_t *kip1);
-void pkg2_add_kip(link_t *info, pkg2_kip1_t *kip1);
-void pkg2_merge_kip(link_t *info, pkg2_kip1_t *kip1);
-void pkg2_get_ids(kip1_id_t **ids, u32 *entries);
-const char* pkg2_patch_kips(link_t *info, char* patchNames);
-
-const pkg2_kernel_id_t *pkg2_identify(u8 *hash);
-pkg2_hdr_t *pkg2_decrypt(void *data, u8 kb);
-void pkg2_build_encrypt(void *dst, void *kernel, u32 kernel_size, link_t *kips_info, bool new_pkg2);
+int pkg2_decompress_kip(pkg2_kip1_info_t* ki, u32 sectsToDecomp);
+pkg2_hdr_t *pkg2_decrypt(void *data);
 
 #endif

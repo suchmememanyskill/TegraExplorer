@@ -29,7 +29,6 @@
 #include "../mem/heap.h"
 #include "../mem/mc.h"
 #include "../utils/util.h"
-#include "../hos/hos.h"
 
 // #include "../gfx/gfx.h"
 
