@@ -17,7 +17,8 @@ jobs:
       run: |
         wget https://github.com/devkitPro/pacman/releases/download/devkitpro-pacman-1.0.1/devkitpro-pacman.deb
         sudo dpkg -i devkitpro-pacman.deb
-        sudo dkp-pacman -S $(dkp-pacman -Ssq switch-*) --noconfirm
+        sudo dkp-pacman -S switch-dev --noconfirm
+        sudo dkp-pacman -S devkitARM --noconfirm
         
     - name: Build TegraExplorer
       run: |
