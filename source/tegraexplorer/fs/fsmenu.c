@@ -36,7 +36,7 @@ void fileexplorer(const char *startpath, int type){
     */
 
     while (1){
-        res = menu_make(fsreader_files, mu_countObjects(fsreader_files, 0), currentpath);
+        res = menu_make(fsreader_files, mu_countObjects(fsreader_files, 0, 0), currentpath);
         switch (res){
             case FILEMENU_RETURN:
                 if (!strcmp(startpath, currentpath))

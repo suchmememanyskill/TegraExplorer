@@ -20,16 +20,13 @@ void mu_createObjects(int size, menu_entry **menu){
     (*menu)[size].name = NULL;
 }
 
-int mu_countObjects(menu_entry *entries, u8 propertyMask){
+int mu_countObjects(menu_entry *entries, u32 count, u8 propertyMask){
     int amount = 0;
 
-    for (u32 i = 0; entries[i].name != NULL; i++){
+    for (u32 i = 0; (count) ? i < count : entries[i].name != NULL; i++){
         if (!(entries[i].property & propertyMask))
             amount++;
     }
-
-    while (entries[amount].name != NULL)
-        amount++;
 
     return amount;
 }

@@ -70,7 +70,7 @@ int menu_make(menu_entry *entries, int amount, const char *toptext){
 
     gfx_clearscreen();
 
-    calculatedamount = mu_countObjects(entries, ISMENU);
+    calculatedamount = mu_countObjects(entries, amount, ISMENU);
 
     gfx_con_setpos(0, 16);
 
