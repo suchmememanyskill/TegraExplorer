@@ -1,0 +1,34 @@
+name: TegraExplorer builder
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install devkitpro
+      run: |
+        wget https://github.com/devkitPro/pacman/releases/download/devkitpro-pacman-1.0.1/devkitpro-pacman.deb
+        sudo dpkg -i devkitpro-pacman.deb
+        sudo dkp-pacman -S $(dkp-pacman -Ssq switch-*) --noconfirm
+        
+    - name: Build TegraExplorer
+      run: |
+        echo #     SETTING PATH       #
+        export DEVKITPRO=/opt/devkitpro
+        export DEVKITARM=${DEVKITPRO}/devkitARM
+        export DEVKITPPC=${DEVKITPRO}/devkitPPC
+        export PATH=${DEVKITPRO}/tools/bin:$PATH
+        echo #          MAKE          #
+        make -j$(nproc)
+        
+    - uses: actions/upload-artifact@master
+      with:
+        name: TegraExplorer
+        path: output/TegraExplorer.bin
