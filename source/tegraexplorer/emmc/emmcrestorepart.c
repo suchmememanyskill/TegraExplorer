@@ -32,7 +32,7 @@ int emmcRestorePart(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
 
     gfx_printf("Initializing\r");
 
-    buf = calloc(16384, sizeof(u8));
+    buf = calloc(BUFSIZE, sizeof(u8));
 
     if (!buf){
         gfx_errDisplay("restore_emmc_part", ERR_MEM_ALLOC_FAILED, 1);
@@ -78,7 +78,7 @@ int emmcRestorePart(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
     }
 
     while (totalSectors > 0){
-        num = MIN(totalSectors, 32);
+        num = MIN(totalSectors, 128);
 
         if ((res = f_read(&fp, buf, num * NX_EMMC_BLOCKSIZE, NULL))){
             gfx_errDisplay("restore_emmc_part", res, 5);

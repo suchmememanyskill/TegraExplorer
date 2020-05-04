@@ -45,7 +45,7 @@ int emmcDumpPart(char *path, sdmmc_storage_t *mmcstorage, emmc_part_t *part){
     f_lseek(&fp, 0);
 
     while (totalSectors > 0){
-        num = MIN(totalSectors, 64);
+        num = MIN(totalSectors, 128);
         if (!emummc_storage_read(mmcstorage, lba_curr, num, buf)){
             gfx_errDisplay("dump_emmc_part", ERR_EMMC_READ_FAILED, 3);
             return -1;

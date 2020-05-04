@@ -5629,7 +5629,8 @@ FRESULT f_forward (
 }
 #endif /* FF_USE_FORWARD */
 
-
+#pragma GCC push_options
+#pragma GCC optimize ("Os")
 
 #if FF_USE_MKFS && !FF_FS_READONLY
 /*-----------------------------------------------------------------------*/
@@ -6094,7 +6095,7 @@ FRESULT f_mkfs (
 	LEAVE_MKFS(FR_OK);
 }
 
-
+#pragma GCC pop_options
 
 #if FF_MULTI_PARTITION
 /*-----------------------------------------------------------------------*/

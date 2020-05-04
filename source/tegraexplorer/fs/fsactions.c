@@ -8,15 +8,16 @@
 #include "../utils/utils.h"
 #include "../../mem/heap.h"
 #include "../../hid/hid.h"
+#include "../../utils/btn.h"
 #include "fsutils.h"
 
 int fsact_copy(const char *locin, const char *locout, u8 options){
     FIL in, out;
     FILINFO in_info;
-    u64 sizeoffile, sizecopied = 0, totalsize;
+    u64 sizeRemaining, toCopy;
     UINT temp1, temp2;
-    u8 *buff;
-    unsigned int x, y, i = 0;
+    u8 *buff, toPrint = options & COPY_MODE_PRINT, toCancel = options & COPY_MODE_CANCEL;
+    u32 x, y, i = 11;
     int res;
 
     gfx_con_getpos(&x, &y);
@@ -41,17 +42,26 @@ int fsact_copy(const char *locin, const char *locout, u8 options){
         return 1;
     }
 
-    buff = malloc (BUFSIZE);
-    sizeoffile = f_size(&in);
-    totalsize = sizeoffile;
+    if (toPrint){
+        SWAPCOLOR(COLOR_GREEN);
+        gfx_printf("[    ]");
+        x += 16;
+        gfx_con_setpos(x, y);
+    }
 
-    while (sizeoffile > 0){
-        if ((res = f_read(&in, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp1))){
+    buff = malloc (BUFSIZE);
+    sizeRemaining = f_size(&in);
+    const u64 totalsize = sizeRemaining;
+
+    while (sizeRemaining > 0){
+        toCopy = MIN(sizeRemaining, BUFSIZE);
+
+        if ((res = f_read(&in, buff, toCopy, &temp1))){
             gfx_errDisplay("copy", res, 5);
             return 1;
         }
             
-        if ((res = f_write(&out, buff, (sizeoffile > BUFSIZE) ? BUFSIZE : sizeoffile, &temp2))){
+        if ((res = f_write(&out, buff, toCopy, &temp2))){
             gfx_errDisplay("copy", res, 6);
             return 1;
         }
@@ -61,22 +71,27 @@ int fsact_copy(const char *locin, const char *locout, u8 options){
             return 1;
         }
 
-        sizeoffile -= temp1;
-        sizecopied += temp1;
+        sizeRemaining -= toCopy;
 
-        if (options & COPY_MODE_PRINT && 10 > i++){
-            gfx_printf("%k[%d%%]%k", COLOR_GREEN, ((sizecopied * 100) / totalsize) ,COLOR_WHITE);
+        if (toPrint && (i > 16 || !sizeRemaining)){
+            gfx_printf("%3d%%",  (u32)(((totalsize - sizeRemaining) * 100) / totalsize));
             gfx_con_setpos(x, y);
-            
-            i = 0;
+        }
 
-            if (options & COPY_MODE_CANCEL)
-                if (hidRead()->buttons & (KEY_VOLP | KEY_VOLM)){
-                    f_unlink(locout);
-                    break;
-                }
+        if (toCancel && i > 16){
+            if (btn_read() & (BTN_VOL_DOWN | BTN_VOL_UP)){
+                f_unlink(locout);
+                break;
+            }
+        }
+
+        if (options){
+            if (i++ > 16)
+                i = 0;
         }
     }
+
+    RESETCOLOR;
 
     f_close(&in);
     f_close(&out);
