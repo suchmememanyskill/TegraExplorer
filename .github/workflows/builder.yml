@@ -32,4 +32,4 @@ jobs:
     - uses: actions/upload-artifact@master
       with:
         name: TegraExplorer
-        path: output/TegraExplorer.bin
+        path: output/TegraExplorer.bin 
