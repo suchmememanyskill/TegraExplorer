@@ -9,81 +9,59 @@
 #include "../../soc/gpio.h"
 #include "../../hid/hid.h"
 #include "../fs/fsutils.h"
+#include "../utils/menuUtils.h"
 
 extern void sd_unmount();
 extern bool sd_inited;
 
-void _printentry(menu_entry *entry, bool highlighted, bool refresh, char *path){
-    u64 size;
-    u16 sizes = 0;
-    u32 color = (entry->property & ISMENU) ? entry->storage : ((entry->property & ISDIR) ? COLOR_WHITE : COLOR_VIOLET);
-    /*
-    if (entry.property & ISMENU)
-        SWAPCOLOR(entry.storage);
-    else if (entry.property & ISDIR)
-        SWAPCOLOR(COLOR_WHITE);
-    else {
-        SWAPCOLOR(COLOR_VIOLET);
-    }
-    */
+#pragma GCC push_options
+#pragma GCC optimize ("O2")
 
-   if (!(entry->property & ISMENU && entry->property & ISDIR)){
-        if (entry->property & ISNULL){
-            size = fsutil_getfilesize(fsutil_getnextloc(path, entry->name));
-        
-            while (size > 1024){
-                size /= 1024;
-                sizes++;
-            }
+void _printentry(menu_entry *entry, bool highlighted, bool refresh, const char *path){
+    u32 color = (entry->isMenu) ? entry->storage : ((entry->isDir) ? COLOR_WHITE : COLOR_VIOLET);
 
-            if (sizes > 3)
-                sizes = 0;
+    SWAPALLCOLOR((highlighted) ? COLOR_DEFAULT : color, (highlighted) ? color : COLOR_DEFAULT);
 
-            entry->property |= (1 << (4 + sizes));
-            entry->storage = size;
-            SETBIT(entry->property, ISNULL, 0);
-        }
-
-        for (sizes = 4; sizes < 8; sizes++)
-            if ((entry->property & (1 << sizes)))
-                break;
-   }
-
-    /*
-    if (highlighted){
-        SWAPBGCOLOR(COLOR_WHITE);
-        if ((entry.property & ISMENU) ? entry.storage == COLOR_WHITE : entry.property & ISDIR)
-            SWAPCOLOR(COLOR_DEFAULT);
-    }
-    else
-        SWAPBGCOLOR(COLOR_DEFAULT);
-    */
-   SWAPCOLOR((highlighted) ? COLOR_DEFAULT : color);
-   SWAPBGCOLOR((highlighted) ? color : COLOR_DEFAULT);
-        
-    if (!(entry->property & ISMENU))
-        gfx_printf("%c ", (entry->property & ISDIR) ? 30 : 31);
+    if (!(entry->isMenu))
+        gfx_printf("%c ", (entry->isDir) ? 30 : 31);
 
     if (refresh)
         gfx_printandclear(entry->name, 37, 720);
     else
         gfx_printlength(37, entry->name);
 
-    if (entry->property & ISDIR || entry->property & ISMENU)
+    if (entry->property & (ISMENU | ISDIR))
         gfx_printf("\n");
     else { 
-        SWAPCOLOR(COLOR_BLUE);
-        SWAPBGCOLOR(COLOR_DEFAULT);
+        if (entry->isNull){
+            u64 totalSize;
+            u32 sizeType = 0;
+            totalSize = fsutil_getfilesize(fsutil_getnextloc(path, entry->name));
+        
+            while (totalSize > 1024){
+                totalSize /= 1024;
+                sizeType++;
+            }
+
+            if (sizeType > 3)
+                sizeType = 3;
+
+            entry->size = sizeType;
+            entry->storage = totalSize;
+            SETBIT(entry->property, ISNULL, 0);
+        }
+
+        SWAPALLCOLOR(COLOR_BLUE, COLOR_DEFAULT);
         gfx_printf("\a%4d", entry->storage);
         gfx_con.fntsz = 8;
-        gfx_printf("\n\e%s\n", gfx_file_size_names[sizes - 4]);
+        gfx_printf("\n\e%s\n", gfx_file_size_names[entry->size]);
         gfx_con.fntsz = 16;
     }   
 }
 
 
 bool disableB = false;
-int menu_make(menu_entry *entries, int amount, char *toptext){
+int menu_make(menu_entry *entries, int amount, const char *toptext){
     int currentpos = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 39, calculatedamount = 0;
     u32 scrolltimer, timer, sideY;
     bool refresh = true;
@@ -92,23 +70,9 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
 
     gfx_clearscreen();
 
-    for (int i = 0; i < amount; i++)
-        if (!(entries[i].property & ISMENU))
-            calculatedamount++;
+    calculatedamount = mu_countObjects(entries, ISMENU);
 
     gfx_con_setpos(0, 16);
-    /*
-    if (calculatedamount){
-        SWAPCOLOR(COLOR_DEFAULT);
-        SWAPBGCOLOR(COLOR_WHITE);
-        gfx_printf("%3d entries\n", calculatedamount);
-        RESETCOLOR;
-    }
-    else
-        gfx_printf("\n");
-    */
-    
-
 
     SWAPCOLOR(COLOR_GREEN);
     gfx_printlength(42, toptext);
@@ -162,7 +126,7 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
 
         if (refresh || currentfolder == NULL || !calculatedamount){
             for (int i = 0 + offset; i < amount && i < 40 + offset; i++)
-                if (!(entries[i].property & ISHIDE))
+                if (!(entries[i].isHide))
                     _printentry(&entries[i], (i == currentpos), refresh, toptext);
         }
         else {
@@ -182,12 +146,12 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
         RESETCOLOR;
 
         sideY = gfx_sideGetY();
-        if (!(entries[currentpos].property & ISMENU)){
+        if (!(entries[currentpos].isMenu)){
             gfx_sideprintf("Current selection:\n");
             SWAPCOLOR(COLOR_YELLOW);
             gfx_sideprintandclear(entries[currentpos].name, 28);
             RESETCOLOR;
-            gfx_sideprintf("Type: %s", (entries[currentpos].property & ISDIR) ? "Dir " : "File");
+            gfx_sideprintf("Type: %s", (entries[currentpos].isDir) ? "Dir " : "File");
             gfx_sideSetY(sideY);
         }
         else
@@ -257,3 +221,5 @@ int menu_make(menu_entry *entries, int amount, char *toptext){
     //return (mode) ? currentpos : entries[currentpos].property;
     return currentpos;
 }
+
+#pragma GCC pop_options

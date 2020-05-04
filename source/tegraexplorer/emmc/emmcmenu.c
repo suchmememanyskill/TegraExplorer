@@ -16,12 +16,12 @@
 #include "../../utils/list.h"
 #include "../../mem/heap.h"
 #include "emmcmenu.h"
-#include "../fs/fsreader.h"
 #include "../utils/utils.h"
 #include "../gfx/menu.h"
 #include "../fs/fsmenu.h"
 #include "emmcoperations.h"
 #include "../fs/fsutils.h"
+#include "../utils/menuUtils.h"
 
 menu_entry *mmcMenuEntries = NULL;
 extern sdmmc_storage_t storage;
@@ -30,21 +30,18 @@ extern char *clipboard;
 extern u8 clipboardhelper;
 
 
-void addEntry(emmc_part_t *part, u8 property, int spot){
-    if (mmcMenuEntries[spot].name != NULL){
-        free(mmcMenuEntries[spot].name);
-    }
+void addEntry(emmc_part_t *part, u8 property_GPT, int spot){
+    u32 storage = 0;
+    u8 property = 0;
 
-    utils_copystring(part->name, &mmcMenuEntries[spot].name);
-
-    if (property & isFS){
-        mmcMenuEntries[spot].storage = (u32)(property & 0x7F);
-        mmcMenuEntries[spot].property = ISDIR;
+    if (property_GPT & isFS){
+        storage = (u32)(property_GPT & 0x7F);
+        property = ISDIR;
     }
     else {
         u64 size = 0;
-        int sizes = 0;
-        mmcMenuEntries[spot].property = 0;
+        u32 sizes = 0;
+
         size = (u64)(part->lba_end + 1 - part->lba_start);
         size *= (u64)NX_EMMC_BLOCKSIZE;
 
@@ -54,31 +51,30 @@ void addEntry(emmc_part_t *part, u8 property, int spot){
         }
 
         if (sizes > 3)
-            sizes = 0;
+            sizes = 3;
 
-        mmcMenuEntries[spot].property |= (1 << (4 + sizes));
-        mmcMenuEntries[spot].storage = (u32)size;
+        property |= SETSIZE(sizes);
+        storage = (u32)size;
     }
+
+    mu_copySingle(part->name, storage, property, &mmcMenuEntries[spot]);
 }
 
 int fillMmcMenu(short mmcType){
     int count = 4, i;
 
     if (mmcMenuEntries != NULL)
-        clearfileobjects(&mmcMenuEntries);
+        mu_clearObjects(&mmcMenuEntries);
 
     link_t *gpt = selectGpt(mmcType);
 
     LIST_FOREACH_ENTRY(emmc_part_t, part, gpt, link)
         count++;
 
-    createfileobjects(count, &mmcMenuEntries);
+    mu_createObjects(count, &mmcMenuEntries);
 
-    for (i = 0; i < 4; i++){
-        utils_copystring(mmcmenu_start[i].name, &mmcMenuEntries[i].name);
-        mmcMenuEntries[i].property = mmcmenu_start[i].property;
-        mmcMenuEntries[i].storage = mmcmenu_start[i].storage;
-    }
+    for (i = 0; i < 4; i++)
+        mu_copySingle(mmcmenu_start[i].name, mmcmenu_start[i].storage, mmcmenu_start[i].property, &mmcMenuEntries[i]);
 
     LIST_FOREACH_ENTRY(emmc_part_t, part, gpt, link){
         addEntry(part, checkGptRules(part->name), i++);
@@ -99,10 +95,14 @@ int handleEntries(short mmcType, menu_entry part){
             fileexplorer("emmc:/", 1);  
     }
     else {
+        /*
         if (mmcmenu_filemenu[1].name != NULL)
             free(mmcmenu_filemenu[1].name);
                     
         utils_copystring(part.name, &mmcmenu_filemenu[1].name);
+        */
+
+        mu_copySingle(part.name, mmcmenu_filemenu[1].storage, mmcmenu_filemenu[1].property, &mmcmenu_filemenu[1]);
 
         if ((menu_make(mmcmenu_filemenu, 4, "-- RAW PARTITION --")) < 3)
             return 0;
@@ -112,7 +112,7 @@ int handleEntries(short mmcType, menu_entry part){
 
         gfx_clearscreen();
 
-        if (part.property & isBOOT){
+        if (part.isNull){
             res = emmcDumpBoot("sd:/tegraexplorer/partition_dumps");
         }
         else {
@@ -146,7 +146,7 @@ int makeMmcMenu(short mmcType){
                 f_mkdir("sd:/tegraexplorer/partition_dumps");
 
                 for (int i = 0; i < count; i++){
-                    if (mmcMenuEntries[i].property & ISMENU || mmcMenuEntries[i].property & ISDIR)
+                    if (mmcMenuEntries[i].property & (ISMENU | ISDIR))
                         continue;
 
                     //gfx_printf("Dumping %s...\n", mmcMenuEntries[i].name);

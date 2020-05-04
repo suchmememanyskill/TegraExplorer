@@ -41,7 +41,7 @@ u32 gfx_message(u32 color, const char* message, ...){
     return hidWait()->buttons;
 }
 
-u32 gfx_errDisplay(char *src_func, int err, int loc){
+u32 gfx_errDisplay(const char *src_func, int err, int loc){
     if (!printerrors)
         return 0;
 
@@ -58,14 +58,14 @@ u32 gfx_errDisplay(char *src_func, int err, int loc){
     if (loc)
         gfx_printf("Loc: %d\n", loc);
 
-    gfx_printf("\nPress any button to return");
+    gfx_printf("\nPress any button to return\n");
 
     RESETCOLOR;
 
     return hidWait()->buttons;
 }
 
-int gfx_makewaitmenu(char *hiddenmessage, int timer){
+int gfx_makewaitmenu(const char *hiddenmessage, int timer){
     u32 start = get_tmr_s();
     Inputs *input = NULL;
 
@@ -86,7 +86,7 @@ int gfx_makewaitmenu(char *hiddenmessage, int timer){
     }
 }
 
-void gfx_printlength(int size, char *toprint){
+void gfx_printlength(int size, const char *toprint){
     char *temp;
     temp = (char*) malloc (size + 1);
 
@@ -102,7 +102,7 @@ void gfx_printlength(int size, char *toprint){
     free(temp);
 }
 
-void gfx_printandclear(char *in, int length, int endX){
+void gfx_printandclear(const char *in, int length, int endX){
     u32 x, y;
 
     gfx_printlength(length, in);
@@ -126,12 +126,6 @@ void gfx_printandclear(char *in, int length, int endX){
     */
 }
 
-void gfx_printfilesize(int size, char *type){
-    SWAPCOLOR(COLOR_VIOLET);
-    gfx_printf("\a%4d\e%s", size, type);
-    RESETCOLOR;
-}
-
 static u32 sideY = 0;
 void _gfx_sideSetYAuto(){
     u32 getX, getY;
@@ -147,7 +141,7 @@ u32 gfx_sideGetY(){
     return sideY;
 }
 
-void gfx_sideprintf(char* message, ...){
+void gfx_sideprintf(const char* message, ...){
     va_list ap;
     va_start(ap, message);
 
@@ -158,7 +152,7 @@ void gfx_sideprintf(char* message, ...){
     va_end(ap);
 }
 
-void gfx_sideprintandclear(char* message, int length){
+void gfx_sideprintandclear(const char* message, int length){
     gfx_con_setpos(800, sideY);
     gfx_printandclear(message, length, 1279);
     gfx_putc('\n');
@@ -180,7 +174,7 @@ void gfx_drawScrollBar(int minView, int maxView, int count){
         gfx_boxGrey(740, 16 + offsetSize, 755, 16 + barSize + offsetSize, 0x66);
 }
 
-int gfx_defaultWaitMenu(char *message, int time){
+int gfx_defaultWaitMenu(const char *message, int time){
     gfx_clearscreen();
     SWAPCOLOR(COLOR_ORANGE);
     gfx_printf("\n%s\n\nPress B to return\n", message);

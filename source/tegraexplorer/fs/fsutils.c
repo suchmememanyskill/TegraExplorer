@@ -47,15 +47,6 @@ char *fsutil_getprevloc(char *current){
     return ret;
 }
 
-int fsutil_getfileobjamount(menu_entry *entries){
-    int amount = 0;
-
-    while (entries[amount].name != NULL)
-        amount++;
-
-    return amount;
-}
-
 bool fsutil_checkfile(char* path){
     FRESULT fr;
     FILINFO fno;
@@ -87,4 +78,21 @@ int fsutil_getfolderentryamount(const char *path){
 
     f_closedir(&dir);
     return folderamount;
+}
+
+char *fsutil_formatFileAttribs(char *path){
+    FILINFO attribs;
+    char *out;
+    out = malloc(16);
+
+    if (f_stat(path, &attribs))
+        return NULL;
+
+    sprintf(out, "Attribs: %c%c%c%c",
+        (attribs.fattrib & AM_RDO) ? 'R' : '-',
+        (attribs.fattrib & AM_SYS) ? 'S' : '-',
+        (attribs.fattrib & AM_HID) ? 'H' : '-',
+        (attribs.fattrib & AM_ARC) ? 'A' : '-');
+
+    return out;
 }

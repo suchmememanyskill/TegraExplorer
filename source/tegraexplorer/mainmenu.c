@@ -114,7 +114,7 @@ void MainMenu_Exit(){
     }
 
     res = menu_make(mainmenu_shutdown, 6, "-- Shutdown Menu --");
-
+    
     switch(res){
         case SHUTDOWN_REBOOT_RCM:
             reboot_rcm();
@@ -131,6 +131,7 @@ void MainMenu_Exit(){
         case SHUTDOWN_AMS:
             launch_payload("/atmosphere/reboot_payload.bin");
     } //todo declock bpmp
+    
 }
 
 func_void_ptr mainmenu_functions[] = {
@@ -153,27 +154,31 @@ void RunMenuOption(int option){
 void te_main(){
     int setter;
 
+    //gfx_printf("Initing controller\n");
+    hidInit();
+
+    //gfx_printf("Getting biskeys\n");
     if (dump_biskeys() == -1){
         gfx_errDisplay("dump_biskey", ERR_BISKEY_DUMP_FAILED, 0);
         //mainmenu_main[1].property |= ISHIDE;
     }
 
-    //gfx_message(COLOR_ORANGE, "%d %d %d", sd_mount(), sd_mounted, sd_inited);
+    //gfx_printf("Mounting SD\n");
     sd_mount();
 
+    //gfx_printf("Loading possible EMU\n");
     if (emummc_load_cfg()){
         mainmenu_main[2].property |= ISHIDE;
     }
 
+    //gfx_printf("Dumping gpt\n");
     dumpGpt();
 
+    //gfx_printf("Disconnecting EMMC\n");
     disconnect_mmc();
 
-    hidInit();
-
+    //gfx_printf("Entering main menu\n");
     while (1){
-        //fillmainmenu();
-
         setter = sd_mounted;
 
         if (emu_cfg.enabled){

@@ -64,6 +64,9 @@ int parseStringInput(char *in, char **out){
     }
 }
 
+#pragma GCC push_options
+#pragma GCC optimize ("Os")
+
 u32 currentcolor = COLOR_WHITE;
 int part_printf(){
     SWAPCOLOR(currentcolor);
@@ -583,6 +586,8 @@ str_fnc_struct functions[] = {
     {"exit", part_Exit, 0},
     {NULL, NULL, 0}
 };
+
+#pragma GCC pop_options
 
 int run_function(char *func_name, int *out){
     for (u32 i = 0; functions[i].key != NULL; i++){

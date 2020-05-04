@@ -7,6 +7,7 @@
 #include "../gfx/gfxutils.h"
 #include "../utils/utils.h"
 #include "../../mem/heap.h"
+#include "../utils/menuUtils.h"
 
 menu_entry *fsreader_files = NULL;
 char *currentpath = NULL;
@@ -29,59 +30,16 @@ void fsreader_writeclipboard(const char *in, u8 args){
     utils_copystring(in, &clipboard);
 }
 
-void clearfileobjects(menu_entry **menu){
-    if ((*menu) != NULL){
-        for (int i = 0; (*menu)[i].name != NULL; i++){
-            free((*menu)[i].name);
-            (*menu)[i].name = NULL;
-        }
-        free((*menu));
-        (*menu) = NULL;
-    }
-}
-
-void createfileobjects(int size, menu_entry **menu){
-    (*menu) = calloc (size + 1, sizeof(menu_entry));
-    (*menu)[size].name = NULL;
-}
 
 void addobject(char* name, int spot, u8 attribs){
-    /*
-    u64 size = 0;
-    int sizes = 0;
-    */
-    fsreader_files[spot].property = 0;
-
-    if (fsreader_files[spot].name != NULL){
-        free(fsreader_files[spot].name);
-        fsreader_files[spot].name = NULL;
-    }
-
-    utils_copystring(name, &(fsreader_files[spot].name));
+    u8 property = 0;
 
     if (attribs & AM_DIR)
-        fsreader_files[spot].property |= (ISDIR);
-    else {
-        /*
-        size = fsutil_getfilesize(fsutil_getnextloc(currentpath, name));
-        
-        while (size > 1024){
-            size /= 1024;
-            sizes++;
-        }
+        property |= ISDIR;
+    else
+        property |= ISNULL;
 
-        if (sizes > 3)
-            sizes = 0;
-
-        fsreader_files[spot].property |= (1 << (4 + sizes));
-        fsreader_files[spot].storage = size;
-        */
-        fsreader_files[spot].storage = 0;
-        fsreader_files[spot].property = ISNULL;
-    }
-
-    if (attribs & AM_ARC)
-        fsreader_files[spot].property |= (ISARC);
+    mu_copySingle(name, 0, property, &fsreader_files[spot]);
 }
 
 int fsreader_readfolder(const char *path){
@@ -89,14 +47,13 @@ int fsreader_readfolder(const char *path){
     FILINFO fno;
     int folderamount, res;
     
-    clearfileobjects(&fsreader_files);
-    createfileobjects(fsutil_getfolderentryamount(path) + 3, &fsreader_files);
+    mu_clearObjects(&fsreader_files);
+    mu_createObjects(fsutil_getfolderentryamount(path) + 3, &fsreader_files);
 
-    for (folderamount = 0; folderamount < 3; folderamount++){
-        utils_copystring(fs_menu_startdir[folderamount].name, &(fsreader_files[folderamount].name));
-        fsreader_files[folderamount].storage = fs_menu_startdir[folderamount].storage;
-        fsreader_files[folderamount].property = fs_menu_startdir[folderamount].property;
-    }
+
+
+    for (folderamount = 0; folderamount < 3; folderamount++)
+        mu_copySingle(fs_menu_startdir[folderamount].name, fs_menu_startdir[folderamount].storage, fs_menu_startdir[folderamount].property, &fsreader_files[folderamount]);
 
     if ((res = f_opendir(&dir, path))){
         gfx_errDisplay("readfolder", res, 0);

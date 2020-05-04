@@ -1,7 +1,7 @@
 #pragma once
 #include "../utils/types.h"
 
-#define BIT(n) (1 << n)
+#define BIT(n) (1U << n)
 #define KEY_A BIT(3)
 #define KEY_B BIT(2)
 #define KEY_Y BIT(0)

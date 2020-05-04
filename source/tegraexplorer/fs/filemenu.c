@@ -15,6 +15,7 @@
 #include "../script/parser.h"
 #include "../emmc/emmcoperations.h"
 #include "../../hid/hid.h"
+#include "../utils/menuUtils.h"
 
 extern char *currentpath;
 extern char *clipboard;
@@ -120,38 +121,42 @@ void copyfile(const char *src_in, const char *outfolder){
 
 int filemenu(menu_entry file){
     int temp;
-    FILINFO attribs;
+    char *tempchar;
 
-    for (int i = 0; i < 3; i++)
+    /*
+    for (int i = 0; i < 2; i++)
         if (fs_menu_file[i].name != NULL)
             free(fs_menu_file[i].name);
     
     utils_copystring(file.name, &fs_menu_file[0].name);
+    */
+    mu_copySingle(file.name, fs_menu_file[0].storage, fs_menu_file[0].property, &fs_menu_file[0]);
+
+
+    if (fs_menu_file[1].name != NULL)
+        free(fs_menu_file[1].name);
+
     fs_menu_file[1].name = malloc(16);
-    fs_menu_file[2].name = malloc(16);
-            
-    for (temp = 4; temp < 8; temp++)
-        if ((file.property & (1 << temp)))
-            break;
+    sprintf(fs_menu_file[1].name, "\nSize: %d %s", file.storage, gfx_file_size_names[file.size]);
 
-    
-    sprintf(fs_menu_file[1].name, "\nSize: %d %s", file.storage, gfx_file_size_names[temp - 4]);
-
-    if (f_stat(fsutil_getnextloc(currentpath, file.name), &attribs))
-        SETBIT(fs_menu_file[2].property, ISHIDE, 1);
+    if ((tempchar = fsutil_formatFileAttribs(fsutil_getnextloc(currentpath, file.name))) == NULL)
+        fs_menu_file[2].isHide = 1;
     else {
-        SETBIT(fs_menu_file[2].property, ISHIDE, 0);
-        sprintf(fs_menu_file[2].name, "Attribs: %c%c%c%c",
-        (attribs.fattrib & AM_RDO) ? 'R' : '-',
-        (attribs.fattrib & AM_SYS) ? 'S' : '-',
-        (attribs.fattrib & AM_HID) ? 'H' : '-',
-        (attribs.fattrib & AM_ARC) ? 'A' : '-');
+        fs_menu_file[2].isHide = 0;
+        mu_copySingle(tempchar, fs_menu_file[2].storage, fs_menu_file[2].property, &fs_menu_file[2]);
     }
 
+    fs_menu_file[6].isHide = !hidConnected();
+    fs_menu_file[8].isHide = (!(strstr(file.name, ".bin") != NULL && file.size == 1) && strstr(file.name, ".rom") == NULL);
+    fs_menu_file[9].isHide = (strstr(file.name, ".te") == NULL);
+    fs_menu_file[11].isHide = (strstr(file.name, ".bis") == NULL);
+
+    /*
     SETBIT(fs_menu_file[6].property, ISHIDE, !hidConnected());
-    SETBIT(fs_menu_file[8].property, ISHIDE, !(strstr(file.name, ".bin") != NULL && file.property & ISKB) && strstr(file.name, ".rom") == NULL);
+    SETBIT(fs_menu_file[8].property, ISHIDE, !(strstr(file.name, ".bin") != NULL && file.size == 1) && strstr(file.name, ".rom") == NULL);
     SETBIT(fs_menu_file[9].property, ISHIDE, strstr(file.name, ".te") == NULL);
     SETBIT(fs_menu_file[11].property, ISHIDE, strstr(file.name, ".bis") == NULL);
+    */
 
     temp = menu_make(fs_menu_file, 12, "-- File Menu --");
     switch (temp){

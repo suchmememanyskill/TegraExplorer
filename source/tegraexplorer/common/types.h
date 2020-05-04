@@ -1,18 +1,14 @@
 #pragma once
 #include "../../utils/types.h"
 
-#define ISDIR (1 << 0)
-#define ISARC (1 << 1)
+#define BIT(n) (1U << n)
 
-#define ISHIDE (1 << 8)
-#define ISMENU (1 << 9)
-#define ISSKIP (1 << 10)
-
-#define ISGB (1 << 7)
-#define ISMB (1 << 6)
-#define ISKB (1 << 5)
-#define ISB  (1 << 4)
-#define ISNULL (1 << 3)
+#define ISDIR BIT(0)
+#define ISMENU BIT(1)
+#define SETSIZE(x) (x << 2)
+#define ISNULL BIT(4)
+#define ISHIDE BIT(5)
+#define ISSKIP BIT(6)
 
 #define SETBIT(object, shift, value) ((value) ? (object |= shift) : (object &= ~shift))
 
@@ -43,7 +39,17 @@
 typedef struct {
     char *name;
     u32 storage;
-    u16 property;
+    union {
+        u8 property;
+        struct {
+            u8 isDir:1;
+            u8 isMenu:1;
+            u8 size:2;
+            u8 isNull:1;
+            u8 isHide:1;
+            u8 isSkip:1;
+        };
+    };
 } menu_entry; 
 
 typedef struct {

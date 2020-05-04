@@ -7,6 +7,7 @@
 #include "../common/common.h"
 #include "../../libs/fatfs/ff.h"
 #include "entrymenu.h"
+#include "../utils/menuUtils.h"
 
 extern char *currentpath;
 extern char *clipboard;
@@ -35,7 +36,7 @@ void fileexplorer(const char *startpath, int type){
     */
 
     while (1){
-        res = menu_make(fsreader_files, fsutil_getfileobjamount(fsreader_files), currentpath);
+        res = menu_make(fsreader_files, mu_countObjects(fsreader_files, 0), currentpath);
         switch (res){
             case FILEMENU_RETURN:
                 if (!strcmp(startpath, currentpath))

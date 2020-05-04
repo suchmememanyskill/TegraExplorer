@@ -11,6 +11,7 @@
 #include "../../utils/sprintf.h"
 #include "../utils/utils.h"
 #include "../../hid/hid.h"
+#include "../utils/menuUtils.h"
 
 extern char *currentpath;
 extern char *clipboard;
@@ -42,21 +43,23 @@ void copyfolder(char *in, char *out){
 int foldermenu(){
     int res, hidConn;
     char *name;
-    FILINFO attribs;
-
-    if (fs_menu_folder[0].name != NULL)
-        free(fs_menu_folder[0].name);
-
-    fs_menu_folder[0].name = malloc(16);
 
     hidConn = hidConnected();
 
     res = strlen(currentpath);
+
+    fs_menu_folder[3].isHide = (*(currentpath + res - 1) == '/');
+    fs_menu_folder[4].isHide = (*(currentpath + res - 1) == '/');
+    fs_menu_folder[5].isHide = (*(currentpath + res - 1) == '/' || !hidConn);
+    fs_menu_folder[6].isHide = !hidConn;
+
+    /*
+
     SETBIT(fs_menu_folder[3].property, ISHIDE, (*(currentpath + res - 1) == '/'));
     SETBIT(fs_menu_folder[4].property, ISHIDE, (*(currentpath + res - 1) == '/'));
     SETBIT(fs_menu_folder[5].property, ISHIDE, (*(currentpath + res - 1) == '/') || !hidConn);
     SETBIT(fs_menu_folder[6].property, ISHIDE, !hidConn);
-  
+    
     if (f_stat(currentpath, &attribs))
         SETBIT(fs_menu_folder[0].property, ISHIDE, 1);
     else {
@@ -67,6 +70,17 @@ int foldermenu(){
         (attribs.fattrib & AM_HID) ? 'H' : '-',
         (attribs.fattrib & AM_ARC) ? 'A' : '-');
     }
+    */
+
+    if ((name = fsutil_formatFileAttribs(currentpath)) == NULL){
+        fs_menu_folder[0].isHide = 1;
+    }
+    else {
+        fs_menu_folder[0].isHide = 0;
+        mu_copySingle(name, fs_menu_folder[0].storage, fs_menu_folder[0].property, &fs_menu_folder[0]);
+    }
+
+
 
     res = menu_make(fs_menu_folder, 7, currentpath);
 
