@@ -524,7 +524,7 @@ int part_mmc_restorePart(){
     if (currentlyMounted < 0)
         return -1;
 
-    return mmcFlashFile(path, currentlyMounted);   
+    return mmcFlashFile(path, currentlyMounted, false);   
 }
 
 int part_fs_extractBisFile(){

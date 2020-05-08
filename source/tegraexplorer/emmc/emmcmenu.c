@@ -159,7 +159,7 @@ int makeMmcMenu(short mmcType){
             case 2:
                 if (!(clipboardhelper & ISDIR) && (clipboardhelper & OPERATIONCOPY)){
                     gfx_clearscreen();
-                    if (!mmcFlashFile(clipboard, mmcType)){
+                    if (!mmcFlashFile(clipboard, mmcType, true)){
                         gfx_printf("\nDone!");
                         hidWait();
                     }   

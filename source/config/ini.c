@@ -73,6 +73,7 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 	char *filelist = NULL;
 	FIL fp;
 	ini_sec_t *csec = NULL;
+	bool firstIniRun = true;
 
 	char *filename = (char *)malloc(256);
 
@@ -116,10 +117,17 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 
 		do
 		{
+			if (firstIniRun){
+				firstIniRun = false;
+				strcpy(lbuf, "[Unknown]");
+				lblen = 9;
+			}
+			else {
 			// Fetch one line.
 			lbuf[0] = 0;
 			f_gets(lbuf, 512, &fp);
 			lblen = strlen(lbuf);
+			}
 
 			// Remove trailing newline. Depends on 'FF_USE_STRFUNC 2' that removes \r.
 			if (lblen && lbuf[lblen - 1] == '\n')
