@@ -53,7 +53,8 @@ menu_entry fs_menu_file[] = {
     {"Launch Payload", COLOR_ORANGE, {ISMENU}},
     {"Launch Script", COLOR_YELLOW, {ISMENU}},
     {"View Hex", COLOR_GREEN, {ISMENU}},
-    {"\nExtract BIS", COLOR_YELLOW, {ISMENU}}
+    {"\nExtract BIS", COLOR_YELLOW, {ISMENU}},
+    {"Sign Save", COLOR_ORANGE, {ISMENU}}
 };
 
 menu_entry fs_menu_folder[] = {

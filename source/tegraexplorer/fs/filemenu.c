@@ -16,6 +16,7 @@
 #include "../emmc/emmcoperations.h"
 #include "../../hid/hid.h"
 #include "../utils/menuUtils.h"
+#include "savesign.h"
 
 extern char *currentpath;
 extern char *clipboard;
@@ -150,6 +151,7 @@ int filemenu(menu_entry file){
     fs_menu_file[8].isHide = (!(strstr(file.name, ".bin") != NULL && file.size == 1) && strstr(file.name, ".rom") == NULL);
     fs_menu_file[9].isHide = (strstr(file.name, ".te") == NULL);
     fs_menu_file[11].isHide = (strstr(file.name, ".bis") == NULL);
+    fs_menu_file[12].isHide = (!!strcmp(currentpath, "emmc:/save"));
 
     /*
     SETBIT(fs_menu_file[6].property, ISHIDE, !hidConnected());
@@ -158,7 +160,7 @@ int filemenu(menu_entry file){
     SETBIT(fs_menu_file[11].property, ISHIDE, strstr(file.name, ".bis") == NULL);
     */
 
-    temp = menu_make(fs_menu_file, 12, "-- File Menu --");
+    temp = menu_make(fs_menu_file, 13, "-- File Menu --");
     switch (temp){
         case FILE_COPY:
             fsreader_writeclipboard(fsutil_getnextloc(currentpath, file.name), OPERATIONCOPY);
@@ -213,6 +215,17 @@ int filemenu(menu_entry file){
             extract_bis_file(fsutil_getnextloc(currentpath, file.name), currentpath);
             fsreader_readfolder(currentpath);
             hidWait();
+            break;
+        case FILE_SIGN:
+            if (gfx_defaultWaitMenu("WARNING!\n\nThis should only be used if you know what signing and a save is\nDo not do this if you don't know what this does\n\nRequires you to have a prod.keys located in the switch folder\n", 5)){
+                gfx_clearscreen();
+                gfx_printf("Signing save...\n");
+                if (save_sign("sd:/switch/prod.keys", fsutil_getnextloc(currentpath, file.name))){
+                    gfx_printf("Done!\nPress any key to exit");
+                    hidWait();
+                }
+            }
+
             break;
         case -1:
             return -1;

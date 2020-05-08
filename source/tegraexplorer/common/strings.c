@@ -52,7 +52,8 @@ const char *utils_err_codes_te[] = { // these start at 50
     "SD EJECTED",
     "PARSING FAILED",
     "CANNOT COPY FILE TO FS PART",
-    "NO DESTINATION"
+    "NO DESTINATION",
+    "INI PARSE FAIL"
 };
 /*
 const char *pkg2names[] = {

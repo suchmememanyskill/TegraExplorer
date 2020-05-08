@@ -43,7 +43,7 @@ typedef struct _ini_sec_t
 	u32 color;
 } ini_sec_t;
 
-int ini_parse(link_t *dst, char *ini_path, bool is_dir);
+int ini_parse(link_t *dst, const char *ini_path, bool is_dir);
 char *ini_check_payload_section(ini_sec_t *cfg);
 
 #endif

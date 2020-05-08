@@ -23,7 +23,8 @@ enum utils_err_codes_te_call {
     ERR_SD_EJECTED,
     ERR_PARSE_FAIL,
     ERR_CANNOT_COPY_FILE_TO_FS_PART,
-    ERR_NO_DESTINATION
+    ERR_NO_DESTINATION,
+    ERR_INI_PARSE_FAIL
 };
 
 extern const char *utils_err_codes_te[];
@@ -86,7 +87,8 @@ enum fs_menu_file_return {
     FILE_PAYLOAD,
     FILE_SCRIPT,
     FILE_HEXVIEW,
-    FILE_DUMPBIS
+    FILE_DUMPBIS,
+    FILE_SIGN
 };
 
 extern menu_entry fs_menu_file[];
