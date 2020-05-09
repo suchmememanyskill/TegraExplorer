@@ -59,8 +59,7 @@ extern menu_entry mainmenu_shutdown[];
 enum mainmenu_tools_return {
     TOOLS_DISPLAY_INFO = 1,
     TOOLS_DISPLAY_GPIO,
-    TOOLS_DUMPFIRMWARE,
-    TOOLS_DUMPUSERSAVE
+    TOOLS_DUMPFIRMWARE
 };
 
 extern menu_entry mainmenu_tools[];

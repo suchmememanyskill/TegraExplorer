@@ -37,24 +37,12 @@ void MainMenu_SDCard(){
 
 void MainMenu_EMMC(){
     if (gfx_defaultWaitMenu("You're about to enter EMMC\nModifying anything here can result in a BRICK!\n\nPlease only continue if you know what you're doing", 4)){
-        /*
-        connect_mmc(SYSMMC);
-
-        if (!mount_mmc(emmc_fs_entries[res - 2], res - 1))
-            fileexplorer("emmc:/", 1);
-        */
        makeMmcMenu(SYSMMC);
     }
 }
 
 void MainMenu_EMUMMC(){
-    /*
-    connect_mmc(EMUMMC);
-
-    if (!mount_mmc(emmc_fs_entries[res - 5], res - 4))
-        fileexplorer("emmc:/", 1);
-    */
-   makeMmcMenu(EMUMMC);
+    makeMmcMenu(EMUMMC);
 }
 
 void MainMenu_MountSD(){
@@ -62,8 +50,7 @@ void MainMenu_MountSD(){
 }
 
 void MainMenu_Tools(){
-    //res = makemenu(toolsmenu, 8);
-    res = menu_make(mainmenu_tools, 5, "-- Tools Menu --");
+    res = menu_make(mainmenu_tools, 4, "-- Tools Menu --");
 
     switch(res){
         case TOOLS_DISPLAY_INFO:
@@ -71,21 +58,14 @@ void MainMenu_Tools(){
             break;
         case TOOLS_DISPLAY_GPIO:
             displaygpio();
-            //makeMmcMenu(SYSMMC);
             break;
         case TOOLS_DUMPFIRMWARE:
             dumpfirmware(SYSMMC);
-            break;
-        case TOOLS_DUMPUSERSAVE:
-            if ((res = utils_mmcMenu()) > 0)
-                dumpusersaves(res);
-
             break;
     }
 }
 
 void MainMenu_SDFormat(){
-    //res = makemenu(formatmenu, 4);
     res = menu_make(mainmenu_format, 3, "-- Format Menu --");
 
     if (res > 0){

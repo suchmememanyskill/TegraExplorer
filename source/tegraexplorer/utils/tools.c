@@ -159,7 +159,7 @@ int dumpfirmware(int mmc){
 
     return fail;
 }
-
+/*
 void dumpusersaves(int mmc){
     connect_mmc(mmc);
     mount_mmc("USER", 2);
@@ -180,6 +180,7 @@ void dumpusersaves(int mmc){
     gfx_printf("Press any key to continue");
     hidWait();
 }
+*/
 
 int format(int mode){
     gfx_clearscreen();

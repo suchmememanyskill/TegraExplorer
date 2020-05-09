@@ -25,8 +25,7 @@ menu_entry mainmenu_tools[] = {
     {"Back", COLOR_WHITE, {ISMENU}},
     {"\nDisplay Console Info", COLOR_GREEN, {ISMENU}},
     {"Display GPIO pins", COLOR_VIOLET, {ISMENU}},
-    {"Dump Firmware", COLOR_BLUE, {ISMENU}},
-    {"Dump User Saves", COLOR_YELLOW, {ISMENU}}
+    {"Dump Firmware", COLOR_BLUE, {ISMENU}}
 };
 
 menu_entry mainmenu_format[] = {
