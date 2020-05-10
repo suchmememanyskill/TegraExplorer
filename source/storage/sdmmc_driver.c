@@ -32,6 +32,8 @@
 #pragma GCC push_options
 #pragma GCC optimize ("Os")
 
+u32 sd_power_cycle_time_start;
+
 //#define DPRINTF(...) gfx_printf(__VA_ARGS__)
 #define DPRINTF(...)
 

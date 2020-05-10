@@ -31,6 +31,10 @@
 #define DEBUG_PRINTING*/
 #define DPRINTF(...)
 
+u32 pkg2_newkern_ini1_val;
+u32 pkg2_newkern_ini1_start;
+u32 pkg2_newkern_ini1_end;
+
 static u32 _pkg2_calc_kip1_size(pkg2_kip1_t *kip1)
 {
 	u32 size = sizeof(pkg2_kip1_t);

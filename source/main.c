@@ -44,10 +44,10 @@
 
 //#include "keys/keys.h"
 
-sdmmc_t sd_sdmmc;
-sdmmc_storage_t sd_storage;
-__attribute__ ((aligned (16))) FATFS sd_fs;
-bool sd_mounted, sd_inited;
+//sdmmc_t sd_sdmmc;
+//sdmmc_storage_t sd_storage;
+//__attribute__ ((aligned (16))) FATFS sd_fs;
+//bool sd_mounted, sd_inited;
 volatile nyx_storage_t *nyx_str = (nyx_storage_t *)NYX_STORAGE_ADDR;
 hekate_config h_cfg;
 boot_cfg_t __attribute__((section ("._boot_cfg"))) b_cfg;

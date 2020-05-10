@@ -198,24 +198,6 @@ int menu_make(menu_entry *entries, int amount, const char *toptext){
             else {
                 break;
             }
-            
-            /*
-            if (delay < 300){
-                scrolltimer = get_tmr_ms();
-                while (input->buttons & (KEY_A | KEY_LDOWN | KEY_LUP | KEY_B | KEY_RUP | KEY_RDOWN)){
-                    if (scrolltimer + delay <= get_tmr_ms())
-                        break;
-
-                    input = hidRead();       
-                }
-            }
-
-            if (delay > 46 && input->buttons & (KEY_A | KEY_LDOWN | KEY_LUP | KEY_B | KEY_RUP | KEY_RDOWN))
-                delay -= 45;
-
-            if (input->buttons & (KEY_RUP | KEY_RDOWN))
-                delay = 1;
-            */
         }
 
         if (delay > 46)

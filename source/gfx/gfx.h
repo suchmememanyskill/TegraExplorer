@@ -61,7 +61,7 @@ void gfx_boxGrey(int x0, int y0, int x1, int y1, u8 shade);
 */
 
 // Global gfx console and context.
-gfx_ctxt_t gfx_ctxt;
-gfx_con_t gfx_con;
+extern gfx_ctxt_t gfx_ctxt;
+extern gfx_con_t gfx_con;
 
 #endif

@@ -32,6 +32,7 @@ extern sdmmc_storage_t sd_storage;
 extern FATFS sd_fs;
 
 extern hekate_config h_cfg;
+emummc_cfg_t emu_cfg;
 
 extern bool sd_mount();
 extern void sd_unmount();

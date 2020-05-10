@@ -47,7 +47,7 @@ typedef struct _emummc_cfg_t
 	int fs_ver;
 } emummc_cfg_t;
 
-emummc_cfg_t emu_cfg;
+extern emummc_cfg_t emu_cfg;
 
 bool emummc_load_cfg();
 int emummc_storage_init_mmc(sdmmc_storage_t *storage, sdmmc_t *sdmmc);
