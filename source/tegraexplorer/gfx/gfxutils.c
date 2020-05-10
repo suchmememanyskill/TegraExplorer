@@ -23,7 +23,7 @@ void gfx_clearscreen(){
     gfx_boxGrey(0, 703, 1279, 719, 0xFF);
     gfx_boxGrey(0, 0, 1279, 15, 0xFF);
     gfx_con_setpos(0, 0);
-    gfx_printf("Tegraexplorer v2.0.1 | Battery: %3d%%\n", battery >> 8);
+    gfx_printf("Tegraexplorer v2.0.2 | Battery: %3d%%\n", battery >> 8);
 
     RESETCOLOR;
 }
