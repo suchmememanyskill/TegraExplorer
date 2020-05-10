@@ -167,8 +167,8 @@ int menu_make(menu_entry *entries, int amount, const char *toptext){
 
         while (hidRead()->buttons & (KEY_B | KEY_A));
 
-        input->buttons = 0;
-        while (!(input->buttons & (KEY_A | KEY_LDOWN | KEY_LUP | KEY_B | KEY_RUP | KEY_RDOWN))){
+        scrolltimer = get_tmr_ms();
+        while (1){
             if (sd_inited && !!gpio_read(GPIO_PORT_Z, GPIO_PIN_1)){
                 gfx_errDisplay("menu", ERR_SD_EJECTED, 0);
                 sd_unmount();
@@ -177,9 +177,29 @@ int menu_make(menu_entry *entries, int amount, const char *toptext){
 
             input = hidRead();
 
-            if (!(input->buttons & (KEY_A | KEY_LDOWN | KEY_LUP | KEY_B | KEY_RUP | KEY_RDOWN)))
+            if (!(input->buttons & (KEY_A | KEY_LDOWN | KEY_LUP | KEY_B | KEY_RUP | KEY_RDOWN))){
                 delay = 300;
+                continue;
+            }
+
             
+            if (input->buttons & (KEY_RDOWN | KEY_RUP)){
+                delay = 1;
+                input->Lup = input->Rup;
+                input->Ldown = input->Rdown;
+            }
+            
+
+            if (delay < 300){
+                if (scrolltimer + delay < get_tmr_ms()){
+                    break;
+                }
+            }
+            else {
+                break;
+            }
+            
+            /*
             if (delay < 300){
                 scrolltimer = get_tmr_ms();
                 while (input->buttons & (KEY_A | KEY_LDOWN | KEY_LUP | KEY_B | KEY_RUP | KEY_RDOWN)){
@@ -195,15 +215,19 @@ int menu_make(menu_entry *entries, int amount, const char *toptext){
 
             if (input->buttons & (KEY_RUP | KEY_RDOWN))
                 delay = 1;
+            */
         }
 
-        if (input->buttons & (KEY_LUP | KEY_RUP) && currentpos >= 1){
+        if (delay > 46)
+            delay -= 45;
+
+        if (input->Lup && currentpos >= 1){
             currentpos--;
             while(entries[currentpos].property & (ISSKIP | ISHIDE) && currentpos >= 1)
                 currentpos--;
         }
             
-        else if (input->buttons & (KEY_LDOWN | KEY_RDOWN) && currentpos < amount - 1){
+        else if (input->Ldown && currentpos < amount - 1){
             currentpos++;
             while(entries[currentpos].property & (ISSKIP | ISHIDE) && currentpos < amount - 1)
                 currentpos++;

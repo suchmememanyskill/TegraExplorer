@@ -6114,9 +6114,6 @@ FRESULT f_fdisk (
 	DWORD sz_disk, p_sect, b_cyl, b_sect;
 	FRESULT res;
 
-	BYTE *empty_buff;
-	empty_buff = ff_memcalloc(sizeof(BYTE), 16384);
-
 	stat = disk_initialize(pdrv);
 	if (stat & STA_NOINIT) return FR_NOT_READY;
 	if (stat & STA_PROTECT) return FR_WRITE_PROTECTED;
@@ -6169,14 +6166,14 @@ FRESULT f_fdisk (
 		st_dword(p + 8, b_sect);			/* Start sector in LBA */
 		st_dword(p + 12, p_sect);			/* Number of sectors */
 		/* Next partition */
-		b_sect += p_sect;
 
-		for (int cursect = 0; cursect < 1024; cursect++){
-			disk_write(pdrv, empty_buff, b_sect + (32 * cursect), 32);
+		for (u32 cursect = 0; cursect < 512; cursect++){
+			disk_write(pdrv, buf + 0x4000, b_sect + (64 * cursect), 64);
 		}
+
+		b_sect += p_sect;
 	}
 	st_word(p, 0xAA55);		/* MBR signature (always at offset 510) */
-	ff_memfree(empty_buff);
 
 	/* Write it to the MBR */
 	res = (disk_write(pdrv, buf, 0, 1) == RES_OK && disk_ioctl(pdrv, CTRL_SYNC, 0) == RES_OK) ? FR_OK : FR_DISK_ERR;
