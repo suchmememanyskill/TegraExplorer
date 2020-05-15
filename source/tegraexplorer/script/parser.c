@@ -220,7 +220,16 @@ void mainparser(){
         printerrors = true;
         //gfx_printf("%s|%s|%d", funcbuff, argv[0], argc);
         //btn_wait();
-        gfx_errDisplay("mainparser", ERR_PARSE_FAIL, f_tell(&scriptin));
+        int lineNumber = 1;
+        u64 end = f_tell(&scriptin);
+        f_lseek(&scriptin, 0);
+
+        while (f_tell(&scriptin) < end && !f_eof(&scriptin)){
+            if (getnextchar() == '\n')
+                lineNumber++;
+        }
+
+        gfx_errDisplay((res == -1) ? funcbuff : "run_function", (res == -1) ? ERR_IN_FUNC : ERR_SCRIPT_LOOKUP_FAIL, lineNumber);
         forceExit = true;
         //gfx_printf("Func: %s\nArg1: %s\n", funcbuff, argv[0]);
     }

@@ -21,10 +21,11 @@ enum utils_err_codes_te_call {
     ERR_EMMC_WRITE_FAILED,
     ERR_FILE_TOO_BIG_FOR_DEST,
     ERR_SD_EJECTED,
-    ERR_PARSE_FAIL,
+    ERR_SCRIPT_LOOKUP_FAIL,
     ERR_CANNOT_COPY_FILE_TO_FS_PART,
     ERR_NO_DESTINATION,
-    ERR_INI_PARSE_FAIL
+    ERR_INI_PARSE_FAIL,
+    ERR_IN_FUNC
 };
 
 extern const char *utils_err_codes_te[];
