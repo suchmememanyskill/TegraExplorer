@@ -91,8 +91,10 @@ int fsact_copy(const char *locin, const char *locout, u8 options){
         }
     }
 
-    RESETCOLOR;
-    gfx_con_setpos(x - 16, y);
+    if (toPrint){
+        RESETCOLOR;
+        gfx_con_setpos(x - 16, y);
+    }
 
     f_close(&in);
     f_close(&out);
