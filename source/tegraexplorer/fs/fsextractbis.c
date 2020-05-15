@@ -13,25 +13,15 @@
 #include "../utils/utils.h"
 #include "fsactions.h"
 
-u32 DecodeInt(u8* data) {
-    u32 out = 0;
-
-    for (int i = 0; i < 4; i++) {
-        out |= (data[i] << ((3 - i) * 8));
-    }
-
-    return out;
-}
-
 void copy_fil_size(FIL* in_src, FIL* out_src, int size_src){
     u8* buff;
-    buff = calloc(16384, sizeof(u8));
+    buff = calloc(BUFSIZE, sizeof(u8));
 
     int size = size_src;
     int copysize;
 
     while (size > 0){
-        copysize = MIN(16834, size);
+        copysize = MIN(BUFSIZE, size);
         f_read(in_src, buff, copysize, NULL);
         f_write(out_src, buff, copysize, NULL);
         size -= copysize;
@@ -48,56 +38,50 @@ void gen_part(int size, FIL* in, char *path){
     f_close(&out);
 }
 
+const char *filenames[] = {
+    "BOOT0.bin",
+    "BOOT1.bin",
+    "BCPKG2-1-Normal-Main",
+    "BCPKG2-3-SafeMode-Main",
+    "BCPKG2-2-Normal-Sub",
+    "BCPKG2-4-SafeMode-Sub"
+};
+
 int extract_bis_file(char *path, char *outfolder){
     FIL in;
     int res;
-    u8 version[0x10];
-    u8 args;
-    u8 temp[0x4];
-    u32 filesizes[4];
     char *tempPath;
+    BisFile header;
 
     if ((res = f_open(&in, path, FA_READ | FA_OPEN_EXISTING))){
         gfx_errDisplay("extract_bis_file", res, 0);
         return -1;
     }
 
-    f_read(&in, version, 0x10, NULL);
-    f_read(&in, &args, 1, NULL);
-
-    for (int i = 0; i < 4; i++){
-        f_read(&in, temp, 4, NULL);
-        filesizes[i] = DecodeInt(temp);
-    }
-
-    gfx_printf("Version: %s\n\n", version);
-
-    if (args & BOOT0_ARG){
-        gfx_printf("\nExtracting BOOT0\n");
-        gen_part(filesizes[0], &in, fsutil_getnextloc(outfolder, "BOOT0.bin"));
-    }
-        
-    if (args & BOOT1_ARG){
-        gfx_printf("Extracting BOOT1\n");
-        gen_part(filesizes[1], &in, fsutil_getnextloc(outfolder, "BOOT1.bin"));
-    }
-
-    if (args & BCPKG2_1_ARG){
-        utils_copystring(fsutil_getnextloc(outfolder, "BCPKG2-1-Normal-Main"), &tempPath);
-        gfx_printf("Extracting BCPKG2_1/2\n");
-
-        gen_part(filesizes[2], &in, tempPath);
-        fsact_copy(tempPath, fsutil_getnextloc(outfolder, "BCPKG2-2-Normal-Sub"), COPY_MODE_PRINT);
-        RESETCOLOR;
-        free(tempPath);
-    }   
+    f_read(&in, &header, sizeof(BisFile), NULL);
     
-    if (args & BCPKG2_3_ARG){
-        utils_copystring(fsutil_getnextloc(outfolder, "BCPKG2-3-SafeMode-Main"), &tempPath);
-        gfx_printf("Extracting BCPKG2_3/4\n");
+    for (int i = 0; i < 4; i++)
+        header.sizes[i] = FLIPU32(header.sizes[i]);
 
-        gen_part(filesizes[3], &in, tempPath);
-        fsact_copy(tempPath, fsutil_getnextloc(outfolder, "BCPKG2-4-SafeMode-Sub"), COPY_MODE_PRINT);
+    gfx_printf("Version: %s\n\n", header.version);
+
+    // Loop to actually extract stuff
+    for (int i = 0; i < 4; i++){
+        if (!(header.args & (BIT((7 - i)))))
+            continue;
+
+        gfx_printf("Extracting %s\n", filenames[i]);
+        gen_part(header.sizes[i], &in, fsutil_getnextloc(outfolder, filenames[i]));
+    }
+
+    // Loop to copy pkg2_1->2 and pkg2_3->4
+    for (int i = 4; i < 6; i++){
+        if (!(header.args & BIT((9 - i))))
+            continue;
+
+        utils_copystring(fsutil_getnextloc(outfolder, filenames[i - 2]), &tempPath);
+        gfx_printf("Copying %s\n", filenames[i]);
+        fsact_copy(tempPath, fsutil_getnextloc(outfolder, filenames[i]), COPY_MODE_PRINT);
         RESETCOLOR;
         free(tempPath);
     }
