@@ -288,6 +288,7 @@ int part_Pause(){
     str_int_add("@BTN_DOWN", input->Ldown);
     str_int_add("@BTN_LEFT", input->Lleft);
     str_int_add("@BTN_RIGHT", input->Lright);
+    str_int_add("@JOYCONN", hidConnected());
     
     return input->buttons;
 }
@@ -550,7 +551,59 @@ int part_getPos(){
     return (int)f_tell(&scriptin);
 }
 
+int part_subString(){
+    char *str, *sub;
+    int start, size;
 
+    if (parseStringInput(argv[0], &str))
+        return INFUNC_FAIL;
+    if (parseIntInput(argv[1], &start))
+        return INFUNC_FAIL;
+    if (parseIntInput(argv[2], &size))
+        return INFUNC_FAIL;
+    if (argv[3][0] != '$')
+        return INFUNC_FAIL;
+
+    if (start >= strlen(str))
+        return INFUNC_FAIL;
+
+    sub = utils_copyStringSize(str + start, size);
+    str_str_add(argv[3], sub);
+    free(sub);
+    return 0;
+}
+
+int part_inputString(){
+    char *start, *out;
+    int len;
+
+    if (parseStringInput(argv[0], &start))
+        return INFUNC_FAIL;
+    if (parseIntInput(argv[1], &len))
+        return INFUNC_FAIL;
+    if (argv[2][0] != '$')
+        return INFUNC_FAIL;
+
+    if (len > 39)
+        return INFUNC_FAIL;
+
+    out = utils_InputText(start, len);
+    if (out == NULL)
+        return 1;
+
+    str_str_add(argv[2], out);
+    free(out);
+    return 0;
+}
+
+int part_strLen(){
+    char *in;
+
+    if (parseStringInput(argv[0], &in))
+        return INFUNC_FAIL;
+
+    return strlen(in);
+}
 
 str_fnc_struct functions[] = {
     {"printf", part_printf, 255},
@@ -568,6 +621,9 @@ str_fnc_struct functions[] = {
     {"setColor", part_setColor, 1},
     {"combineStrings", part_addstrings, 3},
     {"compareStrings", part_stringcompare, 2},
+    {"subString", part_subString, 4},
+    {"inputString", part_inputString, 3},
+    {"stringLength", part_strLen, 1},
     {"invert", part_invert, 1},
     {"fs_exists", part_fs_exists, 1},
     {"fs_move", part_fs_Move, 2},
