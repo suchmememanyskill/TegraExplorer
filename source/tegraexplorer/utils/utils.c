@@ -194,8 +194,8 @@ char *utils_InputText(char *start, int maxLen){
     return buff;
 }
 
-char *utils_copyStringSize(const char *in, u32 size){
-    if (size > strlen(in) || size == 0)
+char *utils_copyStringSize(const char *in, int size){
+    if (size > strlen(in) || size < 0)
         size = strlen(in);
 
     char *out = calloc(size + 1, 1);
