@@ -32,12 +32,12 @@ int fsact_copy(const char *locin, const char *locout, u8 options){
         return 1;
     }
 
-    if (f_stat(locin, &in_info)){
+    if ((res = f_stat(locin, &in_info))){
         gfx_errDisplay("copy", res, 3);
         return 1;
     }
        
-    if (f_open(&out, locout, FA_CREATE_ALWAYS | FA_WRITE)){
+    if ((res = f_open(&out, locout, FA_CREATE_ALWAYS | FA_WRITE))){
         gfx_errDisplay("copy", res, 4);
         return 1;
     }
