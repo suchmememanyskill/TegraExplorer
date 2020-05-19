@@ -286,7 +286,9 @@ void runScript(char *path){
     gfx_clearscreen();
     utils_copystring(path, &path_local);
 
+
     res = f_open(&scriptin, path, FA_READ | FA_OPEN_EXISTING);
+    DWORD *clmt_in = f_expand_cltbl(&scriptin, BUFSIZE / 4, 0);
     if (res != FR_OK){
         gfx_errDisplay("ParseScript", res, 1);
         return;

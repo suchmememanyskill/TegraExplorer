@@ -191,7 +191,6 @@ int filemenu(menu_entry file){
                 break;
             }
 
-            fsreader_readfolder(currentpath);
             break;
         case FILE_PAYLOAD:
             launch_payload(fsutil_getnextloc(currentpath, file.name));
@@ -205,7 +204,6 @@ int filemenu(menu_entry file){
             */
 
             runScript(fsutil_getnextloc(currentpath, file.name));
-            fsreader_readfolder(currentpath);
             break;
         case FILE_HEXVIEW:
             viewbytes(fsutil_getnextloc(currentpath, file.name));
@@ -213,7 +211,6 @@ int filemenu(menu_entry file){
         case FILE_DUMPBIS:
             gfx_clearscreen();
             extract_bis_file(fsutil_getnextloc(currentpath, file.name), currentpath);
-            fsreader_readfolder(currentpath);
             hidWait();
             break;
         case FILE_SIGN:
@@ -231,5 +228,6 @@ int filemenu(menu_entry file){
             return -1;
     }
 
+    fsreader_readfolder(currentpath);
     return 0;
 }

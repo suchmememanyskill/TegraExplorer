@@ -246,7 +246,10 @@ typedef enum {
 	FR_LOCKED,				/* (16) The operation is rejected according to the file sharing policy */
 	FR_NOT_ENOUGH_CORE,		/* (17) LFN working buffer could not be allocated */
 	FR_TOO_MANY_OPEN_FILES,	/* (18) Number of open files > FF_FS_LOCK */
-	FR_INVALID_PARAMETER	/* (19) Given parameter is invalid */
+	FR_INVALID_PARAMETER,	/* (19) Given parameter is invalid */
+#ifdef FF_FASTFS
+	FR_CLTBL_NO_INIT	    /* (20) The cluster table for fast seek/read/write was not created */
+#endif
 } FRESULT;
 
 
@@ -288,6 +291,11 @@ int f_putc (TCHAR c, FIL* fp);										/* Put a character to the file */
 int f_puts (const TCHAR* str, FIL* cp);								/* Put a string to the file */
 int f_printf (FIL* fp, const TCHAR* str, ...);						/* Put a formatted string to the file */
 TCHAR* f_gets (TCHAR* buff, int len, FIL* fp);						/* Get a string from the file */
+#ifdef FF_FASTFS
+FRESULT f_read_fast (FIL* fp, const void* buff, UINT btr);			/* Fast read data from the file */
+FRESULT f_write_fast (FIL* fp, const void* buff, UINT btw);         /* Fast write data to the file */
+DWORD  *f_expand_cltbl (FIL* fp, UINT tblsz, FSIZE_t ofs);			/* Expand file and populate cluster table */
+#endif
 
 #define f_eof(fp) ((int)((fp)->fptr == (fp)->obj.objsize))
 #define f_error(fp) ((fp)->err)

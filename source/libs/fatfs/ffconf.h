@@ -42,7 +42,13 @@
 /* This option switches f_mkfs() function. (0:Disable or 1:Enable) */
 
 
+#define FF_FASTFS 1
+
+#ifdef FF_FASTFS
+#define FF_USE_FASTSEEK	1
+#else
 #define FF_USE_FASTSEEK	0
+#endif
 /* This option switches fast seek function. (0:Disable or 1:Enable) */
 
 
@@ -287,3 +293,5 @@
 
 
 /*--- End of configuration options ---*/
+
+
