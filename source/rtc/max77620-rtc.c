@@ -2,7 +2,7 @@
  * PMIC Real Time Clock driver for Nintendo Switch's MAX77620-RTC
  *
  * Copyright (c) 2018-2019 CTCaer
- * Copyright (c) 2019 shchmue
+ * Copyright (c) 2019-2020 shchmue
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -35,10 +35,10 @@ void max77620_rtc_get_time(rtc_time_t *time)
 	// Get time.
 	time->sec  = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_SEC_REG) & 0x7F;
 	time->min  = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_MIN_REG) & 0x7F;
-	u8 hour = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_HOUR_REG);
-	time->hour = hour & 0x1F;
 
-	if (!(val & MAX77620_RTC_24H) && (hour & MAX77620_RTC_HOUR_PM_MASK))
+	time->hour = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_HOUR_REG) & 0x1F;
+
+	if (!(val & MAX77620_RTC_24H) && time->hour & MAX77620_RTC_HOUR_PM_MASK)
 		time->hour = (time->hour & 0xF) + 12;
 
 	// Get day of week. 1: Monday to 7: Sunday.

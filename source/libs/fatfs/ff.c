@@ -42,8 +42,8 @@
 #include "../../storage/sdmmc.h"
 extern sdmmc_storage_t sd_storage;
 
-#define EFSPRINTF(text, ...) print_error(); gfx_printf("%k"text"%k\n", 0xFFFFFF00, 0xFFFFFFFF);
-//#define EFSPRINTF(...)
+//#define EFSPRINTF(text, ...) print_error(); gfx_printf("%k"text"%k\n", 0xFFFFFF00, 0xFFFFFFFF);
+#define EFSPRINTF(...)
 
 /*--------------------------------------------------------------------------
 

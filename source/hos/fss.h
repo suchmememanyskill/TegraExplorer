@@ -1,6 +1,5 @@
 /*
- * Common Module Header
- * Copyright (C) 2018 M4xw
+ * Copyright (c) 2019 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -13,27 +12,23 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
-#pragma once
-#include <stddef.h>
-//TODO: Move it to BDK
-#include "common_gfx.h"
-#include "common_heap.h"
+#ifndef _FSS_H_
+#define _FSS_H_
 
-// Module Callback
-typedef void (*cbMainModule_t)(const char *s);
-typedef void (*memcpy_t)(void *, void *, size_t);
-typedef void (*memset_t)(void *, int, size_t);
+#include "hos.h"
 
-typedef struct _bdkParams_t
+typedef struct _fss0_sept_t
 {
-	gfx_con_t *gfxCon;
-	gfx_ctxt_t *gfxCtx;
-	heap_t *sharedHeap;
-	memcpy_t memcpy;
-	memset_t memset;
-} *bdkParams_t;
+	u32 kb;
+	ini_sec_t *cfg_sec;
+	void *sept_primary;
+	void *sept_secondary;
 
-// Module Entrypoint
-typedef void (*moduleEntrypoint_t)(void *, bdkParams_t);
+} fss0_sept_t;
+
+int parse_fss(launch_ctxt_t *ctxt, const char *path, fss0_sept_t *sept_ctxt);
+int load_sept_from_ffs0(fss0_sept_t *sept_ctxt);
+
+#endif

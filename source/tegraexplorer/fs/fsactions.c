@@ -15,7 +15,6 @@ int fsact_copy(const char *locin, const char *locout, u8 options){
     FIL in, out;
     FILINFO in_info;
     u64 sizeRemaining, toCopy;
-    UINT temp1, temp2;
     u8 *buff, toPrint = options & COPY_MODE_PRINT, toCancel = options & COPY_MODE_CANCEL;
     u32 x, y, i = 11;
     int res;
@@ -56,19 +55,14 @@ int fsact_copy(const char *locin, const char *locout, u8 options){
     while (sizeRemaining > 0){
         toCopy = MIN(sizeRemaining, BUFSIZE);
 
-        if ((res = f_read(&in, buff, toCopy, &temp1))){
+        if ((res = f_read(&in, buff, toCopy, NULL))){
             gfx_errDisplay("copy", res, 5);
-            return 1;
+            break;
         }
             
-        if ((res = f_write(&out, buff, toCopy, &temp2))){
+        if ((res = f_write(&out, buff, toCopy, NULL))){
             gfx_errDisplay("copy", res, 6);
-            return 1;
-        }
-            
-        if (temp1 != temp2){
-            gfx_errDisplay("copy", ERR_DISK_WRITE_FAILED, 7);
-            return 1;
+            break;
         }
 
         sizeRemaining -= toCopy;
@@ -100,13 +94,10 @@ int fsact_copy(const char *locin, const char *locout, u8 options){
     f_close(&out);
     free(buff);
 
-    if ((res = f_chmod(locout, in_info.fattrib, 0x3A))){
-        gfx_errDisplay("copy", res, 8);
-        return 1;
-    }
+    f_chmod(locout, in_info.fattrib, 0x3A);
 
     f_stat(locin, &in_info); //somehow stops fatfs from being weird
-    return 0;
+    return res;
 }
 
 int fsact_del_recursive(char *path){

@@ -81,8 +81,10 @@ static inline void _gf256_mul_x_le(void *block) {
 
 static inline int _emmc_xts(u32 ks1, u32 ks2, u32 enc, u8 *tweak, bool regen_tweak, u32 tweak_exp, u64 sec, void *dst, void *src, u32 secsize) {
     int res = 0;
-    u8 *pdst = (u8 *)dst;
-    u8 *psrc = (u8 *)src;
+    u8 *temptweak = (u8 *)malloc(0x10);
+	u32 *pdst = (u32 *)dst;
+    u32 *psrc = (u32 *)src;
+    u32 *ptweak = (u32 *)tweak;
 
     if (regen_tweak) {
         for (int i = 0xF; i >= 0; i--) {
@@ -96,34 +98,33 @@ static inline int _emmc_xts(u32 ks1, u32 ks2, u32 enc, u8 *tweak, bool regen_twe
     for (u32 i = 0; i < tweak_exp * 0x20; i++)
         _gf256_mul_x_le(tweak);
 
-    u8 temptweak[0x10];
     memcpy(temptweak, tweak, 0x10);
 
     //We are assuming a 0x10-aligned sector size in this implementation.
     for (u32 i = 0; i < secsize / 0x10; i++) {
-        for (u32 j = 0; j < 0x10; j++)
-            pdst[j] = psrc[j] ^ tweak[j];
+        for (u32 j = 0; j < 4; j++)
+            pdst[j] = psrc[j] ^ ptweak[j];
         _gf256_mul_x_le(tweak);
-        psrc += 0x10;
-        pdst += 0x10;
+        psrc += 4;
+        pdst += 4;
     }
 
     se_aes_crypt_ecb(ks2, enc, dst, secsize, dst, secsize);
 
-    pdst = (u8 *)dst;
+    pdst = (u32 *)dst;
 
     memcpy(tweak, temptweak, 0x10);
     for (u32 i = 0; i < secsize / 0x10; i++) {
-        for (u32 j = 0; j < 0x10; j++)
-            pdst[j] = pdst[j] ^ tweak[j];
+        for (u32 j = 0; j < 4; j++)
+            pdst[j] = pdst[j] ^ ptweak[j];
         _gf256_mul_x_le(tweak);
-        pdst += 0x10;
+        pdst += 4;
     }
-
 
     res = 1;
 
 out:;
+    free(temptweak);
     return res;
 }
 

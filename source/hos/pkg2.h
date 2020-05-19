@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (C) 2018-2020 CTCaer
+ * Copyright (c) 2018-2020 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -31,6 +31,14 @@
 extern u32 pkg2_newkern_ini1_val;
 extern u32 pkg2_newkern_ini1_start;
 extern u32 pkg2_newkern_ini1_end;
+
+typedef struct _kernel_patch_t
+{
+	u32 id;
+	u32 off;
+	u32 val;
+	u32 *ptr;
+} kernel_patch_t;
 
 typedef struct _pkg2_hdr_t
 {
@@ -86,6 +94,12 @@ typedef struct _pkg2_kip1_info_t
 	u32 size;
 	link_t link;
 } pkg2_kip1_info_t;
+
+typedef struct _pkg2_kernel_id_t
+{
+	u8 hash[8];
+	kernel_patch_t *kernel_patchset;
+} pkg2_kernel_id_t;
 
 bool pkg2_parse_kips(link_t *info, pkg2_hdr_t *pkg2, bool *new_pkg2);
 int pkg2_decompress_kip(pkg2_kip1_info_t* ki, u32 sectsToDecomp);
