@@ -18,6 +18,9 @@ extern bool sd_inited;
 #pragma GCC optimize ("O2")
 
 void _printentry(menu_entry *entry, bool highlighted, bool refresh, const char *path){
+    if (entry->isHide)
+        return;
+
     u32 color = (entry->isMenu) ? entry->storage : ((entry->isDir) ? COLOR_WHITE : COLOR_VIOLET);
 
     SWAPALLCOLOR((highlighted) ? COLOR_DEFAULT : color, (highlighted) ? color : COLOR_DEFAULT);
@@ -62,7 +65,7 @@ void _printentry(menu_entry *entry, bool highlighted, bool refresh, const char *
 
 bool disableB = false;
 int menu_make(menu_entry *entries, int amount, const char *toptext){
-    int currentpos = 0, offset = 0, delay = 300, minscreen = 0, maxscreen = 39, calculatedamount = 0;
+    int currentpos = 0, offset = 0, delay = 300, minscreen = 0, calculatedamount = 0, cursub = 0, temp;
     u32 scrolltimer, timer, sideY;
     bool refresh = true;
     Inputs *input = hidRead();
@@ -95,55 +98,52 @@ int menu_make(menu_entry *entries, int amount, const char *toptext){
         gfx_sideprintf("\n\n\n");
     }
 
-    gfx_drawScrollBar(minscreen, maxscreen, amount);
-
-    while (!(input->a)){
+    for (;;){
         gfx_con_setpos(0, 48);
         timer = get_tmr_ms();
 
-        if (!currentpos){
-            while (currentpos < amount && entries[currentpos].property & (ISSKIP | ISHIDE))
-                currentpos++;
-        }
-        if (currentpos == amount - 1){
-            while (currentpos >= 1 && entries[currentpos].property & (ISSKIP | ISHIDE))
-                currentpos--;
-        }
+        if (!currentpos)
+            cursub = 1;
+        else if (currentpos == amount - 1)
+            cursub = -1;
+        else
+            cursub = 0;
+            
+        while (entries[currentpos].property & (ISSKIP | ISHIDE))
+                currentpos += cursub;
+        
 
-        if (currentpos > maxscreen){
-            offset += currentpos - maxscreen;
-            minscreen += currentpos - maxscreen;
-            maxscreen += currentpos - maxscreen;
+        if (currentpos > (minscreen + SCREENMAXOFFSET)){
+            offset += currentpos - (minscreen + SCREENMAXOFFSET);
+            minscreen += currentpos - (minscreen + SCREENMAXOFFSET);
             refresh = true;
         }
-
-        if (currentpos < minscreen){
+        else if (currentpos < minscreen){
             offset -= minscreen - currentpos;
-            maxscreen -= minscreen - currentpos;
-            minscreen -= minscreen - currentpos;      
-            refresh = true;
+            minscreen -= minscreen - currentpos;  
+            refresh = true;    
         }
+            
 
         if (refresh || currentfolder == NULL || !calculatedamount){
-            for (int i = 0 + offset; i < amount && i < 40 + offset; i++)
-                if (!(entries[i].isHide))
-                    _printentry(&entries[i], (i == currentpos), refresh, toptext);
+            for (int i = 0 + offset; i < amount && i < SCREENMAXOFFSET + 1 + offset; i++)
+                _printentry(&entries[i], (i == currentpos), refresh, toptext);
         }
         else {
-            if (currentpos - minscreen > 0){
-                gfx_con_setpos(0, 32 + (currentpos - minscreen) * 16);
+            temp = (currentpos - minscreen > 0) ? 0 : 16;
+            gfx_con_setpos(0, 32 + temp + (currentpos - minscreen) * 16);
+
+            if (!temp)
                 _printentry(&entries[currentpos - 1], false, false, toptext);
-            }
-            else
-                gfx_con_setpos(0, 48 + (currentpos - minscreen) * 16);
 
             _printentry(&entries[currentpos], true, false, toptext);
 
-            if (currentpos < amount - 1 && currentpos < maxscreen)
+            if (currentpos < MIN(amount - 1, minscreen + SCREENMAXOFFSET))
                 _printentry(&entries[currentpos + 1], false, false, toptext);
         }
 
         RESETCOLOR;
+
 
         sideY = gfx_sideGetY();
         if (!(entries[currentpos].isMenu)){
@@ -158,12 +158,14 @@ int menu_make(menu_entry *entries, int amount, const char *toptext){
             gfx_boxGrey(800, sideY, 1279, sideY + 48, 0x1B);
 
         gfx_con_setpos(0, 703);
-        SWAPCOLOR(COLOR_DEFAULT);
-        SWAPBGCOLOR(COLOR_WHITE);
+        SWAPALLCOLOR(COLOR_DEFAULT, COLOR_WHITE);
         gfx_printf("Time taken for screen draw: %dms  ", get_tmr_ms() - timer);
 
         if (refresh)
-            gfx_drawScrollBar(minscreen, maxscreen, amount);
+            gfx_drawScrollBar(minscreen, minscreen + SCREENMAXOFFSET, amount);
+
+        refresh = false;
+
 
         while (hidRead()->buttons & (KEY_B | KEY_A));
 
@@ -181,14 +183,12 @@ int menu_make(menu_entry *entries, int amount, const char *toptext){
                 delay = 300;
                 continue;
             }
-
             
             if (input->buttons & (KEY_RDOWN | KEY_RUP)){
                 delay = 1;
                 input->Lup = input->Rup;
                 input->Ldown = input->Rdown;
             }
-            
 
             if (delay < 300){
                 if (scrolltimer + delay < get_tmr_ms()){
@@ -200,27 +200,32 @@ int menu_make(menu_entry *entries, int amount, const char *toptext){
             }
         }
 
-        if (delay > 46)
-            delay -= 45;
 
-        if (input->Lup && currentpos >= 1){
-            currentpos--;
-            while(entries[currentpos].property & (ISSKIP | ISHIDE) && currentpos >= 1)
-                currentpos--;
-        }
-            
-        else if (input->Ldown && currentpos < amount - 1){
-            currentpos++;
-            while(entries[currentpos].property & (ISSKIP | ISHIDE) && currentpos < amount - 1)
-                currentpos++;
-        }
-
-        else if (input->b && !disableB){
+        if (input->a){
+            break;
+        }   
+        if (input->b && !disableB){
             currentpos = 0;
             break;
         }
 
-        refresh = false;
+
+        if (delay > 46)
+            delay -= 45;
+
+
+        if (input->Lup && currentpos > 0)
+            cursub = -1;
+        else if (input->Ldown && currentpos < amount - 1)
+            cursub = 1;
+        else
+            cursub = 0;
+
+        if (cursub){
+            do {
+                currentpos += cursub;
+            } while (currentpos < amount - 1 && currentpos > 0 && entries[currentpos].property & (ISSKIP | ISHIDE));
+        }
     }
 
     minerva_periodic_training();
