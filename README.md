@@ -8,17 +8,17 @@ A payload-based file explorer for your switch!
 2. Inject TegraExplorer as a payload
 
 Navigate around the menus using the joycons.
-A: Select
-B: Back
-Left Joystick up/down (Dpad or joystick): navigate menus up/down
-Right Joystick up/down: fast menu navigation up/down
-Capture (Minerva only): Take a screenshot
-L3/R3 (Press joysticks in): Recalibrate centerpoint
+- A: Select
+- B: Back
+- Left Joystick up/down (Dpad or joystick): navigate menus up/down
+- Right Joystick up/down: fast menu navigation up/down
+- Capture (Minerva only): Take a screenshot
+- L3/R3 (Press joysticks in): Recalibrate centerpoint
 
 If you do not have your joycons connected:
-Power -> A
-Vol+ -> Left Joystick up
-Vol- -> Left Joystick down
+- Power -> A
+- Vol+ -> Left Joystick up
+- Vol- -> Left Joystick down
 
 ## Functions
 - Navigate the SD card
@@ -56,6 +56,7 @@ Other awesome people:
 - Huhen
 - Bleck9999
 - Exelix
+- Emmo
 
 ## Screenshots
 
