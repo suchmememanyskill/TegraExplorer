@@ -18,7 +18,7 @@
 #include "../utils/utils.h"
 #include "../../hid/hid.h"
 
-u32 countchars(const char* in, char target) {
+int countchars(const char* in, char target) {
     u32 len = strlen(in);
     u32 count = 0;
     
@@ -42,15 +42,18 @@ u32 splitargs(const char* in) {
     // arg like '5, "6", @arg7'
     u32 i = 0, count = 1, len = strlen(in), curcount = 0, begin, end;
 
-    if ((count += countchars(in, ',')) < 0){
+    count += countchars(in, ',');
+
+    if (!count)
         return 0;
-    }
-        
+    
     argv = calloc(count + 1, sizeof(char*));
     
     while (i < len && curcount < count) {
-        while (in[i] == ' ' || in[i] == ',')
+        if (in[i] == ' ' || in[i] == ','){
             i++;
+            continue;
+        }
         
         begin = i;
 
@@ -62,6 +65,10 @@ u32 splitargs(const char* in) {
                         return 0;
                 }
             }
+
+            if (in[i] == '\0')
+                return 0;
+
             i++;
         }
 
@@ -73,7 +80,7 @@ u32 splitargs(const char* in) {
             
         argv[curcount++] = utils_copyStringSize(in + begin, (u32)(end - begin));
     }
-    return count;
+    return curcount;
 }
 
 FIL scriptin;
