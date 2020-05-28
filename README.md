@@ -1,7 +1,11 @@
 # TegraExplorer
-A payload-based file explorer for your switch!
 
-![TegraExplorer builder](https://github.com/suchmememanyskill/TegraExplorer/workflows/TegraExplorer%20builder/badge.svg)
+[![TegraExplorer builder](https://github.com/suchmememanyskill/TegraExplorer/workflows/TegraExplorer%20builder/badge.svg)](https://github.com/suchmememanyskill/TegraExplorer/actions)
+[![Downloads](https://img.shields.io/github/downloads/suchmememanyskill/TegraExplorer/total)](https://github.com/suchmememanyskill/TegraExplorer/releases)
+[![Version](https://img.shields.io/github/v/release/suchmememanyskill/tegraexplorer)](https://github.com/suchmememanyskill/TegraExplorer/releases)
+[![Donations](https://img.shields.io/badge/Support%20on-Ko--Fi-red)](https://ko-fi.com/suchmememanyskill)
+
+A payload-based file explorer for your switch!
 
 ## Usage
 1. Get your favorite payload injector
