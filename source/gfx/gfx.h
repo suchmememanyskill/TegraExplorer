@@ -53,6 +53,7 @@ void gfx_set_rect_argb(const u32 *buf, u32 size_x, u32 size_y, u32 pos_x, u32 po
 void gfx_render_bmp_argb(const u32 *buf, u32 size_x, u32 size_y, u32 pos_x, u32 pos_y);
 void gfx_box(int x0, int y0, int x1, int y1, u32 color);
 void gfx_boxGrey(int x0, int y0, int x1, int y1, u8 shade);
+void gfx_puts_limit(const char *s, u32 limit);
 
 /*
 #define GFX_SETPOSCORRECTED(x, y) gfx_con_setpos(y - YLEFT, x)

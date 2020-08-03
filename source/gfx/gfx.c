@@ -180,6 +180,8 @@ void gfx_con_setpos(u32 x, u32 y)
 	gfx_con.y = YLEFT - x;
 }
 
+u32 YLeftConfig = YLEFT;
+
 void gfx_putc(char c)
 {
 	// Duplicate code for performance reasons.
@@ -231,13 +233,13 @@ void gfx_putc(char c)
 			*/
 			gfx_con.y -= 16;
 			if (gfx_con.y < 16){
-				gfx_con.y = YLEFT;
+				gfx_con.y = YLeftConfig;
 				gfx_con.x += 16;
 			}
 		}
 		else if (c == '\n')
 		{
-			gfx_con.y = YLEFT;
+			gfx_con.y = YLeftConfig;
 			gfx_con.x += 16;
 			if (gfx_con.x > gfx_ctxt.width - 16)
 				gfx_con.x = 0;
@@ -247,7 +249,7 @@ void gfx_putc(char c)
 		else if (c == '\a')
 			gfx_con.y = 639;
 		else if (c == '\r')
-			gfx_con.y = YLEFT;
+			gfx_con.y = YLeftConfig;
 
 		break;
 	case 8:
@@ -273,14 +275,14 @@ void gfx_putc(char c)
 
 			gfx_con.y -= 8;
 			if (gfx_con.y < 8){
-				gfx_con.y = YLEFT;
+				gfx_con.y = YLeftConfig;
 				gfx_con.x += 8;
 			}
 
 		}
 		else if (c == '\n')
 		{
-			gfx_con.y = YLEFT;
+			gfx_con.y = YLeftConfig;
 			gfx_con.x += 8;
 			if (gfx_con.x > gfx_ctxt.width - 8)
 				gfx_con.x = 0;
@@ -290,7 +292,7 @@ void gfx_putc(char c)
 		else if (c == '\a')
 			gfx_con.y = 639;
 		else if (c == '\r')
-			gfx_con.y = YLEFT;
+			gfx_con.y = YLeftConfig;
 
 		break;
 	}
@@ -303,6 +305,46 @@ void gfx_puts(const char *s)
 
 	for (; *s; s++)
 		gfx_putc(*s);
+}
+
+u32 _strLenLimit(const char *s, u32 limit){
+	u32 len = 0;
+
+	for (; *s; s++){
+		len++;
+		if (len >= limit)
+			return len;
+	}
+
+	return len;
+}
+
+void gfx_puts_limit(const char *s, u32 limit)
+{
+	if (!s || gfx_con.mute)
+		return;
+
+	for (u32 i = 0; i < limit; i++){
+		if (i == limit - 3){
+			if (_strLenLimit(&s[i], 4) >= 4){
+				gfx_puts("...");
+				return;
+			}
+		}
+		gfx_putc(s[i]);
+	}
+
+	/*
+	for (u32 i = 0; *s && i < limit; s++, i++){
+		if (i == limit - 3){
+			if (!(!(*s) || !(*(s + 1)) || !(*(s + 2)))){
+				gfx_puts("...");
+				return;
+			}
+		}
+		gfx_putc(*s);
+	}
+	*/
 }
 
 static void _gfx_putn(u32 v, int base, char fill, int fcnt)
@@ -381,6 +423,11 @@ void gfx_vprintf(const char *fmt, va_list ap)
 			}
 			switch(*fmt)
 			{
+			case 'b':;
+				u32 begin = YLEFT - va_arg(ap, u32);
+				YLeftConfig = begin;
+				gfx_con.y = begin;
+				break;
 			case 'c':
 				gfx_putc(va_arg(ap, u32));
 				break;
