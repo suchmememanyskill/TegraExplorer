@@ -218,9 +218,6 @@ int dump_biskeys(){
     //sdmmc_storage_set_mmc_partition(&storage, 0);
     //nx_emmc_gpt_parse(&sys_gpt, &storage);
     
-
-    se_aes_key_set(8, bis_key[2] + 0x00, 0x10);
-    se_aes_key_set(9, bis_key[2] + 0x10, 0x10);
     
     pkg1inf.ver = pkg1_id->kb;
     strcpy(pkg1inf.id, pkg1_id->id);

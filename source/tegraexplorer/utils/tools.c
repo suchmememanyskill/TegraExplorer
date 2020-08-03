@@ -17,6 +17,7 @@
 #include "../fs/fsutils.h"
 #include "../../mem/heap.h"
 #include "../utils/utils.h"
+#include "../fs/nca.h"
 
 extern bool sd_mount();
 extern void sd_unmount();
@@ -93,7 +94,9 @@ void displaygpio(){
     }
 }
 
-int dumpfirmware(int mmc){
+
+// bad code ahead aaaa
+int dumpfirmware(int mmc, bool daybreak){
     DIR dir;
     FILINFO fno;
     bool fail = false;
@@ -107,6 +110,22 @@ int dumpfirmware(int mmc){
     connect_mmc(mmc);
     mount_mmc("SYSTEM", 2);
 
+    if (daybreak){
+        if (!fsutil_checkfile("sd:/switch/prod.keys")){
+            SWAPCOLOR(COLOR_RED);
+            gfx_printf("prod.keys not found.\nPress any button to exit");
+            hidWait();
+            return true;
+        }
+
+        if (SetHeaderKey()){
+            SWAPCOLOR(COLOR_RED);
+            gfx_printf("Failed to find header key.\nPress any button to exit");
+            hidWait();
+            return true;
+        }
+    }
+
     gfx_printf("PKG1 version: %d\n", pkg1.ver);
 
     gfx_printf("Creating folders...\n");
@@ -115,7 +134,24 @@ int dumpfirmware(int mmc){
 
     sdbase = calloc(32 + strlen(pkg1.id), sizeof(char));
     sprintf(sdbase, "sd:/tegraexplorer/Firmware/%d (%s)", pkg1.ver, pkg1.id);
-    gfx_printf("Out: %s\n", sdbase);
+
+    if (fsutil_checkfile(sdbase)){
+        SWAPCOLOR(COLOR_RED);
+        gfx_printf("Destination folder already exists.\nPress X to delete this folder, any other button to cancel\nPath: %s", sdbase);
+        
+        Inputs *input = hidWait();
+        if (!input->x){
+            free(sdbase);
+            return true;
+        }
+        else {
+            SWAPCOLOR(COLOR_WHITE);
+            gfx_printf("\nDeleting folder..\n");
+            fsact_del_recursive(sdbase);
+        }
+    }
+
+    gfx_printf("\rOut: %s\n", sdbase);
     f_mkdir(sdbase);
 
     if ((ret = f_opendir(&dir, sysbase)))
@@ -127,15 +163,38 @@ int dumpfirmware(int mmc){
     printerrors = 0;
 
     while(!f_readdir(&dir, &fno) && fno.fname[0] && !fail){
-        utils_copystring(fsutil_getnextloc(sdbase, fno.fname), &sdpath);
         utils_copystring(fsutil_getnextloc(sysbase, fno.fname), &syspathtemp);
     
         if (fno.fattrib & AM_DIR){
             utils_copystring(fsutil_getnextloc(syspathtemp, "00"), &syspath);
-            free(syspathtemp);
         }
         else
             syspath = syspathtemp;
+
+        if (daybreak){
+            u8 ContentType = GetNcaType(syspath);
+
+            if (ContentType < 0){
+                fail = true;
+                continue;
+            }
+
+            char *temp;
+            utils_copystring(fsutil_getnextloc(sdbase, fno.fname), &temp);
+            
+            if (ContentType == 0x01){
+                sdpath = calloc(strlen(temp) + 6, 1);
+                strcpy(sdpath, temp);
+                memcpy(sdpath + strlen(temp) - 4, ".cnmt.nca", 10);
+                free(temp);
+            }
+            else {
+                sdpath = temp;
+            }
+        }
+        else
+            utils_copystring(fsutil_getnextloc(sdbase, fno.fname), &sdpath);
+
 
         ret = fsact_copy(syspath, sdpath, 0);
 
@@ -145,7 +204,9 @@ int dumpfirmware(int mmc){
             fail = true;
 
         free(sdpath);
-        free(syspath);
+        free(syspathtemp);
+        if (syspath != syspathtemp)
+            free(syspath);
     }
 
     printerrors = 1;

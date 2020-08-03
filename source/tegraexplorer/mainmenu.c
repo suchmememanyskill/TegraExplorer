@@ -60,7 +60,10 @@ void MainMenu_Tools(){
             displaygpio();
             break;
         case TOOLS_DUMPFIRMWARE:
-            dumpfirmware(SYSMMC);
+            res = menu_make(fwDump_typeMenu, 4, "-- Fw Type --");
+            if (res >= 2)
+                dumpfirmware(SYSMMC, (res == 2));
+
             break;
     }
 }

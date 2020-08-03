@@ -93,3 +93,10 @@ menu_entry mmcmenu_filemenu[] = {
     {"\nBack", COLOR_WHITE, {ISMENU}},
     {"Dump to SD", COLOR_YELLOW, {ISMENU}}
 };
+
+menu_entry fwDump_typeMenu[] = {
+	{"Back\n", COLOR_WHITE, {ISMENU}},
+	{"Firmware format type:", COLOR_WHITE, {ISMENU | ISSKIP}},
+	{"Daybreak (prod.keys required!)", COLOR_BLUE, {ISMENU}},
+	{"ChoiNX", COLOR_VIOLET, {ISMENU}}
+};

@@ -1,4 +1,5 @@
 #include "savesign.h"
+#include "keys.h"
 #include "../../utils/types.h"
 #include "../../libs/fatfs/ff.h"
 #include "../../sec/se.h"
@@ -62,62 +63,15 @@ out_free:;
     return success;
 }
 
-
-char *getKey(const char *search, link_t *inilist){
-    LIST_FOREACH_ENTRY(ini_sec_t, ini_sec, inilist, link){
-        if (ini_sec->type == INI_CHOICE){
-            LIST_FOREACH_ENTRY(ini_kv_t, kv, &ini_sec->kvs, link)
-	    	{
-                if (!strcmp(search, kv->key))
-                    return kv->val;
-	    	}
-        }   
-    }
-    return NULL;
-}
-
-u8 getHexSingle(const char c) {
-    if (c >= '0' && c <= '9')
-        return c - '0';
-    if (c >= 'a' && c <= 'f')
-        return c - 'a' + 10;
-}
-
-u8 *getHex(const char *in){
-    u32 len = strlen(in), count = 0;
-    u8 *out = calloc(len / 2, sizeof(u8));
-
-    for (u32 i = 0; i < len; i += 2){
-        out[count++] = (u8)(getHexSingle(in[i]) << 4) | (getHexSingle(in[i + 1]));
-    }
-
-    return out;
-}
-
 bool save_sign(const char *keypath, const char *savepath){
-    LIST_INIT(inilist);
-    char *key;
-    u8 *hex;
-    bool success = false;
+    u8 *key = GetKey(keypath, "save_mac_key");
 
-    if (!ini_parse(&inilist, keypath, false)){
-        gfx_errDisplay("save_sign", ERR_INI_PARSE_FAIL, 1);
-        goto out_free;
+    if (key == NULL){
+        return false;
     }
 
-    if ((key = getKey("save_mac_key", &inilist)) == NULL){
-        gfx_errDisplay("save_sign", ERR_INI_PARSE_FAIL, 2);
-        goto out_free;
-    }
+    if (!save_commit(savepath, key))
+        return false;
 
-    hex = getHex(key);
-
-    if (!save_commit(savepath, hex))
-        goto out_free;
-
-    success = true;
-
-out_free:;
-    list_empty(&inilist);
-    return success;
+    return true;
 }
