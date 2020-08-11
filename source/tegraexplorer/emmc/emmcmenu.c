@@ -28,6 +28,7 @@ extern sdmmc_storage_t storage;
 extern emmc_part_t *system_part;
 extern char *clipboard;
 extern u8 clipboardhelper;
+extern bool sd_mounted;
 
 
 void addEntry(emmc_part_t *part, u8 property_GPT, int spot){
@@ -73,6 +74,12 @@ int fillMmcMenu(short mmcType){
 
     mu_createObjects(count, &mmcMenuEntries);
 
+    if (!sd_mounted)
+      sd_mount();
+
+    SETBIT(mmcmenu_filemenu[3].property, ISHIDE, !sd_mounted);
+    SETBIT(mmcmenu_start[1].property, ISHIDE, !sd_mounted);
+
     for (i = 0; i < 4; i++)
         mu_copySingle(mmcmenu_start[i].name, mmcmenu_start[i].storage, mmcmenu_start[i].property, &mmcMenuEntries[i]);
 
@@ -92,13 +99,13 @@ int handleEntries(short mmcType, menu_entry part){
             return -1;
         }
         if (!mount_mmc(part.name, part.storage))
-            fileexplorer("emmc:/", 1);  
+            fileexplorer("emmc:/", 1);
     }
     else {
         /*
         if (mmcmenu_filemenu[1].name != NULL)
             free(mmcmenu_filemenu[1].name);
-                    
+
         utils_copystring(part.name, &mmcmenu_filemenu[1].name);
         */
 
@@ -162,7 +169,7 @@ int makeMmcMenu(short mmcType){
                     if (!mmcFlashFile(clipboard, mmcType, true)){
                         gfx_printf("\nDone!");
                         hidWait();
-                    }   
+                    }
                     clipboardhelper = 0;
                 }
                 else
