@@ -92,7 +92,6 @@ menu_entry mmcmenu_filemenu[] = {
     {NULL, COLOR_VIOLET, {ISSKIP | ISMENU}},
     {"\nBack", COLOR_WHITE, {ISMENU}},
     {"Dump to SD", COLOR_YELLOW, {ISMENU}},
-    {"No actions possible.", COLOR_RED, {ISSKIP | ISMENU}}
 };
 
 menu_entry fwDump_typeMenu[] = {
