@@ -78,6 +78,7 @@ int fillMmcMenu(short mmcType){
       sd_mount();
 
     SETBIT(mmcmenu_filemenu[3].property, ISHIDE, !sd_mounted);
+    SETBIT(mmcmenu_start[1].property, ISHIDE, !sd_mounted);
 
     for (i = 0; i < 4; i++)
         mu_copySingle(mmcmenu_start[i].name, mmcmenu_start[i].storage, mmcmenu_start[i].property, &mmcMenuEntries[i]);

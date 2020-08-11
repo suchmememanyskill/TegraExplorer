@@ -91,7 +91,7 @@ menu_entry mmcmenu_filemenu[] = {
     {"Part:", COLOR_ORANGE, {ISSKIP | ISMENU}},
     {NULL, COLOR_VIOLET, {ISSKIP | ISMENU}},
     {"\nBack", COLOR_WHITE, {ISMENU}},
-    {"Dump to SD", COLOR_YELLOW, {ISMENU}},
+    {"Dump to SD", COLOR_YELLOW, {ISMENU}}
 };
 
 menu_entry fwDump_typeMenu[] = {
