@@ -59,3 +59,5 @@ typedef struct {
 
 #define isFS 0x80
 #define isBOOT 0x2
+
+typedef void (*func_void_ptr)();

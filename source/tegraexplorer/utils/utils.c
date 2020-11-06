@@ -203,3 +203,9 @@ char *utils_copyStringSize(const char *in, int size){
     memcpy(out, in, size);
     return out;
 }
+
+char* util_cpyStr(const char* in){
+    char *out = malloc(strlen(in) + 1);
+    strcpy(out, in);
+    return out;
+}

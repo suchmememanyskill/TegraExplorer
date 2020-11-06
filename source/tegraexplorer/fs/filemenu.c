@@ -204,7 +204,7 @@ int filemenu(menu_entry file){
             while (hidRead()->buttons);
             */
 
-            runScript(fsutil_getnextloc(currentpath, file.name));
+            startScript(fsutil_getnextloc(currentpath, file.name));
             fsreader_readfolder(currentpath);
             break;
         case FILE_HEXVIEW:

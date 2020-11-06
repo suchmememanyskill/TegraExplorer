@@ -1,7 +1,9 @@
 #pragma once
 
-#define INFUNC_FAIL (int)0xC0000000
+#include "types.h"
+//#define DictValue(type, val, len) (dictValue_t) {type, len, val}
 
-void runScript(char *path);
-void skipbrackets();
-void getfollowingchar(char end);
+#define scriptResultCreate(resCode, funcName) (scriptResult_t) {resCode, funcName}
+
+void startScript(char* path);
+char* readFile(char* path);

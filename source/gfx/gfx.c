@@ -540,6 +540,11 @@ void gfx_boxGrey(int x0, int y0, int x1, int y1, u8 shade){
 		memset(gfx_ctxt.fb + y * gfx_ctxt.stride + y0, shade, (y1 - y0 + 1) * 4);
 	}
 }
+
+void gfx_setPixel(int x, int y, u32 color) {
+	*(gfx_ctxt.fb + (YLEFT - x) * gfx_ctxt.stride + y) = color;
+}
+
 /*
 void gfx_boxGrey_old(int x0, int y0, int x1, int y1, u8 shade){
 	for (int y = y0; y <= y1; y++){

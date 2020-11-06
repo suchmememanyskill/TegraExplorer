@@ -1,13 +1,10 @@
 #pragma once
-#include "../../utils/types.h"
+#include "types.h"
 
-typedef void (*func_void_ptr)();
-typedef int (*func_int_ptr)();
+#define BIT(n) (1U << n)
 
-typedef struct {
-    char *key;
-    func_int_ptr value;
-    u8 arg_count;
-} str_fnc_struct;
+#define VARARGS(x) {x, 1, 0}
+#define OPERATORARGS(x) {x, 0, 1}
 
-int run_function(char *func_name, int *out);
+dictValue_t executeFunction(scriptCtx_t* ctx, char* func_name);
+varVector_t extractVars(scriptCtx_t* ctx, lexarToken_t* tokens, u32 len);

@@ -25,3 +25,4 @@ void utils_copystring(const char *in, char **out);
 char *utils_InputText(char *start, int maxLen);
 void utils_takeScreenshot();
 char *utils_copyStringSize(const char *in, int size);
+char* util_cpyStr(const char* in);
