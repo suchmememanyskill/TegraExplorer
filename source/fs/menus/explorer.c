@@ -23,7 +23,7 @@ MenuEntry_t MakeMenuOutFSEntry(FSEntry_t entry){
     return out;
 }
 
-#define maxYOnScreen 35
+#define maxYOnScreen 42
 
 void clearFileVector(Vector_t *v){
     vecPDefArray(FSEntry_t*, entries, v);
