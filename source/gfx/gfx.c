@@ -315,13 +315,9 @@ void gfx_puts(const char *s)
 }
 
 void gfx_puts_small(const char *s){
-	if (!s || gfx_con.mute)
-		return;
-
 	gfx_con.fntsz = 8;
 	
-	for (; *s; s++)
-		gfx_putc(*s);
+	gfx_puts(s);
 
 	gfx_con.fntsz = 16;
 }
@@ -352,7 +348,7 @@ static void _gfx_putn(u32 v, int base, char fill, int fcnt)
 	if (base > 36)
 		return;
 
-	bool minus = (base == 10 && v & 80000000);
+	bool minus = (base == 10 && v & 0x80000000);
 
 	if (minus)
 		v = (v ^ 0xFFFFFFFF) + 1;

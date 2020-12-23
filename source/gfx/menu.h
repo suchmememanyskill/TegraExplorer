@@ -31,5 +31,12 @@ typedef struct _menuEntry {
 #define SKIPHIDEBITS 0x3000000
 #define RGBCOLOR(r, g, b) (b << 16 | g << 8 | r)
 
-int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, menuEntriesGatherer gatherer, void *ctx, bool enableB, int totalEntries);
-void FunctionMenuHandler(MenuEntry_t *entries, int entryCount, menuPaths *paths, bool enableB);
+#define SKIPBIT BIT(24)
+#define HIDEBIT BIT(25)
+
+#define ENABLEB BIT(0)
+#define ENABLEPAGECOUNT BIT(1)
+#define ALWAYSREDRAW BIT(2)
+
+int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 options, int entryCount);
+void FunctionMenuHandler(MenuEntry_t *entries, int entryCount, menuPaths *paths, u8 options);

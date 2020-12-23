@@ -11,8 +11,8 @@
 
 MenuEntry_t topEntries[] = {
     {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "Back"},
-    {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "Option2"},
-    {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "Option3"}
+    {.optionUnion = COLORTORGB(COLOR_GREY) | SKIPBIT, .name = "Clipboard -> Current folder"},
+    {.optionUnion = COLORTORGB(COLOR_GREY) | SKIPBIT, .name = "Current folder options"}
 };
 
 MenuEntry_t MakeMenuOutFSEntry(FSEntry_t entry){
@@ -24,17 +24,6 @@ MenuEntry_t MakeMenuOutFSEntry(FSEntry_t entry){
 }
 
 #define maxYOnScreen 35
-
-void ExpandFileList(Vector_t *vec, void* data){
-    Vector_t *fileVec = (Vector_t*)data;
-    vecPDefArray(FSEntry_t*, fsEntries, fileVec);
-    
-    int start = vec->count - 3;
-    for (int i = start; i < MIN(fileVec->count, start + maxYOnScreen); i++){
-        MenuEntry_t a = MakeMenuOutFSEntry(fsEntries[i]);
-        vecAddElem(vec, a);
-    }
-}
 
 void clearFileVector(Vector_t *v){
     vecPDefArray(FSEntry_t*, entries, v);
@@ -63,8 +52,7 @@ void FileExplorer(char *path){
             vecAddElem(&entries, a);
         }
 
-        // ExpandFileList was first in NULL, but now we don't need it as we aren't loading the file size dynamically
-        res = newMenu(&entries, res, 50, maxYOnScreen, NULL, &fileVec, true, fileVec.count);
+        res = newMenu(&entries, res, 50, maxYOnScreen, ENABLEB | ENABLEPAGECOUNT, (int)fileVec.count);
 
         if (res < 3) {
             if (!strcmp(storedPath, path)){

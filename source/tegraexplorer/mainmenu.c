@@ -1,4 +1,4 @@
-#include "mainMenu.h"
+#include "mainmenu.h"
 #include "../gfx/gfx.h"
 #include "../gfx/gfxutils.h"
 #include "../gfx/menu.h"
@@ -34,7 +34,7 @@ menuPaths mainMenuPaths[] = {
 
 void EnterMainMenu(){
     while (1){
-        FunctionMenuHandler(mainMenuEntries, 4, mainMenuPaths, false);
+        FunctionMenuHandler(mainMenuEntries, 4, mainMenuPaths, 0);
     }
 }
 

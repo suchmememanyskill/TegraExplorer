@@ -45,7 +45,7 @@
 #include "gfx/menu.h"
 #include "utils/vector.h"
 #include "gfx/gfxutils.h"
-#include "tegraexplorer/mainMenu.h"
+#include "tegraexplorer/mainmenu.h"
 
 
 hekate_config h_cfg;
