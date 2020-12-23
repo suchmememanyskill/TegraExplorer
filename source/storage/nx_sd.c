@@ -15,19 +15,49 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "nx_sd.h"
-#include "sdmmc.h"
-#include "sdmmc_driver.h"
-#include "../gfx/gfx.h"
-#include "../libs/fatfs/ff.h"
-#include "../mem/heap.h"
+#include <storage/nx_sd.h>
+#include <storage/sdmmc.h>
+#include <storage/sdmmc_driver.h>
+#include <gfx_utils.h>
+#include <libs/fatfs/ff.h>
+#include <mem/heap.h>
 
-bool sd_mounted = false, sd_inited = false;
+static bool sd_mounted = false;
+static u16  sd_errors[3] = { 0 }; // Init and Read/Write errors.
 static u32  sd_mode = SD_UHS_SDR82;
 
 sdmmc_t sd_sdmmc;
 sdmmc_storage_t sd_storage;
 FATFS sd_fs;
+
+void sd_error_count_increment(u8 type)
+{
+	switch (type)
+	{
+	case SD_ERROR_INIT_FAIL:
+		sd_errors[0]++;
+		break;
+	case SD_ERROR_RW_FAIL:
+		sd_errors[1]++;
+		break;
+	case SD_ERROR_RW_RETRY:
+		sd_errors[2]++;
+		break;
+	}
+}
+
+u16 *sd_get_error_count()
+{
+	return sd_errors;
+}
+
+bool sd_get_card_removed()
+{
+	if (!sdmmc_get_sd_inserted())
+		return true;
+
+	return false;
+}
 
 u32 sd_get_mode()
 {
@@ -84,10 +114,15 @@ bool sd_initialize(bool power_cycle)
 			sd_mode = SD_UHS_SDR82;
 			break;
 		}
-		else if (sd_mode == SD_INIT_FAIL)
-			break;
 		else
-			res = !sd_init_retry(true);
+		{
+			sd_errors[SD_ERROR_INIT_FAIL]++;
+
+			if (sd_mode == SD_INIT_FAIL)
+				break;
+			else
+				res = !sd_init_retry(true);
+		}
 	}
 
 	sdmmc_storage_end(&sd_storage);
@@ -100,8 +135,7 @@ bool sd_mount()
 	if (sd_mounted)
 		return true;
 
-	sd_inited = sd_initialize(false);
-	int res = !sd_inited;
+	int res = !sd_initialize(false);
 
 	if (res)
 	{
@@ -130,17 +164,21 @@ bool sd_mount()
 	return false;
 }
 
-void sd_unmount()
+static void _sd_deinit()
 {
-	sd_mode = SD_UHS_SDR82;
+	if (sd_mode == SD_INIT_FAIL)
+		sd_mode = SD_UHS_SDR82;
+
 	if (sd_mounted)
 	{
 		f_mount(NULL, "", 1);
 		sdmmc_storage_end(&sd_storage);
 		sd_mounted = false;
-		sd_inited = false;
 	}
 }
+
+void sd_unmount() { _sd_deinit(); }
+void sd_end()     { _sd_deinit(); }
 
 void *sd_file_read(const char *path, u32 *fsize)
 {

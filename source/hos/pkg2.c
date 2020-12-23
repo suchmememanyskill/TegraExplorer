@@ -19,12 +19,12 @@
 #include <string.h>
 
 #include "pkg2.h"
-#include "../utils/aarch64_util.h"
-#include "../mem/heap.h"
-#include "../sec/se.h"
-#include "../libs/compr/blz.h"
+#include <libs/compr/blz.h>
+#include <mem/heap.h>
+#include <sec/se.h>
+#include <utils/aarch64_util.h>
 
-#include "../gfx/gfx.h"
+#include <gfx_utils.h>
 
 u32 pkg2_newkern_ini1_val;
 u32 pkg2_newkern_ini1_start;

@@ -1,57 +1,32 @@
 #include "hid.h"
-#include "joycon.h"
-#include "../utils/btn.h"
+#include <input/joycon.h>
+#include <utils/btn.h>
 #include "../gfx/gfx.h"
-#include "../utils/types.h"
-#include "../tegraexplorer/utils/utils.h"
+#include <utils/types.h>
+#include <utils/util.h>
 
-static Inputs inputs = {0};
+static Input_t inputs = {0};
 u16 LbaseX = 0, LbaseY = 0, RbaseX = 0, RbaseY = 0;
 
 void hidInit(){
     jc_init_hw();
 }
 
-Inputs *hidRead(){
+Input_t *hidRead(){
     jc_gamepad_rpt_t *controller = joycon_poll();
-    static bool errPrint = false;
 
-    if (controller->cap)
-        utils_takeScreenshot();
+    //if (controller->cap)
+    //    utils_takeScreenshot();
 
+    if (controller->home)
+        reboot_rcm();
+
+    inputs.buttons = controller->buttons;
 
     u8 btn = btn_read();
     inputs.volp = (btn & BTN_VOL_UP) ? 1 : 0;
     inputs.volm = (btn & BTN_VOL_DOWN) ? 1 : 0;
-    inputs.pow = (btn & BTN_POWER) ? 1 : 0;
-
-    inputs.a = controller->a;
-    inputs.b = controller->b;
-    inputs.x = controller->x;
-    inputs.y = controller->y;
-    inputs.r = controller->r;
-    inputs.l = controller->l;
-    inputs.zr = controller->zr;
-    inputs.zl = controller->zl;
-    inputs.minus = controller->minus;
-    inputs.plus = controller->plus;
-    inputs.home = controller->home;
-    inputs.cap = controller->cap;
-
-    if (controller->conn_l && controller->conn_r){
-        if (errPrint){
-            gfx_boxGrey(1008, 703, 1279, 719, 0xFF);
-            errPrint = false;
-        }
-    }
-    else {
-        u32 x, y;
-        gfx_con_getpos(&x, &y);
-        gfx_con_setpos(1008, 703);
-        gfx_printf("%k%K%s %s MISS%k%K", COLOR_DEFAULT, COLOR_WHITE, (controller->conn_l) ? "    " : "JOYL", (controller->conn_r) ? "    " : "JOYR", COLOR_WHITE, COLOR_DEFAULT);
-        gfx_con_setpos(x, y);
-        errPrint = true;
-    }
+    inputs.power = (btn & BTN_POWER) ? 1 : 0;
 
     if (controller->conn_l){
         if ((LbaseX == 0 || LbaseY == 0) || controller->l3){
@@ -59,14 +34,14 @@ Inputs *hidRead(){
             LbaseY = controller->lstick_y;
         }
 
-        inputs.Lup = (controller->up || (controller->lstick_y > LbaseY + 500)) ? 1 : 0;
-        inputs.Ldown = (controller->down || (controller->lstick_y < LbaseY - 500)) ? 1 : 0;
-        inputs.Lleft = (controller->left || (controller->lstick_x < LbaseX - 500)) ? 1 : 0;
-        inputs.Lright = (controller->right || (controller->lstick_x > LbaseX + 500)) ? 1 : 0;
+        inputs.up = (controller->up || (controller->lstick_y > LbaseY + 500)) ? 1 : 0;
+        inputs.down = (controller->down || (controller->lstick_y < LbaseY - 500)) ? 1 : 0;
+        inputs.left = (controller->left || (controller->lstick_x < LbaseX - 500)) ? 1 : 0;
+        inputs.right = (controller->right || (controller->lstick_x > LbaseX + 500)) ? 1 : 0;
     }
     else {
-        inputs.Lup = inputs.volp;
-        inputs.Ldown = inputs.volm;
+        inputs.up = inputs.volp;
+        inputs.down = inputs.volm;
     }
 
     if (controller->conn_r){
@@ -75,19 +50,19 @@ Inputs *hidRead(){
             RbaseY = controller->rstick_y;
         }
 
-        inputs.Rup = (controller->rstick_y > RbaseY + 500) ? 1 : 0;
-        inputs.Rdown = (controller->rstick_y < RbaseY - 500) ? 1 : 0;
-        inputs.Rleft = (controller->rstick_x < RbaseX - 500) ? 1 : 0;
-        inputs.Rright = (controller->rstick_x > RbaseX + 500) ? 1 : 0;
+        inputs.rUp = (controller->rstick_y > RbaseY + 500) ? 1 : 0;
+        inputs.rDown = (controller->rstick_y < RbaseY - 500) ? 1 : 0;
+        inputs.rLeft = (controller->rstick_x < RbaseX - 500) ? 1 : 0;
+        inputs.rRight = (controller->rstick_x > RbaseX + 500) ? 1 : 0;
     }
     else
-        inputs.a = inputs.pow;
+        inputs.a = inputs.power;
 
     return &inputs;
 }
 
-Inputs *hidWaitMask(u32 mask){
-    Inputs *in = hidRead();
+Input_t *hidWaitMask(u32 mask){
+    Input_t *in = hidRead();
 
     while (in->buttons & mask)
         hidRead();
@@ -99,8 +74,8 @@ Inputs *hidWaitMask(u32 mask){
     return in;
 }
 
-Inputs *hidWait(){
-    Inputs *in = hidRead();
+Input_t *hidWait(){
+    Input_t *in = hidRead();
 
     while (in->buttons)
         hidRead();

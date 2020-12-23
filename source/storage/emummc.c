@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 CTCaer
+ * Copyright (c) 2019 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,38 +18,36 @@
 #include <stdlib.h>
 
 #include "emummc.h"
-#include "sdmmc.h"
-#include "../config/config.h"
-#include "../config/ini.h"
-#include "../gfx/gfx.h"
-#include "../libs/fatfs/ff.h"
-#include "../mem/heap.h"
-#include "../utils/list.h"
-#include "../utils/types.h"
-
-extern sdmmc_t sd_sdmmc;
-extern sdmmc_storage_t sd_storage;
-extern FATFS sd_fs;
+#include <storage/sdmmc.h>
+#include "../config.h"
+#include <utils/ini.h>
+#include <gfx_utils.h>
+#include <libs/fatfs/ff.h>
+#include <mem/heap.h>
+#include "../storage/nx_emmc.h"
+#include <storage/nx_sd.h>
+#include <utils/list.h>
+#include <utils/types.h>
 
 extern hekate_config h_cfg;
-emummc_cfg_t emu_cfg;
+emummc_cfg_t emu_cfg = { 0 };
 
-extern bool sd_mount();
-extern void sd_unmount();
-
-bool emummc_load_cfg()
+void emummc_load_cfg()
 {
-	sd_mount();
 	emu_cfg.enabled = 0;
 	emu_cfg.path = NULL;
-	emu_cfg.nintendo_path = NULL;
 	emu_cfg.sector = 0;
 	emu_cfg.id = 0;
 	emu_cfg.file_based_part_size = 0;
 	emu_cfg.active_part = 0;
 	emu_cfg.fs_ver = 0;
+	if (!emu_cfg.nintendo_path)
+		emu_cfg.nintendo_path = (char *)malloc(0x80);
 	if (!emu_cfg.emummc_file_based_path)
 		emu_cfg.emummc_file_based_path = (char *)malloc(0x80);
+
+	emu_cfg.nintendo_path[0] = 0;
+	emu_cfg.emummc_file_based_path[0] = 0;
 
 	LIST_INIT(ini_sections);
 	if (ini_parse(&ini_sections, "emuMMC/emummc.ini", false))
@@ -72,14 +70,51 @@ bool emummc_load_cfg()
 					else if (!strcmp("path", kv->key))
 						emu_cfg.path = kv->val;
 					else if (!strcmp("nintendo_path", kv->key))
-						emu_cfg.nintendo_path = kv->val;
+						strcpy(emu_cfg.nintendo_path, kv->val);
 				}
 				break;
 			}
 		}
-		return 0;
 	}
-	return 1;
+}
+
+bool emummc_set_path(char *path)
+{
+	FIL fp;
+	bool found = false;
+
+	strcpy(emu_cfg.emummc_file_based_path, path);
+	strcat(emu_cfg.emummc_file_based_path, "/raw_based");
+
+	if (!f_open(&fp, emu_cfg.emummc_file_based_path, FA_READ))
+	{
+		if (!f_read(&fp, &emu_cfg.sector, 4, NULL))
+			if (emu_cfg.sector)
+				found = true;
+	}
+	else
+	{
+		strcpy(emu_cfg.emummc_file_based_path, path);
+		strcat(emu_cfg.emummc_file_based_path, "/file_based");
+
+		if (!f_stat(emu_cfg.emummc_file_based_path, NULL))
+		{
+			emu_cfg.sector = 0;
+			emu_cfg.path = path;
+
+			found = true;
+		}
+	}
+
+	if (found)
+	{
+		emu_cfg.enabled = 1;
+		emu_cfg.id = 0;
+		strcpy(emu_cfg.nintendo_path, path);
+		strcat(emu_cfg.nintendo_path, "/Nintendo");
+	}
+
+	return found;
 }
 
 static int emummc_raw_get_part_off(int part_idx)
@@ -96,24 +131,22 @@ static int emummc_raw_get_part_off(int part_idx)
 	return 2;
 }
 
-
 int emummc_storage_init_mmc(sdmmc_storage_t *storage, sdmmc_t *sdmmc)
 {
 	FILINFO fno;
-	if (!sdmmc_storage_init_mmc(storage, sdmmc, SDMMC_BUS_WIDTH_8, SDHCI_TIMING_MMC_HS400))
-	{
-		EPRINTF("Failed to init eMMC.");
-
-		goto out;
-	}
-	if (h_cfg.emummc_force_disable)
-		return 1;
-
 	emu_cfg.active_part = 0;
+
+	// Always init eMMC even when in emuMMC. eMMC is needed from the emuMMC driver anyway.
+	if (!sdmmc_storage_init_mmc(storage, sdmmc, SDMMC_BUS_WIDTH_8, SDHCI_TIMING_MMC_HS400))
+		return 2;
+
+	if (!emu_cfg.enabled || h_cfg.emummc_force_disable)
+		return 0;
+
 	if (!sd_mount())
 		goto out;
 
-	if (emu_cfg.enabled && !emu_cfg.sector)
+	if (!emu_cfg.sector)
 	{
 		strcpy(emu_cfg.emummc_file_based_path, emu_cfg.path);
 		strcat(emu_cfg.emummc_file_based_path, "/eMMC");
@@ -133,15 +166,19 @@ int emummc_storage_init_mmc(sdmmc_storage_t *storage, sdmmc_t *sdmmc)
 		}
 		emu_cfg.file_based_part_size = fno.fsize >> 9;
 	}
-	return 1;
+
+	return 0;
 
 out:
-	return 0;
+	return 1;
 }
 
 int emummc_storage_end(sdmmc_storage_t *storage)
 {
-	sdmmc_storage_end(storage);
+	if (!emu_cfg.enabled || h_cfg.emummc_force_disable)
+		sdmmc_storage_end(storage);
+	else
+		sd_end();
 
 	return 1;
 }
