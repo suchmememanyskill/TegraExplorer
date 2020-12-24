@@ -46,6 +46,7 @@
 #include "utils/vector.h"
 #include "gfx/gfxutils.h"
 #include "tegraexplorer/mainmenu.h"
+#include "tegraexplorer/tconf.h"
 
 
 hekate_config h_cfg;
@@ -174,8 +175,11 @@ void ipl_main()
 	// Mount SD Card.
 	h_cfg.errors |= !sd_mount() ? ERR_SD_BOOT_EN : 0;
 
+	TConf.minervaEnabled = !minerva_init();
+	TConf.FSBuffSize = (TConf.minervaEnabled) ? 0x400000 : 0x10000;
+
 	// Train DRAM and switch to max frequency.
-	if (minerva_init()) //!TODO: Add Tegra210B01 support to minerva.
+	if (TConf.minervaEnabled) //!TODO: Add Tegra210B01 support to minerva.
 		h_cfg.errors |= ERR_LIBSYS_MTC;
 	minerva_change_freq(FREQ_1600);
 

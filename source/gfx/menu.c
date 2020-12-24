@@ -27,9 +27,9 @@ void _printEntry(MenuEntry_t entry, u32 maxLen, u8 highlighted){
     
     u32 curX = 0, curY = 0;
     gfx_con_getpos(&curX, &curY);
-    gfx_puts_limit(entry.name, maxLen - 8);
+    gfx_puts_limit(entry.name, maxLen - ((entry.showSize) ? 8 : 0));
     if (entry.showSize){
-        SETCOLOR(COLOR_BLUE, COLOR_DEFAULT);
+        (highlighted) ? SETCOLOR(COLOR_DEFAULT, COLOR_BLUE) : SETCOLOR(COLOR_BLUE, COLOR_DEFAULT);
         gfx_con_setpos(curX + (maxLen - 6) * 16, curY);
         gfx_printf("%4d", entry.size);
         gfx_puts_small(sizeDefs[entry.sizeDef]);
@@ -77,7 +77,7 @@ int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 op
             if (options & ENABLEPAGECOUNT){
                 gfx_con_setpos(startX, startY - 32);
                 RESETCOLOR;
-                gfx_printf("Page %d / %d | Total %d entries\n", (selected / screenLenY) + 1, (vec->count / screenLenY) + 1, entryCount);
+                gfx_printf("Page %d / %d | Total %d entries  ", (selected / screenLenY) + 1, (vec->count / screenLenY) + 1, entryCount);
             }
 
             gfx_con_setpos(startX, startY);
@@ -86,8 +86,11 @@ int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 op
                 gfx_boxGrey(startX, startY, startX + screenLenX * 16, startY + screenLenY * 16, 0x1B);
 
             int start = selected / screenLenY * screenLenY;
-            for (int i = start; i < MIN(vec->count, start + screenLenY); i++)
+            for (int i = start; i < MIN(vec->count, start + screenLenY); i++){
+                gfx_con_setpos(startX, startY + ((i % screenLenY) * 16));
                 _printEntry(entries[i], screenLenX, (i == selected));
+            }
+                
         } 
         else if (lastIndex != selected) {
             u32 minLastCur = MIN(lastIndex, selected);

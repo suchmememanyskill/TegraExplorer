@@ -10,6 +10,7 @@
 #include <mem/heap.h>
 
 MenuEntry_t topEntries[] = {
+    {.optionUnion = COLORTORGB(COLOR_GREEN) | SKIPBIT},
     {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "Back"},
     {.optionUnion = COLORTORGB(COLOR_GREY) | SKIPBIT, .name = "Clipboard -> Current folder"},
     {.optionUnion = COLORTORGB(COLOR_GREY) | SKIPBIT, .name = "Current folder options"}
@@ -22,8 +23,6 @@ MenuEntry_t MakeMenuOutFSEntry(FSEntry_t entry){
 
     return out;
 }
-
-#define maxYOnScreen 42
 
 void clearFileVector(Vector_t *v){
     vecPDefArray(FSEntry_t*, entries, v);
@@ -40,21 +39,25 @@ void FileExplorer(char *path){
     while (1){
         gfx_clearscreen();
         gfx_printf("Loading...\r");
+        //gfx_printf("          ");
         Vector_t fileVec = ReadFolder(storedPath);
         vecDefArray(FSEntry_t*, fsEntries, fileVec);
         
-        Vector_t entries = newVec(sizeof(MenuEntry_t), maxYOnScreen);
-        entries.count = 3;
-        memcpy(entries.data, topEntries, sizeof(MenuEntry_t) * 3);
+        topEntries[0].name = storedPath;
+        Vector_t entries = newVec(sizeof(MenuEntry_t), fileVec.count + ARR_LEN(topEntries));
+        entries.count = ARR_LEN(topEntries);
+        memcpy(entries.data, topEntries, sizeof(MenuEntry_t) * ARR_LEN(topEntries));
 
         for (int i = 0; i < fileVec.count; i++){
             MenuEntry_t a = MakeMenuOutFSEntry(fsEntries[i]);
             vecAddElem(&entries, a);
         }
 
-        res = newMenu(&entries, res, 50, maxYOnScreen, ENABLEB | ENABLEPAGECOUNT, (int)fileVec.count);
+        gfx_con_setpos(144, 16);
+        gfx_boxGrey(0, 16, 160, 31, 0x1B);
+        res = newMenu(&entries, res, 60, 42, ENABLEB | ENABLEPAGECOUNT, (int)fileVec.count);
 
-        if (res < 3) {
+        if (res < ARR_LEN(topEntries)) {
             if (!strcmp(storedPath, path)){
                 clearFileVector(&fileVec);
                 return;
@@ -64,9 +67,9 @@ void FileExplorer(char *path){
             storedPath = EscapeFolder(copy);
             free(copy);
         }
-        else if (fsEntries[res - 3].isDir) {
+        else if (fsEntries[res - ARR_LEN(topEntries)].isDir) {
             char *copy = CpyStr(storedPath);
-            storedPath = CombinePaths(copy, fsEntries[res - 3].name);
+            storedPath = CombinePaths(copy, fsEntries[res - ARR_LEN(topEntries)].name);
             free(copy);
         }
 

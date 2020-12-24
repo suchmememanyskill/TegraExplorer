@@ -362,16 +362,22 @@ static void _gfx_putn(u32 v, int base, char fill, int fcnt)
 		v /= base;
 	} while (v);
 
+	if (minus){
+		*--p = '-';
+		c--;	
+	}
+
 	if (fill != 0)
 	{
+		gfx_con.y -= c * 16;
+		/*
 		while (c > 0)
 		{
 			*--p = fill;
 			c--;
 		}
+		*/
 	}
-	if (minus)
-		gfx_putc('-');
 
 	gfx_puts(p);
 }

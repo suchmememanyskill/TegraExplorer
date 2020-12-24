@@ -38,5 +38,7 @@ typedef struct _menuEntry {
 #define ENABLEPAGECOUNT BIT(1)
 #define ALWAYSREDRAW BIT(2)
 
+#define ARR_LEN(x) (sizeof(x) / sizeof(*x))
+
 int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 options, int entryCount);
 void FunctionMenuHandler(MenuEntry_t *entries, int entryCount, menuPaths *paths, u8 options);
