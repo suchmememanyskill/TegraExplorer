@@ -4,6 +4,7 @@
 #include "../utils/utils.h"
 #include <utils/sprintf.h>
 #include <libs/fatfs/ff.h>
+#include "readers/folderReader.h"
 
 char *CombinePaths(const char *current, const char *add){
     char *ret;
@@ -35,4 +36,10 @@ u64 GetFileSize(char *path){
     FILINFO fno;
     f_stat(path, &fno);
     return fno.fsize;
+}
+
+char *GetFileAttribs(FSEntry_t entry){
+    char *ret = CpyStr("RHSVDA");
+    MaskIn(ret, entry.optionUnion, '-');
+    return ret;
 }

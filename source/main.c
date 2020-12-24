@@ -47,6 +47,7 @@
 #include "gfx/gfxutils.h"
 #include "tegraexplorer/mainmenu.h"
 #include "tegraexplorer/tconf.h"
+#include "err.h"
 
 
 hekate_config h_cfg;
@@ -209,6 +210,7 @@ void ipl_main()
 	//u32 res = newMenu(&a, 0, 40, 5, testAdd, NULL);
 
 	//gfx_clearscreen();
+	//DrawError(newErrCode(1));
 
 	EnterMainMenu();
 

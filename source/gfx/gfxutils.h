@@ -4,6 +4,7 @@
 #define COLOR_WHITE 0xFFFFFFFF
 #define COLOR_DEFAULT 0xFF1B1B1B
 #define COLOR_GREY 0xFF888888
+#define COLOR_DARKGREY 0xFF333333
 
 #define COLORTORGB(color) (color & 0x00FFFFFF)
 #define SETCOLOR(fg, bg) gfx_con_setcol(fg, 1, bg)

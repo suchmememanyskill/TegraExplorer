@@ -129,7 +129,7 @@ int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 op
             else if (input->b && options & ENABLEB)
                 return 0;
             else if (input->down || input->rDown || input->right){ //Rdown should probs not trigger a page change. Same for RUp
-                u32 temp = (input->right) ? screenLenY : 1;
+                u32 temp = (input->right && !(input->down || input->rDown)) ? screenLenY : 1;
 
                 if (vec->count > selected + temp){
                     selected += temp;
@@ -141,7 +141,7 @@ int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 op
                 }
             }
             else if (input->up || input->rUp || input->left){
-                u32 temp = (input->left) ? screenLenY : 1;
+                u32 temp = (input->left && !(input->up || input->rUp)) ? screenLenY : 1;
                 if (selected >= temp){
                     selected -= temp;
                     break;

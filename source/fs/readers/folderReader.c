@@ -14,7 +14,8 @@ Vector_t /* of type FSEntry_t */ ReadFolder(char *path){
     }
 
     while (!f_readdir(&dir, &fno) && fno.fname[0]) {
-        FSEntry_t newEntry = {.isDir = (fno.fattrib & AM_DIR) ? 1 : 0, .name = CpyStr(fno.fname)};
+        FSEntry_t newEntry = {.optionUnion = fno.fattrib, .name = CpyStr(fno.fname)};
+
         if (!newEntry.isDir){
             u64 total = fno.fsize;
             u8 type = 0;
@@ -32,6 +33,8 @@ Vector_t /* of type FSEntry_t */ ReadFolder(char *path){
         }
         vecAddElem(&out, newEntry);
     }
+
+    f_closedir(&dir);
 
     return out;
 }

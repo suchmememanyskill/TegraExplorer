@@ -123,6 +123,8 @@ static const u8 _gfx_font[] = {
 	0x00, 0x0E, 0x12, 0x22, 0x22, 0x22, 0x3E, 0x00, // Char 128 (file)
 };
 
+u32 YLeftConfig = YLEFT;
+
 void gfx_clear_grey(u8 color)
 {
 	memset(gfx_ctxt.fb, color, gfx_ctxt.width * gfx_ctxt.height * 4);
@@ -240,13 +242,13 @@ void gfx_putc(char c)
 		
 			gfx_con.y -= 16;
 			if (gfx_con.y < 16){
-				gfx_con.y = YLEFT;
+				gfx_con.y = YLeftConfig;
 				gfx_con.x += 16;
 			}
 		}
 		else if (c == '\n')
 		{
-			gfx_con.y = YLEFT;
+			gfx_con.y = YLeftConfig;
 			gfx_con.x += 16;
 			if (gfx_con.x > gfx_ctxt.width - 16)
 				gfx_con.x = 0;
@@ -256,7 +258,7 @@ void gfx_putc(char c)
 		else if (c == '\a')
 			gfx_con.y = 639;
 		else if (c == '\r')
-			gfx_con.y = YLEFT;
+			gfx_con.y = YLeftConfig;
 
 		break;
 	case 8:
@@ -282,14 +284,14 @@ void gfx_putc(char c)
 
 			gfx_con.y -= 8;
 			if (gfx_con.y < 8){
-				gfx_con.y = YLEFT;
+				gfx_con.y = YLeftConfig;
 				gfx_con.x += 8;
 			}
 
 		}
 		else if (c == '\n')
 		{
-			gfx_con.y = YLEFT;
+			gfx_con.y = YLeftConfig;
 			gfx_con.x += 8;
 			if (gfx_con.x > gfx_ctxt.width - 8)
 				gfx_con.x = 0;
@@ -299,7 +301,7 @@ void gfx_putc(char c)
 		else if (c == '\a')
 			gfx_con.y = 639;
 		else if (c == '\r')
-			gfx_con.y = YLEFT;
+			gfx_con.y = YLeftConfig;
 
 		break;
 	}
@@ -448,6 +450,11 @@ void gfx_vprintf(const char *fmt, va_list ap)
 			case 'K':
 				gfx_con.bgcol = va_arg(ap, u32);
 				gfx_con.fillbg = 1;
+				break;
+			case 'b':;
+				u32 b = YLEFT - va_arg(ap, u32);
+				gfx_con.y = b;
+				YLeftConfig = gfx_con.y;
 				break;
 			case '%':
 				gfx_putc('%');

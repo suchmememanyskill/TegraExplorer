@@ -6,6 +6,7 @@
 #include "../../gfx/gfx.h"
 #include "../../gfx/gfxutils.h"
 #include "../../utils/utils.h"
+#include "filemenu.h"
 #include <string.h>
 #include <mem/heap.h>
 
@@ -55,6 +56,10 @@ void FileExplorer(char *path){
 
         gfx_con_setpos(144, 16);
         gfx_boxGrey(0, 16, 160, 31, 0x1B);
+
+        if (res >= fileVec.count + ARR_LEN(topEntries))
+            res = 0;
+
         res = newMenu(&entries, res, 60, 42, ENABLEB | ENABLEPAGECOUNT, (int)fileVec.count);
 
         if (res < ARR_LEN(topEntries)) {
@@ -66,14 +71,19 @@ void FileExplorer(char *path){
             char *copy = CpyStr(storedPath);
             storedPath = EscapeFolder(copy);
             free(copy);
+            res = 0;
         }
         else if (fsEntries[res - ARR_LEN(topEntries)].isDir) {
             char *copy = CpyStr(storedPath);
             storedPath = CombinePaths(copy, fsEntries[res - ARR_LEN(topEntries)].name);
             free(copy);
+            res = 0;
+        }
+        else {
+            FileMenu(fsEntries[res - ARR_LEN(topEntries)]);
         }
 
-        res = 0;
+        
         clearFileVector(&fileVec);
     }
 }
