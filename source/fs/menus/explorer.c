@@ -9,6 +9,7 @@
 #include "filemenu.h"
 #include <string.h>
 #include <mem/heap.h>
+#include "../../tegraexplorer/tconf.h"
 
 MenuEntry_t topEntries[] = {
     {.optionUnion = COLORTORGB(COLOR_GREEN) | SKIPBIT},
@@ -38,6 +39,8 @@ void FileExplorer(char *path){
     int res = 0;
 
     while (1){
+        topEntries[2].optionUnion = COLORTORGB(((TConf.explorerCopyMode != CMODE_None) ? COLOR_ORANGE : COLOR_GREY)) | SKIPBIT;
+
         gfx_clearscreen();
         gfx_printf("Loading...\r");
         //gfx_printf("          ");
@@ -83,7 +86,6 @@ void FileExplorer(char *path){
             FileMenu(storedPath, fsEntries[res - ARR_LEN(topEntries)]);
         }
 
-        
         clearFileVector(&fileVec);
     }
 }

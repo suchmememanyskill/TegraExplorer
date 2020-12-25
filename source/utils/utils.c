@@ -21,3 +21,12 @@ void MaskIn(char *mod, u32 bitstream, char mask){
         mod++;
     }
 }
+
+// non-zero is yes, zero is no
+bool StrEndsWith(char *begin, char *end){
+    begin = strrchr(begin, *end);
+    if (begin != NULL)
+        return !strcmp(begin, end);
+
+    return 0;
+}

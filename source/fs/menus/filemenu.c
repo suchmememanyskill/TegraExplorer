@@ -8,6 +8,8 @@
 #include <utils/sprintf.h>
 #include "../../tegraexplorer/tconf.h"
 #include "../../hid/hid.h"
+#include <libs/fatfs/ff.h>
+#include "../../utils/utils.h"
 
 MenuEntry_t FileMenuEntries[] = {
     // Still have to think up the options
@@ -36,11 +38,31 @@ void LaunchPayload(char *path, FSEntry_t entry){
     launch_payload(CombinePaths(path, entry.name));
 }
 
+void CopyClipboard(char *path, FSEntry_t entry){
+    char *thing = CombinePaths(path, entry.name);
+    SetCopyParams(thing, CMODE_Copy);
+    free(thing);
+}
+
+void MoveClipboard(char *path, FSEntry_t entry){
+    char *thing = CombinePaths(path, entry.name);
+    SetCopyParams(thing, CMODE_Copy);
+    free(thing);
+}
+
+void DeleteFile(char *path, FSEntry_t entry){
+    char *thing = CombinePaths(path, entry.name);
+    int res = f_unlink(thing);
+    if (res)
+        DrawError(newErrCode(res));
+    free(thing);
+}
+
 menuPaths FileMenuPaths[] = {
+    CopyClipboard,
+    MoveClipboard,
     UnimplementedException,
-    UnimplementedException,
-    UnimplementedException,
-    UnimplementedException,
+    DeleteFile,
     UnimplementedException,
     LaunchPayload,
     UnimplementedException
@@ -54,6 +76,9 @@ void FileMenu(char *path, FSEntry_t entry){
     sprintf(attribs, "Attribs:%s", attribList);
     free(attribList);
     FileMenuEntries[2].name = attribs;
+
+    FileMenuEntries[10].hide = !StrEndsWith(entry.name, ".bin");
+    FileMenuEntries[11].hide = !StrEndsWith(entry.name, ".te");
 
     Vector_t ent = vecFromArray(FileMenuEntries, ARR_LEN(FileMenuEntries), sizeof(MenuEntry_t));
     gfx_boxGrey(384, 200, 384 + 512, 200 + 320, 0x33);
