@@ -19,7 +19,7 @@ void _printEntry(MenuEntry_t entry, u32 maxLen, u8 highlighted, u32 bg){
     if (entry.hide)
         return;
 
-    (highlighted) ? SETCOLOR(bg, FromRGBtoU32(entry.R, entry.G, entry.B)) : SETCOLOR(FromRGBtoU32(entry.R, entry.G, entry.B), bg);
+    (highlighted) ? SETCOLOR(bg, RGBUnionToU32(entry.optionUnion)) : SETCOLOR(RGBUnionToU32(entry.optionUnion), bg);
     
     if (entry.icon){
         gfx_putc(entry.icon);

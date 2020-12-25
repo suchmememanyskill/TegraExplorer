@@ -1,6 +1,7 @@
 #include "gfx.h"
 #include "gfxutils.h"
 #include <power/max17050.h>
+#include "../hid/hid.h"
 
 void gfx_clearscreen(){
     int battery = 0;
@@ -18,6 +19,26 @@ void gfx_clearscreen(){
     RESETCOLOR;
 }
 
-u32 FromRGBtoU32(u8 r, u8 g, u8 b){
-    return 0xFF000000 | r << 16 | g << 8 | b;
+int MakeHorizontalMenu(MenuEntry_t *entries, int len, int spacesBetween, u32 bg){
+    u32 initialX = 0, initialY = 0;
+    u32 highlight = 0;
+    gfx_con_getpos(&initialX, &initialY);
+
+    while (1){
+        for (int i = 0; i < len; i++){
+            (highlight == i) ? SETCOLOR(bg, entries[i].optionUnion) : SETCOLOR(entries[i].optionUnion, bg);
+            gfx_puts(entries[i].name);
+            gfx_con.y -= spacesBetween * 16;
+        }
+        gfx_con_setpos(initialX, initialY);
+        Input_t *input = hidWait();
+        if (input->a)
+            return highlight;
+        else if (input->b)
+            return 0;
+        else if (input->left && highlight > 0)
+            highlight--;
+        else if (input->right && highlight < len - 1)
+            highlight++;
+    }
 }

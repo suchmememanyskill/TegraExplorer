@@ -50,7 +50,46 @@ void MoveClipboard(char *path, FSEntry_t entry){
     free(thing);
 }
 
+MenuEntry_t DeleteEntries[] = {
+    {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "No"},
+    {.R = 255, .name = "Yes"}
+};
+
 void DeleteFile(char *path, FSEntry_t entry){
+    /*
+    u8 left = 0;
+    
+    while (1){
+        gfx_con_setpos(384 + 16, 200 + 16 + 9 * 16);
+        SETCOLOR(COLOR_RED, COLOR_DARKGREY);
+        gfx_printf("Are you sure?   ");
+
+        (left) ? SETCOLOR(COLOR_DARKGREY, COLOR_RED) : SETCOLOR(COLOR_RED, COLOR_DARKGREY);
+        gfx_printf("Yes");
+        RESETCOLOR;
+        gfx_printf("   ");
+        (!left) ? SETCOLOR(COLOR_DARKGREY, COLOR_YELLOW) : SETCOLOR(COLOR_YELLOW, COLOR_DARKGREY);
+        gfx_printf("No");
+
+        Input_t *input = hidWait();
+
+        if (input->a && left)
+            break;
+        else if (input->right)
+            left = 0;
+        else if (input->left)
+            left = 1;
+        else if (input->a || input->b)
+            return;
+    }
+    */
+    gfx_con_setpos(384 + 16, 200 + 16 + 8 * 16);
+    SETCOLOR(COLOR_RED, COLOR_DARKGREY);
+    gfx_printf("Are you sure?      ");
+
+    if (!MakeHorizontalMenu(DeleteEntries, 2, 3, COLOR_DARKGREY))
+        return;
+
     char *thing = CombinePaths(path, entry.name);
     int res = f_unlink(thing);
     if (res)
