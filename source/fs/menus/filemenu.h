@@ -1,4 +1,6 @@
 #pragma once
 #include "../fstypes.h"
 
-void FileMenu(FSEntry_t entry);
+typedef void (*fileMenuPath)(char *path, FSEntry_t entry);
+
+void FileMenu(char *path, FSEntry_t entry);

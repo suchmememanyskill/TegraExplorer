@@ -3,7 +3,7 @@
 #include "hid/hid.h"
 #include "gfx/gfxutils.h"
 
-const char *fatfsErrors[] = {
+const char *TEErrors[] = {
     "I/O ERROR",
     "NO DISK",
     "NOT READY",
@@ -17,20 +17,18 @@ const char *fatfsErrors[] = {
     "INVALID DRIVE",
     "NO MEM",
     "NO FAT",
-    "MKFS ABORT"
-};
-
-const char *TEErrors[] = {
-    "Unimplemented"
+    "MKFS ABORT",
+    [TE_ERR_UNIMPLEMENTED - 1] = "Unimplemented",
+    [TE_EXCEPTION_RESET - 1] = "E Reset",
+    [TE_EXCEPTION_UNDEFINED - 1] = "E Undefined",
+    [TE_EXCEPTION_PREF_ABORT - 1] = "E Pref abort",
+    [TE_EXCEPTION_DATA_ABORT - 1] = "E Data abort",
 };
 
 const char *GetErrStr(u32 err){
     --err; // obv error codes cannot be 0
-    if (err >= 0 && err < ARRAY_SIZE(fatfsErrors))
-        return fatfsErrors[err];
-
-    if (err >= 20 && err < ARRAY_SIZE(TEErrors) + 20)
-        return TEErrors[err - 20];
+    if (err >= 0 && err < ARRAY_SIZE(TEErrors))
+        return TEErrors[err];
 
     return "(Unknown)";
 }

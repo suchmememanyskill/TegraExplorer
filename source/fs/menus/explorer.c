@@ -34,7 +34,7 @@ void clearFileVector(Vector_t *v){
 }
 
 void FileExplorer(char *path){
-    char *storedPath = path;
+    char *storedPath = CpyStr(path);
     int res = 0;
 
     while (1){
@@ -54,7 +54,7 @@ void FileExplorer(char *path){
             vecAddElem(&entries, a);
         }
 
-        gfx_con_setpos(144, 16);
+        gfx_con_setpos(144, 24);
         gfx_boxGrey(0, 16, 160, 31, 0x1B);
 
         if (res >= fileVec.count + ARR_LEN(topEntries))
@@ -62,25 +62,25 @@ void FileExplorer(char *path){
 
         res = newMenu(&entries, res, 60, 42, ENABLEB | ENABLEPAGECOUNT, (int)fileVec.count);
 
+        char *oldPath = storedPath;
+
         if (res < ARR_LEN(topEntries)) {
             if (!strcmp(storedPath, path)){
                 clearFileVector(&fileVec);
                 return;
             }
 
-            char *copy = CpyStr(storedPath);
-            storedPath = EscapeFolder(copy);
-            free(copy);
+            storedPath = EscapeFolder(oldPath);
+            free(oldPath);
             res = 0;
         }
         else if (fsEntries[res - ARR_LEN(topEntries)].isDir) {
-            char *copy = CpyStr(storedPath);
-            storedPath = CombinePaths(copy, fsEntries[res - ARR_LEN(topEntries)].name);
-            free(copy);
+            storedPath = CombinePaths(storedPath, fsEntries[res - ARR_LEN(topEntries)].name);
+            free(oldPath);
             res = 0;
         }
         else {
-            FileMenu(fsEntries[res - ARR_LEN(topEntries)]);
+            FileMenu(storedPath, fsEntries[res - ARR_LEN(topEntries)]);
         }
 
         

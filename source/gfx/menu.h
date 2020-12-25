@@ -37,6 +37,10 @@ typedef struct _menuEntry {
 #define ENABLEB BIT(0)
 #define ENABLEPAGECOUNT BIT(1)
 #define ALWAYSREDRAW BIT(2)
+#define USELIGHTGREY BIT(3)
+
+#define ScreenDefaultLenX 79
+#define ScreenDefaultLenY 30
 
 #define ARR_LEN(x) (sizeof(x) / sizeof(*x))
 

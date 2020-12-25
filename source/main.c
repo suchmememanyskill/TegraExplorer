@@ -48,6 +48,7 @@
 #include "tegraexplorer/mainmenu.h"
 #include "tegraexplorer/tconf.h"
 #include "err.h"
+#include <soc/pmc.h>
 
 
 hekate_config h_cfg;
@@ -154,6 +155,70 @@ int launch_payload(char *path)
 
 extern void pivot_stack(u32 stack_top);
 
+#define EXCP_EN_ADDR   0x4003FFFC
+#define  EXCP_MAGIC 0x30505645      // EVP0
+#define EXCP_TYPE_ADDR 0x4003FFF8
+#define  EXCP_TYPE_RESET 0x545352   // RST
+#define  EXCP_TYPE_UNDEF 0x464455   // UDF
+#define  EXCP_TYPE_PABRT 0x54424150 // PABT
+#define  EXCP_TYPE_DABRT 0x54424144 // DABT
+#define EXCP_LR_ADDR   0x4003FFF4
+
+static inline void _show_errors()
+{
+	u32 *excp_enabled = (u32 *)EXCP_EN_ADDR;
+	u32 *excp_type = (u32 *)EXCP_TYPE_ADDR;
+	u32 *excp_lr = (u32 *)EXCP_LR_ADDR;
+
+	if (*excp_enabled == EXCP_MAGIC)
+		h_cfg.errors |= ERR_EXCEPTION;
+
+	if (h_cfg.errors)
+	{
+		
+
+		/*
+		if (h_cfg.errors & ERR_SD_BOOT_EN)
+			WPRINTF("Failed to mount SD!\n");
+
+		if (h_cfg.errors & ERR_LIBSYS_LP0)
+			WPRINTF("Missing LP0 (sleep mode) lib!\n");
+		if (h_cfg.errors & ERR_LIBSYS_MTC)
+			WPRINTF("Missing or old Minerva lib!\n");
+
+		if (h_cfg.errors & (ERR_LIBSYS_LP0 | ERR_LIBSYS_MTC))
+			WPRINTF("\nUpdate bootloader folder!\n\n");
+		*/
+
+		if (h_cfg.errors & ERR_EXCEPTION)
+		{
+			gfx_clearscreen();
+			WPRINTFARGS("LR %08X", *excp_lr);
+			u16 exception = TE_EXCEPTION_RESET;
+			/*
+			switch (*excp_type)
+			{
+			case EXCP_TYPE_RESET:
+				exception = TE_EXCEPTION_RESET;
+				break;
+			case EXCP_TYPE_UNDEF:
+				exception = TE_EXCEPTION_UNDEFINED;
+				break;
+			case EXCP_TYPE_PABRT:
+				exception = TE_EXCEPTION_PREF_ABORT;
+				break;
+			case EXCP_TYPE_DABRT:
+				exception = TE_EXCEPTION_DATA_ABORT;
+				break;
+			}*/
+
+			// Clear the exception.
+			*excp_enabled = 0;
+			DrawError(newErrCode(exception));
+		}
+	}
+}
+
 void ipl_main()
 {
 	// Do initial HW configuration. This is compatible with consecutive reruns without a reset.
@@ -211,6 +276,10 @@ void ipl_main()
 
 	//gfx_clearscreen();
 	//DrawError(newErrCode(1));
+
+	// TODO: Write exceptions in err.c and check them here
+
+	_show_errors();
 
 	EnterMainMenu();
 

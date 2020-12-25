@@ -14,7 +14,7 @@ char *CpyStr(const char* in){
 void MaskIn(char *mod, u32 bitstream, char mask){
     u32 len = strlen(mod);
     for (int i = 0; i < len; i++){
-        if (bitstream & 1)
+        if (!(bitstream & 1))
             *mod = mask;
         
         bitstream >>= 1;

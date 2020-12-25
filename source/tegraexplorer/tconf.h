@@ -2,7 +2,8 @@
 #include <utils/types.h>
 
 enum {
-    LOC_SD = 0,
+    LOC_None = 0,
+    LOC_SD,
     LOC_EMMC,
     LOC_EMUMMC
 };
@@ -24,14 +25,18 @@ typedef struct {
     char *srcCopy;
     union {
         struct {
-            u8 minervaEnabled:1;
-            u8 lastExplorerLoc:2;
-            u8 explorerCopyMode:2;
-            u8 currentlyMounted:2;
+            u16 minervaEnabled:1;
+            u16 curExplorerLoc:2;
+            u16 heldExplorerCopyLoc:2;
+            u16 explorerCopyMode:2;
+            u16 currentMMCMounted:2;
         };
-        u8 optionUnion;
+        u16 optionUnion;
     };
     // Add keys here
 } TConf_t;
 
 extern TConf_t TConf;
+
+void ResetCopyParams();
+void SetCopyParams(char *path, u8 mode);

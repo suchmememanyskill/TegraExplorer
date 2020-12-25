@@ -5,6 +5,8 @@
 #include "../hid/hid.h"
 #include <utils/util.h>
 #include <utils/btn.h>
+#include <utils/sprintf.h>
+#include <string.h>
 
 const char *sizeDefs[] = {
     "B ",
@@ -13,11 +15,11 @@ const char *sizeDefs[] = {
     "GB"
 };
 
-void _printEntry(MenuEntry_t entry, u32 maxLen, u8 highlighted){
+void _printEntry(MenuEntry_t entry, u32 maxLen, u8 highlighted, u32 bg){
     if (entry.hide)
         return;
 
-    (highlighted) ? SETCOLOR(COLOR_DEFAULT, FromRGBtoU32(entry.R, entry.G, entry.B)) : SETCOLOR(FromRGBtoU32(entry.R, entry.G, entry.B), COLOR_DEFAULT);
+    (highlighted) ? SETCOLOR(bg, FromRGBtoU32(entry.R, entry.G, entry.B)) : SETCOLOR(FromRGBtoU32(entry.R, entry.G, entry.B), bg);
     
     if (entry.icon){
         gfx_putc(entry.icon);
@@ -29,7 +31,7 @@ void _printEntry(MenuEntry_t entry, u32 maxLen, u8 highlighted){
     gfx_con_getpos(&curX, &curY);
     gfx_puts_limit(entry.name, maxLen - ((entry.showSize) ? 8 : 0));
     if (entry.showSize){
-        (highlighted) ? SETCOLOR(COLOR_DEFAULT, COLOR_BLUE) : SETCOLOR(COLOR_BLUE, COLOR_DEFAULT);
+        (highlighted) ? SETCOLOR(bg, COLOR_BLUE) : SETCOLOR(COLOR_BLUE, bg);
         gfx_con_setpos(curX + (maxLen - 6) * 16, curY);
         gfx_printf("%4d", entry.size);
         gfx_puts_small(sizeDefs[entry.sizeDef]);
@@ -58,10 +60,14 @@ int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 op
     u32 startX = 0, startY = 0;
     gfx_con_getpos(&startX, &startY);
 
+    u32 bgColor = (options & USELIGHTGREY) ? COLOR_DARKGREY : COLOR_DEFAULT;
+
+    /*
     if (options & ENABLEPAGECOUNT){
         screenLenY -= 2;
         startY += 32;
     }
+    */
 
     bool redrawScreen = true;
     Input_t *input = hidRead();
@@ -75,20 +81,22 @@ int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 op
         u32 lastDraw = get_tmr_ms();
         if (redrawScreen || options & ALWAYSREDRAW){
             if (options & ENABLEPAGECOUNT){
-                gfx_con_setpos(startX, startY - 32);
-                RESETCOLOR;
-                gfx_printf("Page %d / %d | Total %d entries  ", (selected / screenLenY) + 1, (vec->count / screenLenY) + 1, entryCount);
+                SETCOLOR(COLOR_DEFAULT, COLOR_WHITE);
+                char temp[40] = "";
+                sprintf(temp, " Page %d / %d | Total %d entries", (selected / screenLenY) + 1, (vec->count / screenLenY) + 1, entryCount);
+                gfx_con_setpos(YLEFT - strlen(temp) * 18, 0);
+                gfx_printf(temp);
             }
 
             gfx_con_setpos(startX, startY);
 
             if (redrawScreen)
-                gfx_boxGrey(startX, startY, startX + screenLenX * 16, startY + screenLenY * 16, 0x1B);
+                gfx_boxGrey(startX, startY, startX + screenLenX * 16, startY + screenLenY * 16, (options & USELIGHTGREY) ? 0x33 : 0x1B);
 
             int start = selected / screenLenY * screenLenY;
             for (int i = start; i < MIN(vec->count, start + screenLenY); i++){
                 gfx_con_setpos(startX, startY + ((i % screenLenY) * 16));
-                _printEntry(entries[i], screenLenX, (i == selected));
+                _printEntry(entries[i], screenLenX, (i == selected), bgColor);
             }
                 
         } 
@@ -96,9 +104,9 @@ int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 op
             u32 minLastCur = MIN(lastIndex, selected);
             u32 maxLastCur = MAX(lastIndex, selected);
             gfx_con_setpos(startX, startY + ((minLastCur % screenLenY) * 16));
-            _printEntry(entries[minLastCur], screenLenX, (minLastCur == selected));
+            _printEntry(entries[minLastCur], screenLenX, (minLastCur == selected), bgColor);
             gfx_con_setpos(startX, startY + ((maxLastCur % screenLenY) * 16));
-            _printEntry(entries[maxLastCur], screenLenX, (minLastCur != selected));
+            _printEntry(entries[maxLastCur], screenLenX, (minLastCur != selected), bgColor);
         }
 
         lastIndex = selected;
