@@ -23,6 +23,7 @@ const char *TEErrors[] = {
     [TE_EXCEPTION_UNDEFINED - 1] = "E Undefined",
     [TE_EXCEPTION_PREF_ABORT - 1] = "E Pref abort",
     [TE_EXCEPTION_DATA_ABORT - 1] = "E Data abort",
+    [TE_ERR_SAME_LOC - 1] = "Same copy location",
 };
 
 const char *GetErrStr(u32 err){
@@ -39,6 +40,9 @@ const char *GetErrStr(u32 err){
 #define leny 240
 
 void DrawError(ErrCode_t err){
+    if (err.err == 0)
+        return;
+        
     SETCOLOR(COLOR_ORANGE, COLOR_DARKGREY);
     gfx_box(lx, ly, lx + lenx, ly + leny, COLOR_ORANGE);
     gfx_boxGrey(lx + 16, ly + 16, lx + lenx - 16, ly + leny - 16, 0x33);

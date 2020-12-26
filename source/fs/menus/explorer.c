@@ -10,6 +10,10 @@
 #include <string.h>
 #include <mem/heap.h>
 #include "../../tegraexplorer/tconf.h"
+#include "../../err.h"
+#include "../fscopy.h"
+#include <libs/fatfs/ff.h>
+#include "../../hid/hid.h"
 
 MenuEntry_t topEntries[] = {
     {.optionUnion = COLORTORGB(COLOR_GREEN) | SKIPBIT},
@@ -39,7 +43,7 @@ void FileExplorer(char *path){
     int res = 0;
 
     while (1){
-        topEntries[2].optionUnion = COLORTORGB(((TConf.explorerCopyMode != CMODE_None) ? COLOR_ORANGE : COLOR_GREY)) | SKIPBIT;
+        topEntries[2].optionUnion = (TConf.explorerCopyMode != CMODE_None) ? (COLORTORGB(COLOR_ORANGE)) : (COLORTORGB(COLOR_GREY) | SKIPBIT);
 
         gfx_clearscreen();
         gfx_printf("Loading...\r");
@@ -67,7 +71,32 @@ void FileExplorer(char *path){
 
         char *oldPath = storedPath;
 
-        if (res < ARR_LEN(topEntries)) {
+        if (res == 2){
+            ErrCode_t res;
+            char *filename = CpyStr(strrchr(TConf.srcCopy, '/') + 1);
+            char *dst = CombinePaths(storedPath, filename);
+
+            if (!strcmp(TConf.srcCopy, dst))
+                res = newErrCode(TE_ERR_SAME_LOC);
+            else {
+                if (TConf.explorerCopyMode == CMODE_Move){
+                    if ((res.err = f_rename(TConf.srcCopy, dst)))
+                        res = newErrCode(res.err);
+                }
+                else {
+                    gfx_clearscreen();
+                    RESETCOLOR;
+                    gfx_printf("Hold vol+/- to cancel\nCopying %s... ", filename);
+                    res = FileCopy(TConf.srcCopy, dst, COPY_MODE_CANCEL | COPY_MODE_PRINT);
+                }
+            }
+            
+            DrawError(res);
+            free(dst);
+            free(filename);
+            ResetCopyParams();
+        }
+        else if (res < ARR_LEN(topEntries)) {
             if (!strcmp(storedPath, path)){
                 clearFileVector(&fileVec);
                 return;

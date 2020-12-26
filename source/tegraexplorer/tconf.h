@@ -39,4 +39,4 @@ typedef struct {
 extern TConf_t TConf;
 
 void ResetCopyParams();
-void SetCopyParams(char *path, u8 mode);
+void SetCopyParams(const char *path, u8 mode);

@@ -46,7 +46,7 @@ void CopyClipboard(char *path, FSEntry_t entry){
 
 void MoveClipboard(char *path, FSEntry_t entry){
     char *thing = CombinePaths(path, entry.name);
-    SetCopyParams(thing, CMODE_Copy);
+    SetCopyParams(thing, CMODE_Move);
     free(thing);
 }
 
@@ -56,33 +56,6 @@ MenuEntry_t DeleteEntries[] = {
 };
 
 void DeleteFile(char *path, FSEntry_t entry){
-    /*
-    u8 left = 0;
-    
-    while (1){
-        gfx_con_setpos(384 + 16, 200 + 16 + 9 * 16);
-        SETCOLOR(COLOR_RED, COLOR_DARKGREY);
-        gfx_printf("Are you sure?   ");
-
-        (left) ? SETCOLOR(COLOR_DARKGREY, COLOR_RED) : SETCOLOR(COLOR_RED, COLOR_DARKGREY);
-        gfx_printf("Yes");
-        RESETCOLOR;
-        gfx_printf("   ");
-        (!left) ? SETCOLOR(COLOR_DARKGREY, COLOR_YELLOW) : SETCOLOR(COLOR_YELLOW, COLOR_DARKGREY);
-        gfx_printf("No");
-
-        Input_t *input = hidWait();
-
-        if (input->a && left)
-            break;
-        else if (input->right)
-            left = 0;
-        else if (input->left)
-            left = 1;
-        else if (input->a || input->b)
-            return;
-    }
-    */
     gfx_con_setpos(384 + 16, 200 + 16 + 8 * 16);
     SETCOLOR(COLOR_RED, COLOR_DARKGREY);
     gfx_printf("Are you sure?      ");

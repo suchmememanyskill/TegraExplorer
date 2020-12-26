@@ -17,7 +17,7 @@ char *CombinePaths(const char *current, const char *add){
     return ret;
 }
 
-char *EscapeFolder(char *current){
+char *EscapeFolder(const char *current){
     char *ret;
     char *temp;
 

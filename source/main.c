@@ -194,8 +194,8 @@ static inline void _show_errors()
 		{
 			gfx_clearscreen();
 			WPRINTFARGS("LR %08X", *excp_lr);
-			u16 exception = TE_EXCEPTION_RESET;
-			/*
+			u32 exception = 0;
+
 			switch (*excp_type)
 			{
 			case EXCP_TYPE_RESET:
@@ -210,7 +210,7 @@ static inline void _show_errors()
 			case EXCP_TYPE_DABRT:
 				exception = TE_EXCEPTION_DATA_ABORT;
 				break;
-			}*/
+			}
 
 			// Clear the exception.
 			*excp_enabled = 0;
@@ -242,7 +242,7 @@ void ipl_main()
 	h_cfg.errors |= !sd_mount() ? ERR_SD_BOOT_EN : 0;
 
 	TConf.minervaEnabled = !minerva_init();
-	TConf.FSBuffSize = (TConf.minervaEnabled) ? 0x400000 : 0x10000;
+	TConf.FSBuffSize = (TConf.minervaEnabled) ? 0x800000 : 0x10000;
 
 	// Train DRAM and switch to max frequency.
 	if (TConf.minervaEnabled) //!TODO: Add Tegra210B01 support to minerva.
