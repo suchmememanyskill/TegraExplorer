@@ -18,18 +18,27 @@ void SetKeySlots(){
     }
 }
 
+LIST_INIT(curGpt);
+
 void disconnectMMC(){
     if (TConf.connectedMMCMounted)
         f_unmount("bis:");
-    TConf.connectedMMCMounted = 0;
-    emummc_storage_end(&emmc_storage);
+
+    if (TConf.currentMMCConnected != MMC_CONN_None){
+        TConf.connectedMMCMounted = 0;
+        TConf.currentMMCConnected = MMC_CONN_None;
+        emummc_storage_end(&emmc_storage);
+        nx_emmc_gpt_free(&curGpt);
+        list_empty(&curGpt);
+    }
 }
+
 
 int connectMMC(u8 mmcType){
     if (mmcType == TConf.currentMMCConnected)
         return 0;
 
-    //disconnectMMC();
+    disconnectMMC();
     emu_cfg.enabled = (mmcType == MMC_CONN_EMMC) ? 0 : 1;
     int res = emummc_storage_init_mmc(&emmc_storage, &emmc_sdmmc);
     if (!res)
@@ -39,8 +48,11 @@ int connectMMC(u8 mmcType){
 }
 
 ErrCode_t mountMMCPart(const char *partition){
+    if (TConf.connectedMMCMounted)
+        return newErrCode(0);
+
     emummc_storage_set_mmc_partition(&emmc_storage, 0);
-    LIST_INIT(curGpt);
+    
     nx_emmc_gpt_parse(&curGpt, &emmc_storage);
     emmc_part_t *system_part = nx_emmc_part_find(&curGpt, partition);
     if (!system_part)
@@ -52,7 +64,6 @@ ErrCode_t mountMMCPart(const char *partition){
     if ((res = f_mount(&emmc_fs, "bis:", 1)))
         return newErrCode(res);
 
-    nx_emmc_gpt_free(&curGpt);
     TConf.connectedMMCMounted = 1;
     return newErrCode(0);
 }
