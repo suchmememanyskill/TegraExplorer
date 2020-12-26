@@ -51,6 +51,7 @@
 #include <soc/pmc.h>
 #include "keys/keys.h"
 #include "keys/keyfile.h"
+#include "storage/mountmanager.h"
 
 
 hekate_config h_cfg;
@@ -296,6 +297,9 @@ void ipl_main()
 
 	if (res > 0)
 		DrawError(newErrCode(TE_ERR_KEYDUMP_FAIL));
+	
+	if (TConf.keysDumped)
+		SetKeySlots();
 	
 	if (res == 0)
 		hidWait();

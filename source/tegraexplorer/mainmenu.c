@@ -9,10 +9,12 @@
 #include <storage/nx_sd.h>
 #include "tconf.h"
 #include "../keys/keys.h"
+#include "../storage/mountmanager.h"
 
 MenuEntry_t mainMenuEntries[] = {
     {.R = 255, .G = 255, .B = 255, .skip = 1, .name = "-- Main Menu --"},
     {.G = 255, .name = "SD:/"},
+    {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "emmc:/SYSTEM"},
     {.B = 255, .G = 255, .name = "Test Controllers"},
     {.R = 255, .name = "Cause an exception"},
     {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "View dumped keys"},
@@ -28,6 +30,19 @@ void HandleSD(){
     }
     else
         FileExplorer("sd:/");
+}
+
+void HandleEMMC(){
+    if (connectMMC(MMC_CONN_EMMC))
+        return;
+    
+    ErrCode_t err = mountMMCPart("SYSTEM");
+    if (err.err){
+        DrawError(err);
+        return;
+    }
+    
+    FileExplorer("bis:/");
 }
 
 void CrashTE(){
@@ -48,12 +63,15 @@ void ViewKeys(){
     gfx_printf("\nSave mac key: ");
     PrintKey(dumpedKeys.save_mac_key, AES_128_KEY_SIZE);
 
+    gfx_printf("\n\nPkg1 ID: '%s', kb %d", TConf.pkg1ID, TConf.pkg1ver);
+
     hidWait();
 }
 
 menuPaths mainMenuPaths[] = {
     NULL,
     HandleSD,
+    HandleEMMC,
     TestControllers,
     CrashTE,
     ViewKeys,
@@ -62,7 +80,8 @@ menuPaths mainMenuPaths[] = {
 
 void EnterMainMenu(){
     while (1){
-        mainMenuEntries[4].hide = !TConf.keysDumped;
+        mainMenuEntries[2].hide = !TConf.keysDumped;
+        mainMenuEntries[5].hide = !TConf.keysDumped;
         FunctionMenuHandler(mainMenuEntries, ARR_LEN(mainMenuEntries), mainMenuPaths, ALWAYSREDRAW);
     }
 }

@@ -28,6 +28,7 @@
 #include <utils/util.h>
 #include "../gfx/gfx.h"
 #include "../tegraexplorer/tconf.h"
+#include "../storage/mountmanager.h"
 
 #include "key_sources.inl"
 
@@ -213,12 +214,16 @@ static bool _derive_tsec_keys(tsec_ctxt_t *tsec_ctxt, u32 kb, key_derivation_ctx
     return true;
 }
 
-static ALWAYS_INLINE u8 *_read_pkg1(sdmmc_t *sdmmc, const pkg1_id_t **pkg1_id) {
+static ALWAYS_INLINE u8 *_read_pkg1(const pkg1_id_t **pkg1_id) {
 
-    if (emummc_storage_init_mmc(&emmc_storage, sdmmc)) {
+    /*
+    if (emummc_storage_init_mmc(&emmc_storage, &emmc_sdmmc)) {
         DPRINTF("Unable to init MMC.");
         return NULL;
     }
+    */
+    if (connectMMC(MMC_CONN_EMMC))
+        return NULL;
 
     // Read package1.
     u8 *pkg1 = (u8 *)malloc(PKG1_MAX_SIZE);
@@ -248,13 +253,14 @@ int DumpKeys(){
     if (h_cfg.t210b01) // i'm not even attempting to dump on mariko
         return 2;
 
-    sdmmc_t sdmmc;
-
     const pkg1_id_t *pkg1_id;
-    u8 *pkg1 = _read_pkg1(&sdmmc, &pkg1_id);
+    u8 *pkg1 = _read_pkg1(&pkg1_id);
     if (!pkg1) {
         return 1;
     }
+
+    TConf.pkg1ID = pkg1_id->id;
+    TConf.pkg1ver = (u8)pkg1_id->kb;
 
     bool res = true;
 
@@ -271,13 +277,13 @@ int DumpKeys(){
         return 1;
     _derive_bis_keys(&dumpedKeys);
     _derive_misc_keys(&dumpedKeys);
+    
+
     return 0;
 }
 
 void PrintKey(u8 *key, u32 len){
-    //gfx_con.fntsz = 8;
     for (int i = 0; i < len; i++){
         gfx_printf("%02x", key[i]);
     }
-    gfx_con.fntsz = 16;
 }

@@ -15,26 +15,23 @@ enum {
     CMODE_Move
 };
 
-enum {
-    M_None = 0,
-    M_EMMC,
-    M_EMUMMC
-};
-
 typedef struct {
     u32 FSBuffSize;
     char *srcCopy;
     union {
         struct {
             u16 minervaEnabled:1;
+            u16 keysDumped:1;
             u16 curExplorerLoc:2;
             u16 heldExplorerCopyLoc:2;
             u16 explorerCopyMode:2;
-            u16 currentMMCMounted:2;
-            u16 keysDumped:1;
+            u16 currentMMCConnected:2;
+            u16 connectedMMCMounted:1;
         };
         u16 optionUnion;
     };
+    const char *pkg1ID;
+    u8 pkg1ver;
 } TConf_t;
 
 extern TConf_t TConf;
