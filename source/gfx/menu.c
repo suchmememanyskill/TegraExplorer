@@ -7,6 +7,7 @@
 #include <utils/btn.h>
 #include <utils/sprintf.h>
 #include <string.h>
+#include <mem/minerva.h>
 
 const char *sizeDefs[] = {
     "B ",
@@ -90,15 +91,19 @@ int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 op
 
             gfx_con_setpos(startX, startY);
 
-            if (redrawScreen)
+            if (redrawScreen){
+                minerva_periodic_training();
                 gfx_boxGrey(startX, startY, startX + screenLenX * 16, startY + screenLenY * 16, (options & USELIGHTGREY) ? 0x33 : 0x1B);
-
-            int start = selected / screenLenY * screenLenY;
-            for (int i = start; i < MIN(vec->count, start + screenLenY); i++){
-                gfx_con_setpos(startX, startY + ((i % screenLenY) * 16));
-                _printEntry(entries[i], screenLenX, (i == selected), bgColor);
             }
                 
+
+            int start = selected / screenLenY * screenLenY;
+            gfx_con_setpos(startX, startY);
+            gfx_printf("%b", startX);
+            for (int i = start; i < MIN(vec->count, start + screenLenY); i++){
+                _printEntry(entries[i], screenLenX, (i == selected), bgColor);
+            }
+            gfx_printf("%b", 0);
         } 
         else if (lastIndex != selected) {
             u32 minLastCur = MIN(lastIndex, selected);

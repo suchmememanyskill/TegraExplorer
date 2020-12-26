@@ -1,5 +1,6 @@
 #pragma once
 #include <utils/types.h>
+#include "../keys/keys.h"
 
 enum {
     LOC_None = 0,
@@ -30,10 +31,10 @@ typedef struct {
             u16 heldExplorerCopyLoc:2;
             u16 explorerCopyMode:2;
             u16 currentMMCMounted:2;
+            u16 keysDumped:1;
         };
         u16 optionUnion;
     };
-    // Add keys here
 } TConf_t;
 
 extern TConf_t TConf;

@@ -49,6 +49,8 @@
 #include "tegraexplorer/tconf.h"
 #include "err.h"
 #include <soc/pmc.h>
+#include "keys/keys.h"
+#include "keys/keyfile.h"
 
 
 hekate_config h_cfg;
@@ -266,6 +268,7 @@ void ipl_main()
 	// Ignore whether emummc is enabled.
 	h_cfg.emummc_force_disable = emu_cfg.sector == 0 && !emu_cfg.path;
 	emu_cfg.enabled = !h_cfg.emummc_force_disable;
+	h_cfg.emummc_force_disable = 1;
 
 
 	hidInit();
@@ -281,6 +284,21 @@ void ipl_main()
 
 	_show_errors();
 
+	gfx_clearscreen();
+
+	int res = -1;
+
+	
+	if (DumpKeys() || btn_read() & BTN_VOL_DOWN)
+		res = GetKeysFromFile("sd:/switch/prod.keys");
+
+	TConf.keysDumped = (res > 0) ? 0 : 1;
+
+	if (res > 0)
+		DrawError(newErrCode(TE_ERR_KEYDUMP_FAIL));
+	
+	if (res == 0)
+		hidWait();
 	EnterMainMenu();
 
 	// Halt BPMP if we managed to get out of execution.

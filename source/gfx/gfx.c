@@ -371,14 +371,13 @@ static void _gfx_putn(u32 v, int base, char fill, int fcnt)
 
 	if (fill != 0)
 	{
-		gfx_con.y -= c * 16;
-		/*
-		while (c > 0)
+		if (fill == ' ')
+			gfx_con.y -= c * 16;
+		else while (c > 0)
 		{
 			*--p = fill;
 			c--;
 		}
-		*/
 	}
 
 	gfx_puts(p);

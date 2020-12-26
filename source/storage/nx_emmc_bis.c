@@ -302,6 +302,7 @@ int nx_emmc_bis_write(u32 sector, u32 count, void *buff)
 		buf += NX_EMMC_BLOCKSIZE * sct_cnt;
 	}
 
+	nx_emmc_bis_finalize();
 	return res;
 }
 
