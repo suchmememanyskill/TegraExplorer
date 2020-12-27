@@ -1,5 +1,6 @@
 #pragma once
 #include <utils/types.h>
+#include <utils/list.h>
 #include "../err.h"
 
 enum {
@@ -11,3 +12,5 @@ enum {
 int connectMMC(u8 mmcType);
 ErrCode_t mountMMCPart(const char *partition);
 void SetKeySlots();
+void unmountMMCPart();
+link_t *GetCurGPT();

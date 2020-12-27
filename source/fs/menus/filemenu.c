@@ -18,9 +18,9 @@ MenuEntry_t FileMenuEntries[] = {
     {.optionUnion = COLORTORGB(COLOR_VIOLET) | SKIPBIT}, // For the file Attribs
     {.optionUnion = HIDEBIT},
     {.optionUnion = COLORTORGB(COLOR_WHITE), .name = "<- Back"},
-    {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Copy to clipboard"},
+    {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "\nCopy to clipboard"},
     {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Move to clipboard"},
-    {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Rename file"},
+    {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Rename file\n"},
     {.optionUnion = COLORTORGB(COLOR_RED), .name = "Delete file"},
     {.optionUnion = COLORTORGB(COLOR_GREEN), .name = "View hex"},
     {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "Launch Payload"},
@@ -56,7 +56,7 @@ MenuEntry_t DeleteEntries[] = {
 };
 
 void DeleteFile(char *path, FSEntry_t entry){
-    gfx_con_setpos(384 + 16, 200 + 16 + 8 * 16);
+    gfx_con_setpos(384 + 16, 200 + 16 + 10 * 16);
     SETCOLOR(COLOR_RED, COLOR_DARKGREY);
     gfx_printf("Are you sure?      ");
 
@@ -82,10 +82,10 @@ menuPaths FileMenuPaths[] = {
 
 void FileMenu(char *path, FSEntry_t entry){
     FileMenuEntries[1].name = entry.name;
-    FileMenuEntries[1].sizeUnion = entry.sizeUnion;
-    char attribs[15];
+    FileMenuEntries[0].sizeUnion = entry.sizeUnion;
+    char attribs[16];
     char *attribList = GetFileAttribs(entry);
-    sprintf(attribs, "Attribs:%s", attribList);
+    sprintf(attribs, "Attribs:%s\n", attribList);
     free(attribList);
     FileMenuEntries[2].name = attribs;
 

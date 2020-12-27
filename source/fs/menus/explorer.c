@@ -17,7 +17,7 @@
 
 MenuEntry_t topEntries[] = {
     {.optionUnion = COLORTORGB(COLOR_GREEN) | SKIPBIT},
-    {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "Back"},
+    {.optionUnion = COLORTORGB(COLOR_ORANGE)},
     {.optionUnion = COLORTORGB(COLOR_GREY) | SKIPBIT, .name = "Clipboard -> Current folder"},
     {.optionUnion = COLORTORGB(COLOR_GREY) | SKIPBIT, .name = "Current folder options"}
 };
@@ -44,6 +44,7 @@ void FileExplorer(char *path){
 
     while (1){
         topEntries[2].optionUnion = (TConf.explorerCopyMode != CMODE_None) ? (COLORTORGB(COLOR_ORANGE)) : (COLORTORGB(COLOR_GREY) | SKIPBIT);
+        topEntries[1].name = (!strcmp(storedPath, path)) ? "<- Exit explorer" : "<- Folder back";
 
         gfx_clearscreen();
         gfx_printf("Loading...\r");

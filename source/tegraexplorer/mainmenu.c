@@ -10,11 +10,14 @@
 #include "tconf.h"
 #include "../keys/keys.h"
 #include "../storage/mountmanager.h"
+#include "../storage/gptmenu.h"
+#include "../storage/emummc.h"
 
 MenuEntry_t mainMenuEntries[] = {
     {.R = 255, .G = 255, .B = 255, .skip = 1, .name = "-- Main Menu --"},
     {.G = 255, .name = "SD:/"},
-    {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "emmc:/SYSTEM"},
+    {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "Emmc"},
+    {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "Emummc"},
     {.B = 255, .G = 255, .name = "Test Controllers"},
     {.R = 255, .name = "Cause an exception"},
     {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "View dumped keys"},
@@ -33,16 +36,11 @@ void HandleSD(){
 }
 
 void HandleEMMC(){
-    if (connectMMC(MMC_CONN_EMMC))
-        return;
-    
-    ErrCode_t err = mountMMCPart("SYSTEM");
-    if (err.err){
-        DrawError(err);
-        return;
-    }
-    
-    FileExplorer("bis:/");
+   GptMenu(MMC_CONN_EMMC);
+}
+
+void HandleEMUMMC(){
+    GptMenu(MMC_CONN_EMUMMC);
 }
 
 void CrashTE(){
@@ -72,6 +70,7 @@ menuPaths mainMenuPaths[] = {
     NULL,
     HandleSD,
     HandleEMMC,
+    HandleEMUMMC,
     TestControllers,
     CrashTE,
     ViewKeys,
@@ -81,7 +80,8 @@ menuPaths mainMenuPaths[] = {
 void EnterMainMenu(){
     while (1){
         mainMenuEntries[2].hide = !TConf.keysDumped;
-        mainMenuEntries[5].hide = !TConf.keysDumped;
+        mainMenuEntries[3].hide = (!TConf.keysDumped || !emu_cfg.enabled);
+        mainMenuEntries[6].hide = !TConf.keysDumped;
         FunctionMenuHandler(mainMenuEntries, ARR_LEN(mainMenuEntries), mainMenuPaths, ALWAYSREDRAW);
     }
 }
