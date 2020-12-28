@@ -167,15 +167,21 @@ void FormatSD(){
 
 	emummc = !(res - 1);
 	
+	SETCOLOR(COLOR_RED, COLOR_DEFAULT);
+
 	plist[0] = sd_storage.csd.capacity;
 	if (emummc){
+		if (plist[0] < 83886080){
+            gfx_printf("\n\nYou seem to be running this on a 32GB or smaller SD\nNot enough free space for emummc!");
+			hidWait();
+			return;
+        }
 		plist[0] -= 61145088;
 		u32 allignedSectors = plist[0] - plist[0] % 2048;
 		plist[1] = 61145088 + plist[0] % 2048;
 		plist[0] = allignedSectors;
 	}
 
-	SETCOLOR(COLOR_RED, COLOR_DEFAULT);
 	gfx_printf("\n\nAre you sure you want to format your sd?\nThis will delete everything on your SD card!\nThis action is irreversible!\n\n");
 	WaitFor(1500);
 
