@@ -70,6 +70,13 @@ scriptFunction(funcMakeByteArray){
 	return newVar(ByteArrayType, 1, .vectorType = v);
 }
 
+scriptFunction(funcSetPixel){
+	u32 color = 0xFF000000 | ((vars[2].integerType & 0xFF) << 16) | ((vars[3].integerType & 0xFF) << 8) | (vars[4].integerType & 0xFF);
+	gfx_set_pixel_horz(vars[0].integerType, vars[1].integerType, color);
+	return NullVar;
+}
+
+u8 fiveInts[] = {IntType, IntType, IntType, IntType, IntType};
 u8 singleIntArray[] = { IntArrayType };
 u8 singleInt[] = { IntType };
 u8 singleAny[] = { varArgs };
@@ -82,6 +89,7 @@ functionStruct_t scriptFunctions[] = {
 	{"else", funcElse, 0, NULL},
 	{"len", funcLen, 1, singleAny},
 	{"byte", funcMakeByteArray, 1, singleIntArray},
+	{"setPixel", funcSetPixel, 5, fiveInts},
 };
 
 Variable_t executeFunction(scriptCtx_t* ctx, char* func_name, lexarToken_t *start, u32 len) {

@@ -71,6 +71,7 @@ void gfx_puts_limit(const char *s, u32 limit);
 void gfx_puts_small(const char *s);
 
 void gfx_set_pixel(u32 x, u32 y, u32 color);
+void gfx_set_pixel_horz(int x, int y, u32 color);
 void gfx_line(int x0, int y0, int x1, int y1, u32 color);
 void gfx_put_small_sep();
 void gfx_put_big_sep();

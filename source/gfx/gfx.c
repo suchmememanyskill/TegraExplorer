@@ -595,6 +595,10 @@ void gfx_set_pixel(u32 x, u32 y, u32 color)
 	gfx_ctxt.fb[x + y * gfx_ctxt.stride] = color;
 }
 
+void gfx_set_pixel_horz(int x, int y, u32 color) {
+	*(gfx_ctxt.fb + (YLEFT - x) * gfx_ctxt.stride + y) = color;
+}
+
 void gfx_line(int x0, int y0, int x1, int y1, u32 color)
 {
 	int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
