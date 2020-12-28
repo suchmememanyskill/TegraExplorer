@@ -14,3 +14,4 @@ ErrCode_t mountMMCPart(const char *partition);
 void SetKeySlots();
 void unmountMMCPart();
 link_t *GetCurGPT();
+void disconnectMMC();

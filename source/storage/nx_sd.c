@@ -22,7 +22,7 @@
 #include <libs/fatfs/ff.h>
 #include <mem/heap.h>
 
-static bool sd_mounted = false;
+bool sd_mounted = false;
 static u16  sd_errors[3] = { 0 }; // Init and Read/Write errors.
 static u32  sd_mode = SD_UHS_SDR82;
 
@@ -130,12 +130,15 @@ bool sd_initialize(bool power_cycle)
 	return false;
 }
 
+bool is_sd_inited = false;
+
 bool sd_mount()
 {
 	if (sd_mounted)
 		return true;
 
 	int res = !sd_initialize(false);
+	is_sd_inited = !res;
 
 	if (res)
 	{

@@ -45,9 +45,9 @@ int MakeHorizontalMenu(MenuEntry_t *entries, int len, int spacesBetween, u32 bg)
             return highlight;
         else if (input->b)
             return 0;
-        else if (input->left && highlight > 0)
+        else if ((input->left || input->down) && highlight > 0)
             highlight--;
-        else if (input->right && highlight < len - 1)
+        else if ((input->right || input->up) && highlight < len - 1)
             highlight++;
     }
 }

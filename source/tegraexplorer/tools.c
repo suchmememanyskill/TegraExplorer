@@ -17,6 +17,7 @@
 #include "../fs/readers/folderReader.h"
 #include <string.h>
 #include "../fs/fscopy.h"
+#include "../utils/utils.h"
 
 void TestControllers(){
     gfx_clearscreen();
@@ -136,5 +137,80 @@ void DumpSysFw(){
 
 	gfx_printf("\n\nDone! Time taken: %ds\nPress any key to exit", get_tmr_s() - timer);
 	free(baseSdPath);
+	hidWait();
+}
+
+extern sdmmc_storage_t sd_storage;
+extern bool is_sd_inited;
+
+MenuEntry_t FatAndEmu[] = {
+	{.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "Back to main menu"},
+	{.optionUnion = COLORTORGB(COLOR_GREEN), .name = "Fat32 + EmuMMC"},
+	{.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Only Fat32"}
+};
+
+void FormatSD(){
+	gfx_clearscreen();
+	disconnectMMC();
+	DWORD plist[] = {0,0,0,0};
+	bool emummc = 0;
+	int res;
+
+	if (!is_sd_inited || sd_get_card_removed())
+		return;
+
+	gfx_printf("\nDo you want to partition for an emummc?\n");
+	res = MakeHorizontalMenu(FatAndEmu, ARR_LEN(FatAndEmu), 3, COLOR_DEFAULT);
+	
+	if (!res)
+		return;
+
+	emummc = !(res - 1);
+	
+	plist[0] = sd_storage.csd.capacity;
+	if (emummc){
+		plist[0] -= 61145088;
+		u32 allignedSectors = plist[0] - plist[0] % 2048;
+		plist[1] = 61145088 + plist[0] % 2048;
+		plist[0] = allignedSectors;
+	}
+
+	SETCOLOR(COLOR_RED, COLOR_DEFAULT);
+	gfx_printf("\n\nAre you sure you want to format your sd?\nThis will delete everything on your SD card!\nThis action is irreversible!\n\n");
+	WaitFor(1500);
+
+	gfx_printf("%kAre you sure?   ", COLOR_WHITE);
+	if (!MakeYesNoHorzMenu(3, COLOR_DEFAULT)){
+		return;
+	}
+
+	RESETCOLOR;
+
+	gfx_printf("\n\nStarting Partitioning & Formatting\n");
+
+	for (int i = 0; i < 2; i++){
+		gfx_printf("Part %d: %dKiB\n", i + 1, plist[i] / 2);
+	}
+
+	u8 *work = malloc(TConf.FSBuffSize);
+	res = f_fdisk_mod(0, plist, work);
+
+	if (!res){
+		res = f_mkfs("sd:", FM_FAT32, 32768, work, TConf.FSBuffSize);
+	}
+
+	sd_unmount();
+
+	if (res){
+		DrawError(newErrCode(res));
+		gfx_clearscreen();
+		gfx_printf("Something went wrong\nPress any key to exit");
+	}
+	else {
+		sd_mount();
+		gfx_printf("\nDone!\nPress any key to exit");
+	}
+
+	free(work);
 	hidWait();
 }

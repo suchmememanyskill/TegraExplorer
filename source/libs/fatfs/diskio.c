@@ -98,11 +98,39 @@ DRESULT disk_write (
 /*-----------------------------------------------------------------------*/
 /* Miscellaneous Functions                                               */
 /*-----------------------------------------------------------------------*/
+static u32 part_rsvd_size = 0;
 DRESULT disk_ioctl (
-	BYTE pdrv,		/* Physical drive number (0..) */
+	BYTE pdrv,		/* Physical drive nmuber (0..) */
 	BYTE cmd,		/* Control code */
 	void *buff		/* Buffer to send/receive control data */
 )
 {
+	DWORD *buf = (DWORD *)buff;
+
+	if (pdrv == DRIVE_SD)
+	{
+		switch (cmd)
+		{
+		case GET_SECTOR_COUNT:
+			*buf = sd_storage.sec_cnt - part_rsvd_size;
+			break;
+		case GET_BLOCK_SIZE:
+			*buf = 32768; // Align to 16MB.
+			break;
+		}
+	}
+	else if (pdrv == DRIVE_RAM)
+	{
+		switch (cmd)
+		{
+		case GET_SECTOR_COUNT:
+			*buf = RAM_DISK_SZ >> 9; // 1GB.
+			break;
+		case GET_BLOCK_SIZE:
+			*buf = 2048; // Align to 1MB.
+			break;
+		}
+	}
+
 	return RES_OK;
 }

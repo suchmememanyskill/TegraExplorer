@@ -12,6 +12,7 @@
 #include "../storage/mountmanager.h"
 #include "../storage/gptmenu.h"
 #include "../storage/emummc.h"
+#include <utils/util.h>
 
 MenuEntry_t mainMenuEntries[] = {
     {.R = 255, .G = 255, .B = 255, .skip = 1, .name = "-- Main Menu --"},
@@ -20,15 +21,18 @@ MenuEntry_t mainMenuEntries[] = {
     {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "Emummc"},
     {.B = 255, .G = 255, .name = "Test Controllers"},
     {.R = 255, .name = "Cause an exception"},
+    {.R = 255, .name = "Partition the sd"},
     {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Dump Firmware"},
     {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "View dumped keys"},
-    {.R = 255, .name = "Reboot to payload"}
+    {.optionUnion = COLORTORGB(COLOR_ORANGE)},
+    {.R = 255, .name = "Reboot to payload"},
+    {.R = 255, .name = "Reboot to RCM"}
 };
 
 void HandleSD(){
     gfx_clearscreen();
     TConf.curExplorerLoc = LOC_SD;
-    if (!sd_mount()){
+    if (!sd_mount() || sd_get_card_removed()){
         gfx_printf("Sd is not mounted!");
         hidWait();
     }
@@ -67,6 +71,12 @@ void ViewKeys(){
     hidWait();
 }
 
+extern bool sd_mounted;
+
+void MountOrUnmountSD(){
+    (sd_mounted) ? sd_unmount() : sd_mount();
+}
+
 menuPaths mainMenuPaths[] = {
     NULL,
     HandleSD,
@@ -74,16 +84,24 @@ menuPaths mainMenuPaths[] = {
     HandleEMUMMC,
     TestControllers,
     CrashTE,
+    FormatSD,
     DumpSysFw,
     ViewKeys,
-    RebootToPayload
+    MountOrUnmountSD,
+    RebootToPayload,
+    reboot_rcm
 };
 
 void EnterMainMenu(){
     while (1){
+        if (sd_get_card_removed())
+            sd_unmount();
+
+        mainMenuEntries[1].hide = !sd_mounted;
         mainMenuEntries[2].hide = !TConf.keysDumped;
-        mainMenuEntries[3].hide = (!TConf.keysDumped || !emu_cfg.enabled);
-        mainMenuEntries[6].hide = !TConf.keysDumped;
+        mainMenuEntries[3].hide = (!TConf.keysDumped || !emu_cfg.enabled || !sd_mounted);
+        mainMenuEntries[7].hide = !TConf.keysDumped;
+        mainMenuEntries[9].name = (sd_mounted) ? "Unmount SD" : "Mount SD";
         FunctionMenuHandler(mainMenuEntries, ARR_LEN(mainMenuEntries), mainMenuPaths, ALWAYSREDRAW);
     }
 }

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <utils/types.h>
 #include <mem/heap.h>
+#include <utils/util.h>
 
 char *CpyStr(const char* in){
     int len = strlen(in);
@@ -29,4 +30,9 @@ bool StrEndsWith(char *begin, char *end){
         return !strcmp(begin, end);
 
     return 0;
+}
+
+void WaitFor(u32 ms){
+    u32 a = get_tmr_ms();
+    while (a + ms > get_tmr_ms());
 }
