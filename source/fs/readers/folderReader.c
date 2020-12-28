@@ -1,19 +1,27 @@
 #include "folderReader.h"
 #include <libs/fatfs/ff.h>
 #include "../../utils/utils.h"
+#include <mem/heap.h>
 
-Vector_t /* of type FSEntry_t */ ReadFolder(char *path){
+void clearFileVector(Vector_t *v){
+    vecPDefArray(FSEntry_t*, entries, v);
+    for (int i = 0; i < v->count; i++)
+        free(entries[i].name);
+    
+    free(v->data);
+}
+
+Vector_t /* of type FSEntry_t */ ReadFolder(char *path, int *res){
     Vector_t out = newVec(sizeof(FSEntry_t), 16); // we may want to prealloc with the same size as the folder
     DIR dir;
     FILINFO fno;
-    int res;
 
-    if ((res = f_opendir(&dir, path))){
+    if ((*res = f_opendir(&dir, path))){
         // Err!
         return out;
     }
 
-    while (!f_readdir(&dir, &fno) && fno.fname[0]) {
+    while (!(*res = f_readdir(&dir, &fno)) && fno.fname[0]) {
         FSEntry_t newEntry = {.optionUnion = fno.fattrib, .name = CpyStr(fno.fname)};
 
         if (!newEntry.isDir){

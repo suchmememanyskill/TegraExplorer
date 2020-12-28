@@ -20,6 +20,7 @@ MenuEntry_t mainMenuEntries[] = {
     {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "Emummc"},
     {.B = 255, .G = 255, .name = "Test Controllers"},
     {.R = 255, .name = "Cause an exception"},
+    {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Dump Firmware"},
     {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "View dumped keys"},
     {.R = 255, .name = "Reboot to payload"}
 };
@@ -73,6 +74,7 @@ menuPaths mainMenuPaths[] = {
     HandleEMUMMC,
     TestControllers,
     CrashTE,
+    DumpSysFw,
     ViewKeys,
     RebootToPayload
 };

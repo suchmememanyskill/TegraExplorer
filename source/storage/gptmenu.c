@@ -82,6 +82,7 @@ void GptMenu(u8 MMCType){
             else {
                 if (TConf.curExplorerLoc > LOC_SD)
                     ResetCopyParams();
+                    
                 TConf.curExplorerLoc = LOC_EMMC;
                 FileExplorer("bis:/");
             }

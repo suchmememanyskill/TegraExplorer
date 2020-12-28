@@ -4048,7 +4048,8 @@ FRESULT f_write (
 				}
 				if (clst == 0) {
 					EFSPRINTF("DSKFULL");
-					break;		/* Could not allocate a new cluster (disk full) */
+					fp->flag |= FA_MODIFIED;
+					ABORT(fs, FR_DISK_ERR); /* Could not allocate a new cluster (disk full) */
 				}
 				if (clst == 1) {
 					EFSPRINTF("CCHK");

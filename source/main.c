@@ -271,6 +271,7 @@ void ipl_main()
 	emu_cfg.enabled = !h_cfg.emummc_force_disable;
 	h_cfg.emummc_force_disable = 1;
 
+	TConf.pkg1ID = "Unk";
 
 	hidInit();
 
@@ -290,7 +291,7 @@ void ipl_main()
 	int res = -1;
 
 	
-	if (DumpKeys() || btn_read() & BTN_VOL_DOWN)
+	if (btn_read() & BTN_VOL_DOWN || DumpKeys())
 		res = GetKeysFromFile("sd:/switch/prod.keys");
 
 	TConf.keysDumped = (res > 0) ? 0 : 1;

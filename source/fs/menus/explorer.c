@@ -30,13 +30,7 @@ MenuEntry_t MakeMenuOutFSEntry(FSEntry_t entry){
     return out;
 }
 
-void clearFileVector(Vector_t *v){
-    vecPDefArray(FSEntry_t*, entries, v);
-    for (int i = 0; i < v->count; i++)
-        free(entries[i].name);
-    
-    free(v->data);
-}
+
 
 void FileExplorer(char *path){
     char *storedPath = CpyStr(path);
@@ -48,8 +42,15 @@ void FileExplorer(char *path){
 
         gfx_clearscreen();
         gfx_printf("Loading...\r");
-        //gfx_printf("          ");
-        Vector_t fileVec = ReadFolder(storedPath);
+
+        int readRes = 0;
+        Vector_t fileVec = ReadFolder(storedPath, &readRes);
+        if (readRes){
+            clearFileVector(&fileVec);
+            DrawError(newErrCode(readRes));
+            return;
+        }
+
         vecDefArray(FSEntry_t*, fsEntries, fileVec);
         
         topEntries[0].name = storedPath;

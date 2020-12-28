@@ -19,6 +19,15 @@ void gfx_clearscreen(){
     RESETCOLOR;
 }
 
+MenuEntry_t YesNoEntries[] = {
+    {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "No"},
+    {.R = 255, .name = "Yes"}
+};
+
+int MakeYesNoHorzMenu(int spacesBetween, u32 bg){
+    return MakeHorizontalMenu(YesNoEntries, ARR_LEN(YesNoEntries), spacesBetween, bg);
+}
+
 int MakeHorizontalMenu(MenuEntry_t *entries, int len, int spacesBetween, u32 bg){
     u32 initialX = 0, initialY = 0;
     u32 highlight = 0;

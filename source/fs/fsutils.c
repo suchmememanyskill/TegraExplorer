@@ -43,3 +43,12 @@ char *GetFileAttribs(FSEntry_t entry){
     MaskIn(ret, entry.optionUnion, '-');
     return ret;
 }
+
+bool FileExists(char* path){
+    FRESULT fr;
+    FILINFO fno;
+
+    fr = f_stat(path, &fno);
+
+    return !(fr & FR_NO_FILE);
+}

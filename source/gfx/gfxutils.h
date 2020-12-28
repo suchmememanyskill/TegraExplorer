@@ -15,3 +15,4 @@
 
 void gfx_clearscreen();
 int MakeHorizontalMenu(MenuEntry_t *entries, int len, int spacesBetween, u32 bg);
+int MakeYesNoHorzMenu(int spacesBetween, u32 bg);

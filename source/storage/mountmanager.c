@@ -18,6 +18,10 @@ void SetKeySlots(){
         se_aes_key_set(3, dumpedKeys.bis_key[1] + AES_128_KEY_SIZE, AES_128_KEY_SIZE);
         se_aes_key_set(4, dumpedKeys.bis_key[2], AES_128_KEY_SIZE);
         se_aes_key_set(5, dumpedKeys.bis_key[2] + AES_128_KEY_SIZE, AES_128_KEY_SIZE);
+
+        // Not for bis but whatever
+        se_aes_key_set(6, dumpedKeys.header_key + 0x00, 0x10);
+        se_aes_key_set(7, dumpedKeys.header_key + 0x10, 0x10);
     }
 }
 

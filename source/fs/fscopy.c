@@ -13,6 +13,7 @@ ErrCode_t FileCopy(const char *locin, const char *locout, u8 options){
     u64 sizeRemaining, toCopy;
     u8 *buff;
     u32 x, y;
+    ErrCode_t err = newErrCode(0);
     int res = 0;
 
     gfx_con_getpos(&x, &y);
@@ -47,11 +48,13 @@ ErrCode_t FileCopy(const char *locin, const char *locout, u8 options){
         toCopy = MIN(sizeRemaining, TConf.FSBuffSize);
 
         if ((res = f_read(&in, buff, toCopy, NULL))){
-            return newErrCode(res);
+            err = newErrCode(res);
+            break;
         }
             
         if ((res = f_write(&out, buff, toCopy, NULL))){
-            return newErrCode(res);
+            err = newErrCode(res);
+            break;
         }
 
         sizeRemaining -= toCopy;
@@ -74,5 +77,5 @@ ErrCode_t FileCopy(const char *locin, const char *locout, u8 options){
     f_chmod(locout, in_info.fattrib, 0x3A);
 
     //f_stat(locin, &in_info); //somehow stops fatfs from being weird
-    return newErrCode(0);
+    return err;
 }

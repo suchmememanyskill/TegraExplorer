@@ -2,3 +2,4 @@
 
 void RebootToPayload();
 void TestControllers();
+void DumpSysFw();

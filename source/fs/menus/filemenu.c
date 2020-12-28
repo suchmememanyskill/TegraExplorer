@@ -10,6 +10,7 @@
 #include "../../hid/hid.h"
 #include <libs/fatfs/ff.h>
 #include "../../utils/utils.h"
+#include "../../keys/nca.h"
 
 MenuEntry_t FileMenuEntries[] = {
     // Still have to think up the options
@@ -50,17 +51,12 @@ void MoveClipboard(char *path, FSEntry_t entry){
     free(thing);
 }
 
-MenuEntry_t DeleteEntries[] = {
-    {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "No"},
-    {.R = 255, .name = "Yes"}
-};
-
 void DeleteFile(char *path, FSEntry_t entry){
     gfx_con_setpos(384 + 16, 200 + 16 + 10 * 16);
     SETCOLOR(COLOR_RED, COLOR_DARKGREY);
     gfx_printf("Are you sure?      ");
 
-    if (!MakeHorizontalMenu(DeleteEntries, 2, 3, COLOR_DARKGREY))
+    if (!MakeYesNoHorzMenu(3, COLOR_DARKGREY))
         return;
 
     char *thing = CombinePaths(path, entry.name);
