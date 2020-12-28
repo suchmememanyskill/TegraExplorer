@@ -11,6 +11,10 @@
 #include <libs/fatfs/ff.h>
 #include "../../utils/utils.h"
 #include "../../keys/nca.h"
+#include "../../script/lexer.h"
+#include "../../script/parser.h"
+#include "../../script/variables.h"
+#include <storage/nx_sd.h>
 
 MenuEntry_t FileMenuEntries[] = {
     // Still have to think up the options
@@ -66,6 +70,27 @@ void DeleteFile(char *path, FSEntry_t entry){
     free(thing);
 }
 
+void RunScript(char *path, FSEntry_t entry){
+    char *thing = CombinePaths(path, entry.name);
+    u32 size;
+    char *script = sd_file_read(thing, &size);
+    free(thing);
+    if (!script)
+        return;
+
+    gfx_clearscreen();
+    scriptCtx_t ctx = createScriptCtx();
+    ctx.script = runLexar(script, size);
+    free(script);
+
+    printError(mainLoop(&ctx));
+
+    freeVariableVector(&ctx.varDict);
+    lexarVectorClear(&ctx.script);
+    gfx_printf("\nend of script");
+    hidWait();
+}
+
 menuPaths FileMenuPaths[] = {
     CopyClipboard,
     MoveClipboard,
@@ -73,7 +98,7 @@ menuPaths FileMenuPaths[] = {
     DeleteFile,
     UnimplementedException,
     LaunchPayload,
-    UnimplementedException
+    RunScript
 };
 
 void FileMenu(char *path, FSEntry_t entry){

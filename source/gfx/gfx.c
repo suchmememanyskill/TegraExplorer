@@ -244,6 +244,8 @@ void gfx_putc(char c)
 			if (gfx_con.y < 16){
 				gfx_con.y = YLeftConfig;
 				gfx_con.x += 16;
+				if (gfx_con.x > 719)
+					gfx_con.x = 0;
 			}
 		}
 		else if (c == '\n')

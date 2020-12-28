@@ -46,3 +46,10 @@ bool vecAdd(Vector_t* v, void* elem, u32 sz)
     v->count++;
     return true;
 }
+
+Vector_t vecCopy(Vector_t* orig) {
+	Vector_t dst = newVec(orig->elemSz, orig->count);
+	memcpy(dst.data, orig->data, orig->count * orig->elemSz);
+	dst.count = orig->count;
+	return dst;
+}
