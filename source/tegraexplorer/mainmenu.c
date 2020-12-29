@@ -19,7 +19,6 @@ MenuEntry_t mainMenuEntries[] = {
     {.G = 255, .name = "SD:/"},
     {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "Emmc"},
     {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "Emummc"},
-    {.B = 255, .G = 255, .name = "Test Controllers"},
     {.R = 255, .name = "Cause an exception"},
     {.R = 255, .name = "Partition the sd"},
     {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Dump Firmware"},
@@ -83,7 +82,6 @@ menuPaths mainMenuPaths[] = {
     HandleSD,
     HandleEMMC,
     HandleEMUMMC,
-    TestControllers,
     CrashTE,
     FormatSD,
     DumpSysFw,
@@ -101,9 +99,9 @@ void EnterMainMenu(){
         mainMenuEntries[1].hide = !sd_mounted;
         mainMenuEntries[2].hide = !TConf.keysDumped;
         mainMenuEntries[3].hide = (!TConf.keysDumped || !emu_cfg.enabled || !sd_mounted);
-        mainMenuEntries[6].hide = (!is_sd_inited || sd_get_card_removed());
-        mainMenuEntries[7].hide = !TConf.keysDumped;
-        mainMenuEntries[9].name = (sd_mounted) ? "Unmount SD" : "Mount SD";
+        mainMenuEntries[5].hide = (!is_sd_inited || sd_get_card_removed());
+        mainMenuEntries[6].hide = !TConf.keysDumped;
+        mainMenuEntries[8].name = (sd_mounted) ? "Unmount SD" : "Mount SD";
         FunctionMenuHandler(mainMenuEntries, ARR_LEN(mainMenuEntries), mainMenuPaths, ALWAYSREDRAW);
     }
 }
