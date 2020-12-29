@@ -13,19 +13,42 @@
 #include "../storage/gptmenu.h"
 #include "../storage/emummc.h"
 #include <utils/util.h>
+#include "../fs/fsutils.h"
+
+enum {
+    MainExplore = 0,
+    MainBrowseSd,
+    MainMountSd,
+    MainBrowseEmmc,
+    MainBrowseEmummc,
+    MainTools,
+    MainCauseException,
+    MainPartitionSd,
+    MainDumpFw,
+    MainViewKeys,
+    MainExit,
+    MainRebootAMS,
+    MainRebootHekate,
+    MainRebootRCM,
+    MainPowerOff
+};
 
 MenuEntry_t mainMenuEntries[] = {
-    {.R = 255, .G = 255, .B = 255, .skip = 1, .name = "-- Main Menu --"},
-    {.G = 255, .name = "SD:/"},
-    {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "Emmc"},
-    {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "Emummc"},
-    {.R = 255, .name = "Cause an exception"},
-    {.R = 255, .name = "Partition the sd"},
-    {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Dump Firmware"},
-    {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "View dumped keys"},
-    {.optionUnion = COLORTORGB(COLOR_ORANGE)},
-    {.R = 255, .name = "Reboot to payload"},
-    {.R = 255, .name = "Reboot to RCM"}
+    [MainExplore] = {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "-- Explore --"},
+    [MainBrowseSd] = {.optionUnion = COLORTORGB(COLOR_GREEN), .name = "Browse SD"},
+    [MainMountSd] = {.optionUnion = COLORTORGB(COLOR_YELLOW)}, // To mount/unmount the SD
+    [MainBrowseEmmc] = {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Browse EMMC"},
+    [MainBrowseEmummc] = {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Browse EMUMMC"},
+    [MainTools] = {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "\n-- Tools --"},
+    [MainCauseException] = {.optionUnion = COLORTORGB(COLOR_RED), .name = "Cause an exception"},
+    [MainPartitionSd] = {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "Partition the sd"},
+    [MainDumpFw] = {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Dump Firmware"},
+    [MainViewKeys] = {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "View dumped keys"},
+    [MainExit] = {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "\n-- Exit --"},
+    [MainRebootAMS] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot to atmosphere/reboot_payload.bin"},
+    [MainRebootHekate] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot to bootloader/update.bin"},
+    [MainRebootRCM] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot to RCM"},
+    [MainPowerOff] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Power off"}
 };
 
 void HandleSD(){
@@ -72,23 +95,33 @@ void ViewKeys(){
 
 extern bool sd_mounted;
 extern bool is_sd_inited;
+extern int launch_payload(char *path);
+
+void RebootToAMS(){
+    launch_payload("sd:/atmosphere/reboot_payload.bin");
+}
+
+void RebootToHekate(){
+    launch_payload("sd:/bootloader/update.bin");
+}
 
 void MountOrUnmountSD(){
     (sd_mounted) ? sd_unmount() : sd_mount();
 }
 
 menuPaths mainMenuPaths[] = {
-    NULL,
-    HandleSD,
-    HandleEMMC,
-    HandleEMUMMC,
-    CrashTE,
-    FormatSD,
-    DumpSysFw,
-    ViewKeys,
-    MountOrUnmountSD,
-    RebootToPayload,
-    reboot_rcm
+    [MainBrowseSd] = HandleSD,
+    [MainMountSd] = MountOrUnmountSD,
+    [MainBrowseEmmc] = HandleEMMC,
+    [MainBrowseEmummc] = HandleEMUMMC,
+    [MainCauseException] = CrashTE,
+    [MainPartitionSd] = FormatSD,
+    [MainDumpFw] = DumpSysFw,
+    [MainViewKeys] = ViewKeys,
+    [MainRebootAMS] = RebootToAMS,
+    [MainRebootHekate] = RebootToHekate,
+    [MainRebootRCM] = reboot_rcm,
+    [MainPowerOff] = power_off,
 };
 
 void EnterMainMenu(){
@@ -96,12 +129,21 @@ void EnterMainMenu(){
         if (sd_get_card_removed())
             sd_unmount();
 
-        mainMenuEntries[1].hide = !sd_mounted;
-        mainMenuEntries[2].hide = !TConf.keysDumped;
-        mainMenuEntries[3].hide = (!TConf.keysDumped || !emu_cfg.enabled || !sd_mounted);
-        mainMenuEntries[5].hide = (!is_sd_inited || sd_get_card_removed());
-        mainMenuEntries[6].hide = !TConf.keysDumped;
-        mainMenuEntries[8].name = (sd_mounted) ? "Unmount SD" : "Mount SD";
+        // -- Explore --
+        mainMenuEntries[MainBrowseSd].hide = !sd_mounted;
+        mainMenuEntries[MainMountSd].name = (sd_mounted) ? "Unmount SD" : "Mount SD";
+        mainMenuEntries[MainBrowseEmmc].hide = !TConf.keysDumped;
+        mainMenuEntries[MainBrowseEmummc].hide = (!TConf.keysDumped || !emu_cfg.enabled || !sd_mounted);
+
+        // -- Tools --
+        mainMenuEntries[MainPartitionSd].hide = (!is_sd_inited || sd_get_card_removed());
+        mainMenuEntries[MainDumpFw].hide = (!TConf.keysDumped || !sd_mounted);
+        mainMenuEntries[MainViewKeys].hide = !TConf.keysDumped;
+
+        // -- Exit --
+        mainMenuEntries[MainRebootAMS].hide = (!sd_mounted || !FileExists("sd:/atmosphere/reboot_payload.bin"));
+        mainMenuEntries[MainRebootHekate].hide = (!sd_mounted || !FileExists("sd:/bootloader/update.bin"));
+
         FunctionMenuHandler(mainMenuEntries, ARR_LEN(mainMenuEntries), mainMenuPaths, ALWAYSREDRAW);
     }
 }

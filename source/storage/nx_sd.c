@@ -177,6 +177,7 @@ static void _sd_deinit()
 		f_mount(NULL, "", 1);
 		sdmmc_storage_end(&sd_storage);
 		sd_mounted = false;
+		is_sd_inited = false;
 	}
 }
 
