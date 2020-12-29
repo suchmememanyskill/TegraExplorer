@@ -36,7 +36,7 @@ int GetKeysFromFile(char *path){
     if (!sd_mount())
         return 1;
 
-    LIST_INIT(iniList);
+    LIST_INIT(iniList); // Whatever we'll just let this die in memory hell
     if (!ini_parse(&iniList, path, false))
         return 1;
 
@@ -47,8 +47,7 @@ int GetKeysFromFile(char *path){
     AddKey(dumpedKeys.master_key, getKey("master_key_00", &iniList), AES_128_KEY_SIZE);
     AddKey(dumpedKeys.header_key, getKey("header_key", &iniList), AES_128_KEY_SIZE * 2);
     AddKey(dumpedKeys.save_mac_key, getKey("save_mac_key", &iniList), AES_128_KEY_SIZE);
-
-    list_empty(&iniList);
+    
     gfx_puts(" Done");
     return 0;
 }

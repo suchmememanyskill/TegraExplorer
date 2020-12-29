@@ -36,7 +36,6 @@ void disconnectMMC(){
         TConf.currentMMCConnected = MMC_CONN_None;
         emummc_storage_end(&emmc_storage);
         nx_emmc_gpt_free(&curGpt);
-        list_empty(&curGpt);
     }
 }
 
