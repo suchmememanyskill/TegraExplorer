@@ -16,6 +16,7 @@ enum {
     TE_ERR_SAME_LOC,
     TE_ERR_KEYDUMP_FAIL,
     TE_ERR_PARTITION_NOT_FOUND,
+    TE_ERR_PATH_IN_PATH,
 };
 
 #define newErrCode(err) (ErrCode_t) {err, __LINE__, __FILE__}

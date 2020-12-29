@@ -12,7 +12,9 @@ enum {
 enum {
     CMODE_None = 0,
     CMODE_Copy,
-    CMODE_Move
+    CMODE_Move,
+    CMODE_CopyFolder,
+    CMODE_MoveFolder
 };
 
 typedef struct {
@@ -24,7 +26,7 @@ typedef struct {
             u16 keysDumped:1;
             u16 curExplorerLoc:2;
             u16 heldExplorerCopyLoc:2;
-            u16 explorerCopyMode:2;
+            u16 explorerCopyMode:4;
             u16 currentMMCConnected:2;
             u16 connectedMMCMounted:1;
         };

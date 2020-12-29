@@ -72,6 +72,7 @@ void ViewKeys(){
 }
 
 extern bool sd_mounted;
+extern bool is_sd_inited;
 
 void MountOrUnmountSD(){
     (sd_mounted) ? sd_unmount() : sd_mount();
@@ -100,6 +101,7 @@ void EnterMainMenu(){
         mainMenuEntries[1].hide = !sd_mounted;
         mainMenuEntries[2].hide = !TConf.keysDumped;
         mainMenuEntries[3].hide = (!TConf.keysDumped || !emu_cfg.enabled || !sd_mounted);
+        mainMenuEntries[6].hide = (!is_sd_inited || sd_get_card_removed());
         mainMenuEntries[7].hide = !TConf.keysDumped;
         mainMenuEntries[9].name = (sd_mounted) ? "Unmount SD" : "Mount SD";
         FunctionMenuHandler(mainMenuEntries, ARR_LEN(mainMenuEntries), mainMenuPaths, ALWAYSREDRAW);

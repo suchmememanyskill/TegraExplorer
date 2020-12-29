@@ -82,7 +82,8 @@ void DumpSysFw(){
 			return;
 		}
 		RESETCOLOR;
-		gfx_printf("\nReminder! delete the folder. i can't delete recursively yet");
+		gfx_printf("\nDeleting... ");
+		FolderDelete(baseSdPath);
 		gfx_putc('\n');
 	}
 

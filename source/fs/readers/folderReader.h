@@ -4,4 +4,4 @@
 #include "../fstypes.h"
 
 void clearFileVector(Vector_t *v);
-Vector_t /* of type FSEntry_t */ ReadFolder(char *path, int *res);
+Vector_t /* of type FSEntry_t */ ReadFolder(const char *path, int *res);

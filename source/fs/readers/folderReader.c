@@ -11,7 +11,7 @@ void clearFileVector(Vector_t *v){
     free(v->data);
 }
 
-Vector_t /* of type FSEntry_t */ ReadFolder(char *path, int *res){
+Vector_t /* of type FSEntry_t */ ReadFolder(const char *path, int *res){
     Vector_t out = newVec(sizeof(FSEntry_t), 16); // we may want to prealloc with the same size as the folder
     DIR dir;
     FILINFO fno;

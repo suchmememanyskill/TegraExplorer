@@ -17,7 +17,6 @@
 #include <storage/nx_sd.h>
 
 MenuEntry_t FileMenuEntries[] = {
-    // Still have to think up the options
     {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "-- File menu --"},
     {.optionUnion = COLORTORGB(COLOR_GREEN) | SKIPBIT}, // For the file name and size
     {.optionUnion = COLORTORGB(COLOR_VIOLET) | SKIPBIT}, // For the file Attribs
@@ -91,7 +90,7 @@ void RunScript(char *path, FSEntry_t entry){
     hidWait();
 }
 
-menuPaths FileMenuPaths[] = {
+fileMenuPath FileMenuPaths[] = {
     CopyClipboard,
     MoveClipboard,
     UnimplementedException,

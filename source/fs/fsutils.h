@@ -2,7 +2,7 @@
 #include <utils/types.h>
 #include "fstypes.h"
 
-u64 GetFileSize(char *path);
+FSEntry_t GetFileInfo(const char *path);
 char *EscapeFolder(const char *current);
 char *CombinePaths(const char *current, const char *add);
 char *GetFileAttribs(FSEntry_t entry);

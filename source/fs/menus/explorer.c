@@ -14,12 +14,13 @@
 #include "../fscopy.h"
 #include <libs/fatfs/ff.h>
 #include "../../hid/hid.h"
+#include "foldermenu.h"
 
 MenuEntry_t topEntries[] = {
     {.optionUnion = COLORTORGB(COLOR_GREEN) | SKIPBIT},
     {.optionUnion = COLORTORGB(COLOR_ORANGE)},
     {.optionUnion = COLORTORGB(COLOR_GREY) | SKIPBIT, .name = "Clipboard -> Current folder"},
-    {.optionUnion = COLORTORGB(COLOR_GREY) | SKIPBIT, .name = "Current folder options"}
+    {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "Current folder options"}
 };
 
 MenuEntry_t MakeMenuOutFSEntry(FSEntry_t entry){
@@ -35,6 +36,9 @@ MenuEntry_t MakeMenuOutFSEntry(FSEntry_t entry){
 void FileExplorer(char *path){
     char *storedPath = CpyStr(path);
     int res = 0;
+
+    if (TConf.explorerCopyMode == CMODE_Move || TConf.explorerCopyMode == CMODE_MoveFolder)
+        ResetCopyParams();
 
     while (1){
         topEntries[2].optionUnion = (TConf.explorerCopyMode != CMODE_None) ? (COLORTORGB(COLOR_ORANGE)) : (COLORTORGB(COLOR_GREY) | SKIPBIT);
@@ -74,29 +78,49 @@ void FileExplorer(char *path){
         char *oldPath = storedPath;
 
         if (res == 2){
-            ErrCode_t res;
+            ErrCode_t err = {0};
             char *filename = CpyStr(strrchr(TConf.srcCopy, '/') + 1);
             char *dst = CombinePaths(storedPath, filename);
 
             if (!strcmp(TConf.srcCopy, dst))
-                res = newErrCode(TE_ERR_SAME_LOC);
-            else {
-                if (TConf.explorerCopyMode == CMODE_Move){
-                    if ((res.err = f_rename(TConf.srcCopy, dst)))
-                        res = newErrCode(res.err);
+                err = newErrCode(TE_ERR_SAME_LOC);
+
+            if (!err.err && TConf.explorerCopyMode >= CMODE_CopyFolder){
+                if (strstr(dst, TConf.srcCopy) != NULL)
+                    err = newErrCode(TE_ERR_PATH_IN_PATH);
+            }
+
+            if (!err.err){
+                if (TConf.explorerCopyMode == CMODE_Move || TConf.explorerCopyMode == CMODE_MoveFolder){
+                    if ((err.err = f_rename(TConf.srcCopy, dst)))
+                        err = newErrCode(err.err);
+                }
+                else if (TConf.explorerCopyMode == CMODE_Copy) {
+                    gfx_clearscreen();
+                    RESETCOLOR;
+                    gfx_printf("Hold vol+/- to cancel\nCopying %s... ", filename);
+                    err = FileCopy(TConf.srcCopy, dst, COPY_MODE_CANCEL | COPY_MODE_PRINT);
                 }
                 else {
                     gfx_clearscreen();
                     RESETCOLOR;
-                    gfx_printf("Hold vol+/- to cancel\nCopying %s... ", filename);
-                    res = FileCopy(TConf.srcCopy, dst, COPY_MODE_CANCEL | COPY_MODE_PRINT);
+                    gfx_printf("\nCopying folder... ");
+                    err = FolderCopy(TConf.srcCopy, storedPath);
                 }
             }
+
             
-            DrawError(res);
+            DrawError(err);
             free(dst);
             free(filename);
             ResetCopyParams();
+        }
+        else if (res == 3){
+            if (FolderMenu(storedPath)){
+                storedPath = EscapeFolder(oldPath);
+                free(oldPath);
+                res = 0;
+            }
         }
         else if (res < ARR_LEN(topEntries)) {
             if (!strcmp(storedPath, path)){

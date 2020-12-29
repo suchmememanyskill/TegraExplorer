@@ -6,6 +6,8 @@
 #include <mem/heap.h>
 #include <string.h>
 #include "../gfx/gfxutils.h"
+#include "fsutils.h"
+#include "readers/folderReader.h"
 
 ErrCode_t FileCopy(const char *locin, const char *locout, u8 options){
     FIL in, out;
@@ -78,4 +80,100 @@ ErrCode_t FileCopy(const char *locin, const char *locout, u8 options){
 
     //f_stat(locin, &in_info); //somehow stops fatfs from being weird
     return err;
+}
+
+void BoxRestOfScreen(){
+    u32 tempX, tempY;
+    gfx_con_getpos(&tempX, &tempY);
+    gfx_boxGrey(tempX, tempY, YLEFT, tempY + 16, 0x1B);
+}
+
+ErrCode_t FolderCopy(const char *locin, const char *locout){
+    char *dstPath = CombinePaths(locout, strrchr(locin, '/') + 1);
+    int res = 0;
+    ErrCode_t ret = newErrCode(0);
+    u32 x, y;
+    gfx_con_getpos(&x, &y);
+
+    Vector_t fileVec = ReadFolder(locin, &res);
+    if (res){
+        ret = newErrCode(res);
+    }
+    else {
+        vecDefArray(FSEntry_t *, fs, fileVec);
+        f_mkdir(dstPath);
+        
+        for (int i = 0; i < fileVec.count && !ret.err; i++){
+            char *temp = CombinePaths(locin, fs[i].name);
+            if (fs[i].isDir){
+                ret = FolderCopy(temp, dstPath);
+            }
+            else {
+                gfx_puts_limit(fs[i].name, (YLEFT - x) / 16 - 10);
+                BoxRestOfScreen();
+
+                char *tempDst = CombinePaths(dstPath, fs[i].name);
+                ret = FileCopy(temp, tempDst, COPY_MODE_PRINT);
+                free(tempDst);
+
+                gfx_con_setpos(x, y);
+            }
+            free(temp);
+        }
+    }
+
+    FILINFO fno;
+    
+    if (!ret.err){
+        res = f_stat(locin, &fno);
+        if (res)
+            ret = newErrCode(res);
+        else 
+            ret = newErrCode(f_chmod(dstPath, fno.fattrib, 0x3A));
+    }
+
+    free(dstPath);
+    clearFileVector(&fileVec);
+    return ret;
+}
+
+ErrCode_t FolderDelete(const char *path){
+    int res = 0;
+    ErrCode_t ret = newErrCode(0);
+    u32 x, y;
+    gfx_con_getpos(&x, &y);
+
+    Vector_t fileVec = ReadFolder(path, &res);
+    if (res){
+        ret = newErrCode(res);
+    }
+    else {
+        vecDefArray(FSEntry_t *, fs, fileVec);
+
+        for (int i = 0; i < fileVec.count && !ret.err; i++){
+            char *temp = CombinePaths(path, fs[i].name);
+            if (fs[i].isDir){
+                ret = FolderDelete(temp);
+            }
+            else {
+                gfx_puts_limit(fs[i].name, (YLEFT - x) / 16 - 10);
+                BoxRestOfScreen();
+                res = f_unlink(temp);
+                if (res){
+                    ret = newErrCode(res);
+                }
+                gfx_con_setpos(x, y);   
+            }
+            free(temp);
+        }
+    }
+
+    if (!ret.err){
+        res = f_unlink(path);
+        if (res)
+            ret = newErrCode(res);
+    }
+
+    clearFileVector(&fileVec);
+    return ret;
 }
