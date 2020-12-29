@@ -492,6 +492,8 @@ void gfx_putc_small(char c){
 	gfx_con.fntsz = 16;
 }
 
+#define hexDumpLen 0x20
+
 void gfx_hexdump(u32 base, const u8 *buf, u32 len)
 {
 	if (gfx_con.mute)
@@ -501,14 +503,14 @@ void gfx_hexdump(u32 base, const u8 *buf, u32 len)
 	gfx_con.fntsz = 8;
 	for(u32 i = 0; i < len; i++)
 	{
-		if(i % 0x10 == 0)
+		if(i % hexDumpLen == 0)
 		{
 			if(i != 0)
 			{
 				gfx_puts("| ");
-				for(u32 j = 0; j < 0x10; j++)
+				for(u32 j = 0; j < hexDumpLen; j++)
 				{
-					u8 c = buf[i - 0x10 + j];
+					u8 c = buf[i - hexDumpLen + j];
 					if(c >= 32 && c <= 126)
 						gfx_putc(c);
 					else
@@ -521,12 +523,12 @@ void gfx_hexdump(u32 base, const u8 *buf, u32 len)
 		gfx_printf("%02x ", buf[i]);
 		if (i == len - 1)
 		{
-			int ln = len % 0x10 != 0;
-			u32 k = 0x10 - 1;
+			int ln = len % hexDumpLen != 0;
+			u32 k = hexDumpLen - 1;
 			if (ln)
 			{
 				k = (len & 0xF) - 1;
-				for (u32 j = 0; j < 0x10 - k; j++)
+				for (u32 j = 0; j < hexDumpLen - k; j++)
 					gfx_puts("   ");
 			}
 			gfx_puts("| ");

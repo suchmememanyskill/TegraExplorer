@@ -109,12 +109,62 @@ void RenameFile(char *path, FSEntry_t entry){
     free(renameTo);
 }
 
+// This is from the original TE and it's bad but uhh i'm too lazy to fix it
+void HexView(char *path, FSEntry_t entry){
+    char *filePath = CombinePaths(path, entry.name);
+
+    FIL in;
+    u8 *print;
+    u32 size;
+    QWORD offset = 0;
+    int res;
+    Input_t *input = hidRead();
+
+    while (input->buttons & (BtnPow | JoyB))
+        hidRead();
+
+    gfx_clearscreen();
+    print = malloc(2048);
+
+    if ((res = f_open(&in, filePath, FA_READ | FA_OPEN_EXISTING))){
+        DrawError(newErrCode(res));
+        return;
+    }
+
+    while (1){
+        f_lseek(&in, offset * 32);
+
+        if ((res = f_read(&in, print, 2048, &size))){
+            DrawError(newErrCode(res));
+            return;
+        }
+
+        gfx_con_setpos(0, 31);
+        gfx_hexdump(offset * 32, print, size);
+
+        input = hidRead();
+
+        if (!(input->buttons))
+            input = hidWait();
+
+        if (input->down && 2048 == size)
+            offset += 2;
+        if (input->up && offset > 0)
+            offset -= 2;
+        if (input->buttons & (BtnPow | JoyB))
+            break;
+    }
+    f_close(&in);
+    free(print);
+    free(filePath);
+}
+
 fileMenuPath FileMenuPaths[] = {
     CopyClipboard,
     MoveClipboard,
     RenameFile,
     DeleteFile,
-    UnimplementedException,
+    HexView,
     LaunchPayload,
     RunScript
 };

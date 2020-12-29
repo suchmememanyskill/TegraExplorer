@@ -14,6 +14,7 @@
 #define JoyLRight BIT(18)
 #define JoyLLeft BIT(19)
 #define JoyLB BIT(22)
+#define BtnPow BIT(24)
 #define BtnVolP BIT(25)
 #define BtnVolM BIT(26)
 #define JoyRDown BIT(27)
