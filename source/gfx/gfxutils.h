@@ -14,5 +14,5 @@
 #define RGBUnionToU32(optionUnion) (optionUnion | 0xFF000000)
 
 void gfx_clearscreen();
-int MakeHorizontalMenu(MenuEntry_t *entries, int len, int spacesBetween, u32 bg);
+int MakeHorizontalMenu(MenuEntry_t *entries, int len, int spacesBetween, u32 bg, int startPos);
 int MakeYesNoHorzMenu(int spacesBetween, u32 bg);

@@ -137,7 +137,7 @@ void FormatSD(){
 		return;
 
 	gfx_printf("\nDo you want to partition for an emummc?\n");
-	res = MakeHorizontalMenu(FatAndEmu, ARR_LEN(FatAndEmu), 3, COLOR_DEFAULT);
+	res = MakeHorizontalMenu(FatAndEmu, ARR_LEN(FatAndEmu), 3, COLOR_DEFAULT, 0);
 	
 	if (!res)
 		return;

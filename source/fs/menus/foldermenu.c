@@ -64,12 +64,48 @@ int DeleteFolder(const char *path){
     return 0;
 }
 
+int RenameFolder(const char *path){
+    char *prev = EscapeFolder(path);
+    gfx_clearscreen();
+
+    char *renameTo = ShowKeyboard(strrchr(path, '/') + 1, false);
+    if (renameTo == NULL || !(*renameTo)) // smol memory leak but eh
+        return 0;
+    
+    char *dst = CombinePaths(prev, renameTo);
+
+    int res = f_rename(path, dst);
+    if (res){
+        DrawError(newErrCode(res));
+    }
+
+    free(prev);
+    free(dst);
+    free(renameTo);
+    return 1;
+}
+
+int CreateFolder(const char *path){
+    gfx_clearscreen();
+
+    char *create = ShowKeyboard("New Folder", true);
+    if (create == NULL || !(*create)) // smol memory leak but eh
+        return 0;
+    
+    char *dst = CombinePaths(path, create);
+    f_mkdir(dst);
+
+    free(dst);
+    free(create);
+    return 0;
+}
+
 folderMenuPath FolderMenuPaths[] = {
     FolderCopyClipboard,
     FolderMoveClipboard,
-    UnimplementedFolderException,
+    RenameFolder,
     DeleteFolder,
-    UnimplementedFolderException
+    CreateFolder
 };
 
 int FolderMenu(const char *path){

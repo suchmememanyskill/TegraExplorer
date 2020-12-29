@@ -69,6 +69,7 @@ void gfx_hexdump(u32 base, const u8 *buf, u32 len);
 void gfx_hexdiff(u32 base, const u8 *buf1, const u8 *buf2, u32 len);
 void gfx_puts_limit(const char *s, u32 limit);
 void gfx_puts_small(const char *s);
+void gfx_putc_small(char c);
 
 void gfx_set_pixel(u32 x, u32 y, u32 color);
 void gfx_set_pixel_horz(int x, int y, u32 color);

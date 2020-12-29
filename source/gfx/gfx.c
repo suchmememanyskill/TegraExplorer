@@ -486,6 +486,12 @@ void gfx_printf(const char *fmt, ...)
 	va_end(ap);
 }
 
+void gfx_putc_small(char c){
+	gfx_con.fntsz = 8;
+	gfx_putc(c);
+	gfx_con.fntsz = 16;
+}
+
 void gfx_hexdump(u32 base, const u8 *buf, u32 len)
 {
 	if (gfx_con.mute)

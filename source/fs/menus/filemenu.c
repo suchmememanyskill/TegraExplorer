@@ -90,10 +90,29 @@ void RunScript(char *path, FSEntry_t entry){
     hidWait();
 }
 
+void RenameFile(char *path, FSEntry_t entry){
+    gfx_clearscreen();
+    char *renameTo = ShowKeyboard(entry.name, false);
+    if (renameTo == NULL || !(*renameTo)) // smol memory leak but eh
+        return;
+    
+    char *src = CombinePaths(path, entry.name);
+    char *dst = CombinePaths(path, renameTo);
+
+    int res = f_rename(src, dst);
+    if (res){
+        DrawError(newErrCode(res));
+    }
+
+    free(src);
+    free(dst);
+    free(renameTo);
+}
+
 fileMenuPath FileMenuPaths[] = {
     CopyClipboard,
     MoveClipboard,
-    UnimplementedException,
+    RenameFile,
     DeleteFile,
     UnimplementedException,
     LaunchPayload,

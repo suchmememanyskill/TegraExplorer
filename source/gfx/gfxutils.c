@@ -25,12 +25,12 @@ MenuEntry_t YesNoEntries[] = {
 };
 
 int MakeYesNoHorzMenu(int spacesBetween, u32 bg){
-    return MakeHorizontalMenu(YesNoEntries, ARR_LEN(YesNoEntries), spacesBetween, bg);
+    return MakeHorizontalMenu(YesNoEntries, ARR_LEN(YesNoEntries), spacesBetween, bg, 0);
 }
 
-int MakeHorizontalMenu(MenuEntry_t *entries, int len, int spacesBetween, u32 bg){
+int MakeHorizontalMenu(MenuEntry_t *entries, int len, int spacesBetween, u32 bg, int startPos){
     u32 initialX = 0, initialY = 0;
-    u32 highlight = 0;
+    u32 highlight = startPos;
     gfx_con_getpos(&initialX, &initialY);
 
     while (1){

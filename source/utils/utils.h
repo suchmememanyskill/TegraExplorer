@@ -7,3 +7,4 @@ bool StrEndsWith(char *begin, char *end);
 void WaitFor(u32 ms);
 
 #define FREE(x) free(x); x = NULL;
+char *ShowKeyboard(const char *toEdit, u8 alwaysRet);
