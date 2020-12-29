@@ -84,7 +84,7 @@ int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 op
             if (options & ENABLEPAGECOUNT){
                 SETCOLOR(COLOR_DEFAULT, COLOR_WHITE);
                 char temp[40] = "";
-                sprintf(temp, " Page %d / %d | Total %d entries", (selected / screenLenY) + 1, (vec->count / screenLenY) + 1, entryCount);
+                sprintf(temp, " Page %d / %d | Total %d entries", (selected / screenLenY) + 1, ((vec->count - 1) / screenLenY) + 1, entryCount);
                 gfx_con_setpos(YLEFT - strlen(temp) * 18, 0);
                 gfx_printf(temp);
             }
