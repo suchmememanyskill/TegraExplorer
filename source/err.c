@@ -26,7 +26,9 @@ const char *TEErrors[] = {
     [TE_ERR_SAME_LOC - 1] = "Same copy location",
     [TE_ERR_KEYDUMP_FAIL - 1] = "Keydump failed",
     [TE_ERR_PARTITION_NOT_FOUND - 1] = "Failed to find partition",
-    [TE_ERR_PATH_IN_PATH - 1] = "Can't move/copy folder into itself"
+    [TE_ERR_PATH_IN_PATH - 1] = "Can't move/copy folder into itself",
+    [TE_ERR_EMMC_READ_FAIL - 1] = "Emmc/Emummc read failed",
+    [TE_ERR_NO_SD - 1] = "No sd detected",
 };
 
 const char *GetErrStr(u32 err){

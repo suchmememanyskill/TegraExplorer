@@ -15,10 +15,6 @@
 #include <utils/util.h>
 #include "../fs/fsutils.h"
 
-#include <string.h>
-#include "../utils/utils.h"
-#include <mem/heap.h>
-
 enum {
     MainExplore = 0,
     MainBrowseSd,

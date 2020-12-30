@@ -27,12 +27,16 @@ void SetKeySlots(){
 
 LIST_INIT(curGpt);
 
-void disconnectMMC(){
+void unmountMMCPart(){
     if (TConf.connectedMMCMounted)
         f_unmount("bis:");
+    TConf.connectedMMCMounted = 0;
+}
+
+void disconnectMMC(){
+    unmountMMCPart();
 
     if (TConf.currentMMCConnected != MMC_CONN_None){
-        TConf.connectedMMCMounted = 0;
         TConf.currentMMCConnected = MMC_CONN_None;
         emummc_storage_end(&emmc_storage);
         nx_emmc_gpt_free(&curGpt);
@@ -57,21 +61,22 @@ int connectMMC(u8 mmcType){
 }
 
 ErrCode_t mountMMCPart(const char *partition){
-    if (!TConf.connectedMMCMounted){
-        emummc_storage_set_mmc_partition(&emmc_storage, 0); // why i have to do this twice beats me
-        
-        emmc_part_t *system_part = nx_emmc_part_find(&curGpt, partition);
-        if (!system_part)
-            return newErrCode(TE_ERR_PARTITION_NOT_FOUND);
-        
-        nx_emmc_bis_init(system_part);
+    unmountMMCPart();
 
-        int res = 0;
-        if ((res = f_mount(&emmc_fs, "bis:", 1)))
-            return newErrCode(res);
+    emummc_storage_set_mmc_partition(&emmc_storage, 0); // why i have to do this twice beats me
+        
+    emmc_part_t *system_part = nx_emmc_part_find(&curGpt, partition);
+    if (!system_part)
+        return newErrCode(TE_ERR_PARTITION_NOT_FOUND);
+        
+    nx_emmc_bis_init(system_part);
 
-        TConf.connectedMMCMounted = 1;
-    }
+    int res = 0;
+    if ((res = f_mount(&emmc_fs, "bis:", 1)))
+        return newErrCode(res);
+
+    TConf.connectedMMCMounted = 1;
+    
 
     return newErrCode(0);
 }
@@ -80,10 +85,4 @@ link_t *GetCurGPT(){
     if (TConf.currentMMCConnected != MMC_CONN_None)
         return &curGpt;
     return NULL;
-}
-
-void unmountMMCPart(){
-    if (TConf.connectedMMCMounted)
-        f_unmount("bis:");
-    TConf.connectedMMCMounted = 0;
 }

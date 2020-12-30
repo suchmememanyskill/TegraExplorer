@@ -11,11 +11,15 @@
 #include "../fs/menus/explorer.h"
 #include "../err.h"
 #include "../tegraexplorer/tconf.h"
+#include "emmcfile.h"
+#include <storage/nx_sd.h>
+#include "../fs/fsutils.h"
 
 MenuEntry_t GptMenuHeader[] = {
     {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "<- Back"},
-    {.optionUnion = COLORTORGB(COLOR_GREY) | SKIPBIT, .name = "Clipboard -> Partition"},
-    {.optionUnion = COLORTORGB(COLOR_GREY) | SKIPBIT, .name = "\nBoot0/1"} // Should be blue when implemented
+    {.optionUnion = COLORTORGB(COLOR_GREY) | SKIPBIT, .name = "Clipboard -> Partition\n"},
+    {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "BOOT0", .icon = 128, .showSize = 1, .size = 4, .sizeDef = 2}, 
+    {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "BOOT1", .icon = 128, .showSize = 1, .size = 4, .sizeDef = 2} 
 };
 
 const char *GptFSEntries[] = {
@@ -30,7 +34,7 @@ void GptMenu(u8 MMCType){
         return;
 
     Vector_t GptMenu = newVec(sizeof(MenuEntry_t), 15);
-    GptMenu.count = 3;
+    GptMenu.count = ARR_LEN(GptMenuHeader);
     memcpy(GptMenu.data, GptMenuHeader, sizeof(MenuEntry_t) * ARR_LEN(GptMenuHeader));
 
     link_t *gpt = GetCurGPT();
@@ -70,7 +74,7 @@ void GptMenu(u8 MMCType){
 
         res = newMenu(&GptMenu, res, 40, 20, ALWAYSREDRAW | ENABLEB, GptMenu.count);
 
-        if (res < 3){
+        if (res < 2){
             break;
         }
         else if (entries[res].icon == 127){
@@ -88,7 +92,25 @@ void GptMenu(u8 MMCType){
             }
         }
         else {
-            DrawError(newErrCode(TE_ERR_UNIMPLEMENTED));
+            if (!sd_mount())
+                continue;
+
+            gfx_clearscreen();
+            gfx_printf("Do you want to dump %s?  ", entries[res].name);
+            if (MakeYesNoHorzMenu(3, COLOR_DEFAULT)){
+                gfx_putc('\n');
+                RESETCOLOR;
+                gfx_printf("Dumping %s... ", entries[res].name);
+
+                f_mkdir("sd:/tegraexplorer");
+                f_mkdir("sd:/tegraexplorer/Dumps");
+
+                char *path = CombinePaths("sd:/tegraexplorer/Dumps", entries[res].name);
+
+                ErrCode_t a = DumpEmmcPart(path, entries[res].name);
+                if (a.err)
+                    DrawError(a);
+            }
         }
     }
 

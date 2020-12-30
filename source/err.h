@@ -17,6 +17,9 @@ enum {
     TE_ERR_KEYDUMP_FAIL,
     TE_ERR_PARTITION_NOT_FOUND,
     TE_ERR_PATH_IN_PATH,
+    TE_ERR_EMMC_READ_FAIL,
+    TE_ERR_EMMC_WRITE_FAIL,
+    TE_ERR_NO_SD,
 };
 
 #define newErrCode(err) (ErrCode_t) {err, __LINE__, __FILE__}
