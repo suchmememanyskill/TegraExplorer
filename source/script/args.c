@@ -286,11 +286,18 @@ Variable_t solveEquation(scriptCtx_t* ctx, lexarToken_t* tokens, u32 len, u8 sho
                         res.free = 0;
                     }
                     ELIFT(Minus) {
-                        if (!strcmp(res.stringType + strlen(res.stringType) - strlen(val.stringType), val.stringType)) {
-                            *(res.stringType + strlen(res.stringType) - strlen(val.stringType)) = 0;
+                        u32 lenRes = strlen(res.stringType);
+                        u32 valRes = strlen(val.stringType);
+                        if (!strcmp(res.stringType + lenRes - valRes, val.stringType)) {
+                            char *temp = malloc(lenRes - valRes + 1);
+                            memcpy(temp, res.stringType, lenRes - valRes);
+                            temp[lenRes - valRes] = 0;
+                            freeVariable(res);
+                            res.free = 1;
+                            res.stringType = temp;
                         }
 
-                        if (val.free) free(val.stringType);
+                        freeVariable(val);
                     }
                     ELIFT(Division) {
                         int valLen = strlen(val.stringType);
@@ -301,7 +308,6 @@ Variable_t solveEquation(scriptCtx_t* ctx, lexarToken_t* tokens, u32 len, u8 sho
 
                         char* start = res.stringType;
                         char* find = NULL;
-                        //char** arr = malloc(20); // should be dynamic
                         Vector_t arr = newVec(sizeof(char**), 10);
                         char* temp;
 
