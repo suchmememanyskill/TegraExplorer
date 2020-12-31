@@ -28,7 +28,9 @@ const char *TEErrors[] = {
     [TE_ERR_PARTITION_NOT_FOUND - 1] = "Failed to find partition",
     [TE_ERR_PATH_IN_PATH - 1] = "Can't move/copy folder into itself",
     [TE_ERR_EMMC_READ_FAIL - 1] = "Emmc/Emummc read failed",
+    [TE_ERR_EMMC_WRITE_FAIL - 1] = "Emmc/Emummc write failed",
     [TE_ERR_NO_SD - 1] = "No sd detected",
+    [TE_ERR_FILE_TOO_BIG_FOR_DEST - 1] = "File is too big for dest",
 };
 
 const char *GetErrStr(u32 err){

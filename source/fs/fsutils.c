@@ -47,7 +47,7 @@ char *GetFileAttribs(FSEntry_t entry){
     return ret;
 }
 
-bool FileExists(char* path){
+bool FileExists(const char* path){
     FRESULT fr;
     FILINFO fno;
 
