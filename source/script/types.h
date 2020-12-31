@@ -37,6 +37,7 @@ enum Tokens {
 	RSBracket,
 	AND,
 	OR,
+	Selector,
 	EquationSeperator,
 };
 

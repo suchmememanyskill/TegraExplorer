@@ -344,6 +344,36 @@ Variable_t solveEquation(scriptCtx_t* ctx, lexarToken_t* tokens, u32 len, u8 sho
                         }
                     }
                 }
+                else if (res.varType == StringType && val.varType == IntType){
+                    if (localOpToken == Minus){
+                        u32 resLen = strlen(res.stringType);
+                        if (resLen < val.integerType)
+                            return ErrValue(ERRSYNTAX);
+                        
+                        char *temp = malloc(resLen - val.integerType + 1);
+                        memcpy(temp, res.stringType, resLen - val.integerType);
+                        temp[resLen - val.integerType] = 0;
+
+                        freeVariable(res);
+                        res.stringType = temp;
+                        res.free = 1;
+                    }
+                    ELIFT(Selector){
+                        u32 resLen = strlen(res.stringType);
+                        if (resLen < val.integerType)
+                            return ErrValue(ERRSYNTAX);
+                        
+                        char *temp = malloc(resLen - val.integerType + 1);
+                        memcpy(temp, res.stringType + val.integerType, resLen - val.integerType);
+                        temp[resLen - val.integerType] = 0;
+
+                        freeVariable(res);
+                        res.stringType = temp;
+                        res.free = 1;
+                    }
+                    else
+                        return ErrValue(ERRBADOPERATOR);
+                }
                 else
                     return ErrValue(ERRBADOPERATOR);
             }
@@ -351,7 +381,7 @@ Variable_t solveEquation(scriptCtx_t* ctx, lexarToken_t* tokens, u32 len, u8 sho
                 res = val;
             }
         }
-        else if (tokens[i].token >= Plus && tokens[i].token <= OR) {
+        else if (tokens[i].token >= Plus && tokens[i].token <= Selector) {
             lastToken = tokens[i].token;
         }
     }

@@ -39,6 +39,7 @@ lexarTranslation_t lexarTranslations[] = {
 	{'<', Smaller},
 	{'>', Bigger},
 	{'!', Not},
+	{':', Selector},
 	{')', RBracket},
 	{']', RSBracket},
 	{'(', LBracket},
