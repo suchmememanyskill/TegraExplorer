@@ -102,15 +102,19 @@ Vector_t runLexar(const char* in, u32 len) {
 	// maybe measure len between ( ) and [ ], so this doesn't have to be done during runtime?
 		// We also have to support (()). maybe if '(' set indent level, then if ')' minus indent level, set len. indent level contains {u8 level, u16 token, u16 startoffset}
 
+	u32 lastAssignment = 0;
+
 	while ((in - start) < len) {
 		lexarToken_t* lx = vecGetArray(lexarToken_t*, vec);
 
 		if ((lx[vec.count - 2].token == StrLit || lx[vec.count - 2].token == IntLit || lx[vec.count - 2].token == Variable || lx[vec.count - 2].token == RSBracket || lx[vec.count - 2].token == RBracket)
 			&& (lx[vec.count - 1].token == Variable || lx[vec.count - 1].token == LCBracket || lx[vec.count - 1].token == RCBracket)) {
-			lexarToken_t holder = lx[vec.count - 1];
-			lx[vec.count - 1] = makeLexarToken(EquationSeperator, 0);
-			vecAddElement(&vec, holder);
-			lx = vecGetArray(lexarToken_t*, vec);
+			if (!(lx[lastAssignment].token == ArrayVariableAssignment && lx[vec.count - 1].token == Variable && lx[vec.count - 2].token == RSBracket)) {
+				lexarToken_t holder = lx[vec.count - 1];
+				lx[vec.count - 1] = makeLexarToken(EquationSeperator, 0);
+				vecAddElement(&vec, holder);
+				lx = vecGetArray(lexarToken_t*, vec);
+			}
 		}
 
 		if (isValidWord(*in)) {
@@ -170,8 +174,12 @@ Vector_t runLexar(const char* in, u32 len) {
 				}
 				if (lx[vec.count - back].token == ArrayVariable) {
 					lx[vec.count - back].token = ArrayVariableAssignment;
+					lastAssignment = vec.count - back;
+					in++;
+					continue;
 				}
 			}
+			lastAssignment = 0;
 		}
 		ELIFC('{') {
 			if (lx[vec.count - 1].token == VariableAssignment) {

@@ -47,9 +47,14 @@ bool vecAdd(Vector_t* v, void* elem, u32 sz)
     return true;
 }
 
-Vector_t vecCopy(Vector_t* orig) {
-	Vector_t dst = newVec(orig->elemSz, orig->count);
-	memcpy(dst.data, orig->data, orig->count * orig->elemSz);
-	dst.count = orig->count;
+Vector_t vecCopyOffset(Vector_t* orig, u32 offset) {
+	Vector_t dst = newVec(orig->elemSz, orig->count - offset);
+	memcpy(dst.data, ((u8*)orig->data + orig->elemSz * offset), (orig->count - offset) * orig->elemSz);
+	dst.count = orig->count - offset;
 	return dst;
 }
+
+Vector_t vecCopy(Vector_t* orig) {
+    return vecCopyOffset(orig, 0);
+}
+

@@ -27,3 +27,4 @@ Vector_t newVec(u32 typesz, u32 preallocate);
 Vector_t vecFromArray(void* array, u32 count, u32 typesz);
 bool vecAdd(Vector_t* v, void* elem, u32 sz);
 Vector_t vecCopy(Vector_t* orig);
+Vector_t vecCopyOffset(Vector_t* orig, u32 offset);

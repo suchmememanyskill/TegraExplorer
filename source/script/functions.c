@@ -6,6 +6,9 @@
 #include <mem/heap.h>
 #include "lexer.h"
 
+#include <storage/nx_sd.h>
+#include "../fs/fsutils.h"
+
 #define scriptFunction(name) Variable_t name(scriptCtx_t *ctx, Variable_t *vars, u32 varLen)
 
 scriptFunction(funcIf) {
@@ -76,10 +79,39 @@ scriptFunction(funcSetPixel){
 	return NullVar;
 }
 
+scriptFunction(funcFileExists){
+	return newVar(IntType, 0, FileExists(vars[0].stringType));
+}
+
+// Args: Str (Path)
+scriptFunction(funcReadFile){
+	u32 fSize = 0;
+	u8 *buff = sd_file_read(vars[0].stringType, &fSize);
+	if (buff == NULL)
+		return ErrVar(ERRFATALFUNCFAIL);
+	
+	Vector_t vec = vecFromArray(buff, fSize, sizeof(u8));
+	return newVar(ByteArrayType, 1, .vectorType = vec);
+}
+
+// Args: Str (Path), vector(Byte) (toWrite) 
+scriptFunction(funcWriteFile){
+	return newVar(IntType, 0, sd_save_to_file(vars[1].vectorType.data, vars[1].vectorType.count, vars[0].stringType));
+}
+
+scriptFunction(funcByteToStr){
+	char *str = calloc(vars[0].vectorType.count + 1, 1);
+	memcpy(str, vars[0].vectorType.data, vars[0].vectorType.count);
+	return newVar(StringType, 1, .stringType = str);
+}
+
 u8 fiveInts[] = {IntType, IntType, IntType, IntType, IntType};
 u8 singleIntArray[] = { IntArrayType };
 u8 singleInt[] = { IntType };
 u8 singleAny[] = { varArgs };
+u8 singleStr[] = { StringType };
+u8 singleByteArr[] = { ByteArrayType };
+u8 StrByteVec[] = { StringType, ByteArrayType};
 
 functionStruct_t scriptFunctions[] = {
 	{"if", funcIf, 1, singleInt},
@@ -90,6 +122,10 @@ functionStruct_t scriptFunctions[] = {
 	{"len", funcLen, 1, singleAny},
 	{"byte", funcMakeByteArray, 1, singleIntArray},
 	{"setPixel", funcSetPixel, 5, fiveInts},
+	{"fileRead", funcReadFile, 1, singleStr},
+	{"fileWrite", funcWriteFile, 2, StrByteVec},
+	{"fileExists", funcFileExists, 1, singleStr},
+	{"bytesToStr", funcByteToStr, 1, singleByteArr},
 };
 
 Variable_t executeFunction(scriptCtx_t* ctx, char* func_name, lexarToken_t *start, u32 len) {

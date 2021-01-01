@@ -343,6 +343,25 @@ Variable_t solveEquation(scriptCtx_t* ctx, lexarToken_t* tokens, u32 len, u8 sho
                             vecAddElement(&res.vectorType, in);
                         }
                     }
+                    ELIFT(Minus){
+                        if (val.integerType >= res.vectorType.count)
+                            return ErrValue(ERRSYNTAX);
+
+                        res.vectorType.count -= val.integerType;
+                        Vector_t newV = vecCopy(&res.vectorType);
+                        freeVariable(res);
+                        res.vectorType = newV;
+                        res.free = 1;
+                    }
+                    ELIFT(Selector){
+                        if (val.integerType >= res.vectorType.count)
+                            return ErrValue(ERRSYNTAX);
+
+                        Vector_t newV = vecCopyOffset(&res.vectorType, val.integerType);
+                        freeVariable(res);
+                        res.vectorType = newV;
+                        res.free = 1;
+                    }
                 }
                 else if (res.varType == StringType && val.varType == IntType){
                     if (localOpToken == Minus){
