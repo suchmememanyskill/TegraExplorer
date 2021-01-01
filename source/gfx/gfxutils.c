@@ -14,7 +14,7 @@ void gfx_clearscreen(){
     gfx_boxGrey(0, 703, 1279, 719, 0xFF);
     gfx_boxGrey(0, 0, 1279, 15, 0xFF);
     gfx_con_setpos(0, 0);
-    gfx_printf("Tegraexplorer %d.%d.%d | Battery: %3d%%\n", LP_VER_MJ, LP_VER_MN, LP_VER_BF, battery >> 8);
+    gfx_printf("Tegraexplorer b%d.%d.%d | Battery: %3d%%\n", LP_VER_MJ, LP_VER_MN, LP_VER_BF, battery >> 8);
 
     RESETCOLOR;
 }

@@ -8,6 +8,15 @@
 #include "../gfx/gfx.h"
 #include "../gfx/menu.h"
 #include "../hid/hid.h"
+#include "../fs/fsutils.h"
+
+extern int launch_payload(char *path);
+
+void RebootToPayloadOrRcm(){
+    if (FileExists("sd:/atmosphere/reboot_payload.bin"))
+        launch_payload("sd:/atmosphere/reboot_payload.bin");
+    reboot_rcm();
+}
 
 char *CpyStr(const char* in){
     int len = strlen(in);

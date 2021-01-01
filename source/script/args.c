@@ -349,10 +349,8 @@ Variable_t solveEquation(scriptCtx_t* ctx, lexarToken_t* tokens, u32 len, u8 sho
                         u32 resLen = strlen(res.stringType);
                         if (resLen < val.integerType)
                             return ErrValue(ERRSYNTAX);
-                        
-                        char *temp = malloc(resLen - val.integerType + 1);
-                        memcpy(temp, res.stringType, resLen - val.integerType);
-                        temp[resLen - val.integerType] = 0;
+
+                        char *temp = utils_copyStringSize(res.stringType, resLen - val.integerType);
 
                         freeVariable(res);
                         res.stringType = temp;
@@ -362,10 +360,8 @@ Variable_t solveEquation(scriptCtx_t* ctx, lexarToken_t* tokens, u32 len, u8 sho
                         u32 resLen = strlen(res.stringType);
                         if (resLen < val.integerType)
                             return ErrValue(ERRSYNTAX);
-                        
-                        char *temp = malloc(resLen - val.integerType + 1);
-                        memcpy(temp, res.stringType + val.integerType, resLen - val.integerType);
-                        temp[resLen - val.integerType] = 0;
+
+                        char *temp = CpyStr(res.stringType + val.integerType);
 
                         freeVariable(res);
                         res.stringType = temp;

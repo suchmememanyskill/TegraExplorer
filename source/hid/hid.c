@@ -4,6 +4,7 @@
 #include "../gfx/gfx.h"
 #include <utils/types.h>
 #include <utils/util.h>
+#include "../utils/utils.h"
 
 static Input_t inputs = {0};
 u16 LbaseX = 0, LbaseY = 0, RbaseX = 0, RbaseY = 0;
@@ -19,7 +20,7 @@ Input_t *hidRead(){
     //    utils_takeScreenshot();
 
     if (controller->home)
-        reboot_rcm();
+        RebootToPayloadOrRcm();
 
     inputs.buttons = controller->buttons;
 
