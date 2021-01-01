@@ -14,6 +14,7 @@
 #include "../storage/emummc.h"
 #include <utils/util.h>
 #include "../fs/fsutils.h"
+#include <soc/fuse.h>
 
 enum {
     MainExplore = 0,
@@ -84,7 +85,13 @@ void ViewKeys(){
     gfx_printf("\nSave mac key: ");
     PrintKey(dumpedKeys.save_mac_key, AES_128_KEY_SIZE);
 
-    gfx_printf("\n\nPkg1 ID: '%s', kb %d", TConf.pkg1ID, TConf.pkg1ver);
+    u8 fuseCount = 0;
+    for (u32 i = 0; i < 32; i++){
+        if ((fuse_read_odm(7) >> i) & 1)
+            fuseCount++;
+    }
+
+    gfx_printf("\n\nPkg1 ID: '%s' (kb %d)\nFuse count: %d", TConf.pkg1ID, TConf.pkg1ver, fuseCount);
 
     hidWait();
 }
