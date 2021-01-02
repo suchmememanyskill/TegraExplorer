@@ -5,6 +5,7 @@
 #include "../gfx/gfx.h"
 #include "../utils/utils.h"
 #include <mem/heap.h>
+#include "../hid/hid.h"
 
 #define scriptResultCreate(resCode, nearToken) (scriptResult_t) {resCode, nearToken, 1}
 #define scriptResultCreateLen(resCode, nearToken, len) (scriptResult_t) {resCode, nearToken, len}
@@ -101,6 +102,9 @@ void printToken(lexarToken_t* token) {
 
 void printError(scriptResult_t res) {
 	if (res.resCode) {
+		if (res.resCode == ERRESCSCRIPT)
+			return;
+
 		gfx_printf("Error %d found!\nNear: ", res.resCode);
 		for (int i = 0; i < res.len; i++) {
 			printToken(&res.nearToken[i]);
