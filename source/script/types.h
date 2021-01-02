@@ -38,6 +38,8 @@ enum Tokens {
 	AND,
 	OR,
 	Selector,
+	BitShiftLeft,
+	BitShiftRight,
 	EquationSeperator,
 };
 

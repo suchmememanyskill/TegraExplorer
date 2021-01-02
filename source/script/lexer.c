@@ -36,8 +36,6 @@ lexarTranslation_t lexarTranslations[] = {
 	{'*', Multiply},
 	{'/', Division},
 	{'%', Mod},
-	{'<', Smaller},
-	{'>', Bigger},
 	{'!', Not},
 	{':', Selector},
 	{')', RBracket},
@@ -46,6 +44,8 @@ lexarTranslation_t lexarTranslations[] = {
 	{'{', LCBracket},
 	{'=', Equal},
 	{'[', LSBracket},
+	{'<', Smaller},
+	{'>', Bigger},
 	{'\0', 0},
 };
 
@@ -239,6 +239,22 @@ Vector_t runLexar(const char* in, u32 len) {
 			else {
 				vecAddElement(&vec, makeLexarToken(OR, 0));
 			}
+		}
+		ELIFC('>'){
+			if (in[1] == '>'){
+				vecAddElement(&vec, makeLexarToken(BitShiftRight, 0));
+				in++;
+			}
+			else
+				vecAddElement(&vec, makeLexarToken(Bigger, 0));
+		}
+		ELIFC('<'){
+			if (in[1] == '<'){
+				vecAddElement(&vec, makeLexarToken(BitShiftLeft, 0));
+				in++;
+			}
+			else 
+				vecAddElement(&vec, makeLexarToken(Smaller, 0));
 		}
 		else {
 			int val = 0;

@@ -263,6 +263,10 @@ Variable_t solveEquation(scriptCtx_t* ctx, lexarToken_t* tokens, u32 len, u8 sho
                         res.integerType = res.integerType & val.integerType;
                     ELIFT(OR)
                         res.integerType = res.integerType | val.integerType;
+                    ELIFT(BitShiftLeft)
+                        res.integerType = res.integerType << val.integerType;
+                    ELIFT(BitShiftRight)
+                        res.integerType = res.integerType >> val.integerType;
                     else
                         return ErrValue(ERRBADOPERATOR);
                 }
@@ -396,7 +400,7 @@ Variable_t solveEquation(scriptCtx_t* ctx, lexarToken_t* tokens, u32 len, u8 sho
                 res = val;
             }
         }
-        else if (tokens[i].token >= Plus && tokens[i].token <= Selector) {
+        else if (tokens[i].token >= Plus && tokens[i].token <= BitShiftRight) {
             lastToken = tokens[i].token;
         }
     }
