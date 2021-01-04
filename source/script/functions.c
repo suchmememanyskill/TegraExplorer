@@ -11,8 +11,16 @@
 #include "../gfx/gfxutils.h"
 #include "../hid/hid.h"
 #include <utils/util.h>
+#include "../fs/fscopy.h"
+#include "../storage/mountmanager.h"
+#include "../storage/emummc.h"
+#include "../fs/readers/folderReader.h"
+#include "../utils/utils.h"
+#include "../storage/emmcfile.h"
 
 #define scriptFunction(name) Variable_t name(scriptCtx_t *ctx, Variable_t *vars, u32 varLen)
+
+#define varInt(i) newVar(IntType, 0, i)
 
 scriptFunction(funcIf) {
 	setCurIndentInstruction(ctx, (vars[0].integerType == 0), 0, -1);
@@ -192,19 +200,22 @@ ColorCombo_t combos[] = {
 	{"YELLOW", COLOR_YELLOW},
 	{"GREEN", COLOR_GREEN},
 	{"BLUE", COLOR_BLUE},
-	{"VIOLET", COLOR_VIOLET},
-	{"WHITE", COLOR_WHITE}
+	{"VIOLET", COLOR_VIOLET}
 };
 
-// Args: Str
-scriptFunction(funcSetColor){
+u32 GetColor(char *color){
 	for (int i = 0; i < ARR_LEN(combos); i++){
-		if (!strcmp(combos[i].name, vars[0].stringType)){
-			SETCOLOR(combos[i].color, COLOR_DEFAULT);
-			break;
+		if (!strcmp(combos[i].name, color)){
+			return combos[i].color;
 		}
 	}
 
+	return COLOR_WHITE;
+}
+
+// Args: Str
+scriptFunction(funcSetColor){
+	SETCOLOR(GetColor(vars[0].stringType), COLOR_DEFAULT);
 	return NullVar;
 }
 
@@ -222,6 +233,127 @@ scriptFunction(funcWait){
 	return NullVar;
 }
 
+scriptFunction(funcGetVer){
+	int *arr = malloc(3 * sizeof(int));
+	arr[0] = LP_VER_MJ;
+	arr[1] = LP_VER_MN;
+	arr[2] = LP_VER_BF;
+	Vector_t res = vecFromArray(arr, 3, sizeof(int));
+	return newVar(IntArrayType, 1, .vectorType = res);
+}
+
+
+// Args: vec(str), int, (optional) vec(str)
+scriptFunction(funcMakeMenu){
+	if (varLen == 3 && vars[2].vectorType.count != vars[0].vectorType.count)
+		return ErrVar(ERRSYNTAX);
+
+	Vector_t menuEntries = newVec(sizeof(MenuEntry_t), vars[0].vectorType.count);
+	vecDefArray(char**, names, vars[0].vectorType);
+	char **colors;
+	if (varLen == 3)
+		colors = vecGetArray(char**, vars[2].vectorType);
+	
+	for (int i = 0; i < vars[0].vectorType.count; i++){
+		u32 color = COLORTORGB(((varLen == 3) ? GetColor(colors[i]) : COLOR_WHITE));
+		MenuEntry_t a = {.optionUnion = color, .name = names[i]};
+		vecAddElem(&menuEntries, a);
+	}
+
+	int res = newMenu(&menuEntries, vars[1].integerType, 78, 10, ENABLEB, menuEntries.count);
+	vecFree(menuEntries);
+	return varInt(res);
+}
+
+//  Args: Str, Str
+scriptFunction(funcCombinePath){
+	return newVar(StringType, 1, .stringType = CombinePaths(vars[0].stringType, vars[1].stringType));
+}
+
+// Args: Str
+scriptFunction(funcEscFolder){
+	return newVar(StringType, 1, .stringType = EscapeFolder(vars[0].stringType));
+}
+
+//  Args: Str, Str
+scriptFunction(funcFileMove){
+	return varInt(f_rename(vars[0].stringType, vars[1].stringType));
+}
+
+//  Args: Str, Str
+scriptFunction(funcFileCopy){
+	return varInt(FileCopy(vars[0].stringType, vars[1].stringType, COPY_MODE_PRINT).err);
+}
+
+// Args: Str
+scriptFunction(funcMmcConnect){
+	int res = 0;
+	if (!strcmp(vars[0].stringType, "SYSMMC"))
+		res = connectMMC(MMC_CONN_EMMC);
+	else if (!strcmp(vars[0].stringType, "EMUMMC") && emu_cfg.enabled)
+		res = connectMMC(MMC_CONN_EMUMMC);
+	else
+		return ErrVar(ERRFATALFUNCFAIL);
+	
+	return varInt(res);
+}
+
+// Args: Str
+scriptFunction(funcMmcMount){
+	return varInt((mountMMCPart(vars[0].stringType).err));
+}
+
+// Args: Str
+scriptFunction(funcMkdir){
+	return varInt((f_mkdir(vars[0].stringType)));
+}
+
+scriptFunction(funcReadDir){
+	int res = 0;
+	Vector_t files = ReadFolder(vars[0].stringType, &res);
+	if (res){
+		clearFileVector(&files);
+		return ErrVar(ERRFATALFUNCFAIL);
+	}
+
+	vecDefArray(FSEntry_t*, fsEntries, files);
+	
+	Vector_t fileNames = newVec(sizeof(char*), files.count);
+	Vector_t fileProperties = newVec(sizeof(int), files.count);
+
+	for (int i = 0; i < files.count; i++){
+		vecAddElem(&fileNames, fsEntries[i].name);
+		int isFolder = fsEntries[i].isDir;
+		vecAddElem(&fileProperties, isFolder);
+	}
+
+	vecFree(files);
+
+	dictVectorAdd(&ctx->varDict, newDict(CpyStr("fileProperties"), (newVar(IntArrayType, 1, .vectorType = fileProperties))));
+
+	return newVar(StringArrayType, 1, .vectorType = fileNames);
+}
+
+scriptFunction(funcCopyDir){
+	return varInt((FolderCopy(vars[0].stringType, vars[1].stringType).err));
+}
+
+scriptFunction(funcDelDir){
+	return varInt((FolderDelete(vars[0].stringType).err));
+}
+
+scriptFunction(funcDelFile){
+	return varInt((f_unlink(vars[0].stringType)));
+}
+
+scriptFunction(funcMmcDump){
+	return varInt((DumpOrWriteEmmcPart(vars[0].stringType, vars[1].stringType, 0, 1).err));
+}
+
+scriptFunction(funcMmcRestore){
+	return varInt((DumpOrWriteEmmcPart(vars[0].stringType, vars[1].stringType, 1, vars[2].integerType).err));
+}
+
 u8 fiveInts[] = {IntType, IntType, IntType, IntType, IntType};
 u8 singleIntArray[] = { IntArrayType };
 u8 singleInt[] = { IntType };
@@ -229,6 +361,9 @@ u8 singleAny[] = { varArgs };
 u8 singleStr[] = { StringType };
 u8 singleByteArr[] = { ByteArrayType };
 u8 StrByteVec[] = { StringType, ByteArrayType};
+u8 MenuArgs[] = { StringArrayType, IntType, StringArrayType};
+u8 twoStrings[] = { StringType, StringType };
+u8 mmcReadWrite[] = { StringType, StringType, IntType};
 
 functionStruct_t scriptFunctions[] = {
 	{"if", funcIf, 1, singleInt},
@@ -252,6 +387,24 @@ functionStruct_t scriptFunctions[] = {
 	{"color", funcSetColor, 1, singleStr},
 	{"pause", funcPause, 0, NULL},
 	{"wait", funcWait, 1, singleInt},
+	{"version", funcGetVer, 0, NULL},
+	{"menu", funcMakeMenu, 2, MenuArgs}, // for the optional arg
+	{"menu", funcMakeMenu, 3, MenuArgs},
+	{"pathCombine", funcCombinePath, 2, twoStrings},
+	{"pathEscFolder", funcEscFolder, 1, singleStr},
+	{"fileMove", funcFileMove, 2, twoStrings},
+	{"fileCopy", funcFileCopy, 2, twoStrings},
+	{"fileDel", funcDelFile, 1, singleStr},
+	{"mmcConnect", funcMmcConnect, 1, singleStr},
+	{"mmcMount", funcMmcMount, 1, singleStr},
+	{"mkdir", funcMkdir, 1, singleStr},
+	{"dirRead", funcReadDir, 1, singleStr},
+	{"dirCopy", funcCopyDir, 2, twoStrings},
+	{"dirDel", funcDelDir, 1, singleStr},
+	{"mmcDump", funcMmcDump, 2, mmcReadWrite},
+	{"mmcRestore", funcMmcRestore, 3, mmcReadWrite},
+	// Left from old: keyboard(?)
+	// Should implement still: saveSign, getNcaType
 };
 
 Variable_t executeFunction(scriptCtx_t* ctx, char* func_name, lexarToken_t *start, u32 len) {

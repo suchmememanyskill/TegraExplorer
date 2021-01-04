@@ -15,6 +15,7 @@
 #include "../../script/parser.h"
 #include "../../script/variables.h"
 #include <storage/nx_sd.h>
+#include "../../storage/emummc.h"
 
 MenuEntry_t FileMenuEntries[] = {
     {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "-- File menu --"},
@@ -83,6 +84,7 @@ void RunScript(char *path, FSEntry_t entry){
     free(script);
 
     dictVectorAdd(&ctx.varDict, newDict(CpyStr("_CWD"), (newVar(StringType, 0, .stringType = path))));
+    dictVectorAdd(&ctx.varDict, newDict(CpyStr("_EMU"), (newVar(IntType, 0, emu_cfg.enabled))));
 
     printError(mainLoop(&ctx));
 

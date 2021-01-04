@@ -42,6 +42,10 @@ Vector_t extractVars(scriptCtx_t* ctx, lexarToken_t* tokens, u32 len) {
             int distance = distanceBetweenTokens(&tokens[i + 1], len - i - 1, LSBracket, RSBracket);
             i += distance + 1;
         }
+        if (tokens[i].token == LBracket){
+            int distance = distanceBetweenTokens(&tokens[i + 1], len - i - 1, LBracket, RBracket);
+            i += distance + 1;
+        }
         if (tokens[i].token == Seperator) {
             Variable_t res = solveEquation(ctx, &tokens[lastLoc], i - lastLoc, 0);
             lastLoc = i + 1;

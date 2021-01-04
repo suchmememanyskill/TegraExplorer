@@ -89,6 +89,15 @@ void BoxRestOfScreen(){
 }
 
 ErrCode_t FolderCopy(const char *locin, const char *locout){
+    if (TConf.explorerCopyMode >= CMODE_CopyFolder){
+        if (strstr(locout, locin) != NULL)
+             return newErrCode(TE_ERR_PATH_IN_PATH);
+    }
+
+    if (!strcmp(locin, locout)){
+        return newErrCode(TE_ERR_SAME_LOC);
+    }
+
     char *dstPath = CombinePaths(locout, strrchr(locin, '/') + 1);
     int res = 0;
     ErrCode_t ret = newErrCode(0);

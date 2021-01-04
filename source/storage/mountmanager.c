@@ -61,6 +61,9 @@ int connectMMC(u8 mmcType){
 }
 
 ErrCode_t mountMMCPart(const char *partition){
+    if (TConf.currentMMCConnected == MMC_CONN_None)
+        return newErrCode(TE_ERR_PARTITION_NOT_FOUND);
+
     unmountMMCPart();
 
     emummc_storage_set_mmc_partition(&emmc_storage, 0); // why i have to do this twice beats me

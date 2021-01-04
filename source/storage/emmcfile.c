@@ -125,6 +125,9 @@ ErrCode_t DumpOrWriteEmmcPart(const char *path, const char *part, u8 write, u8 f
     if (!sd_mount())
         return newErrCode(TE_ERR_NO_SD);
 
+    if (TConf.currentMMCConnected == MMC_CONN_None)
+        return newErrCode(TE_ERR_PARTITION_NOT_FOUND);
+
     if (!memcmp(part, "BOOT0", 5)){
         emummc_storage_set_mmc_partition(&emmc_storage, 1);
         lba_end = (BOOT_PART_SIZE / NX_EMMC_BLOCKSIZE) - 1;

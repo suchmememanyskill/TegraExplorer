@@ -134,7 +134,6 @@ typedef struct {
 } scriptResult_t;
 
 
-
 #define newDict(strName, var) (dict_t) {strName, var}
 #define newVar(var, frii, value) (Variable_t) {.varType = var, .free = frii, value}
 

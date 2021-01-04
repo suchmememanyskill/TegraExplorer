@@ -64,7 +64,7 @@ char *ShowKeyboard(const char *toEdit, u8 alwaysRet){
     int posOnWord = 0;
     bool shift = 0;
     
-    gfx_printf("* = exit | ~ = backspace | ^(left) = shift | _ = Space | + = add char\n\n");
+    gfx_printf("* = exit | ~ = backspace | ^(left) = shift | + = add char\n\n");
 
     u32 x, y;
     gfx_con_getpos(&x, &y);
