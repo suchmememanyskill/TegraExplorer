@@ -233,8 +233,8 @@ scriptFunction(funcWait){
 	u32 timer = get_tmr_ms();
 	while (timer + vars[0].integerType > get_tmr_ms()){
 		gfx_printf("<Wait %d seconds> \r", (vars[0].integerType - (get_tmr_ms() - timer)) / 1000);
+		hidRead();
 	}
-	gfx_putc('\n');
 	return NullVar;
 }
 

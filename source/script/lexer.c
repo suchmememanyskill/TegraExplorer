@@ -162,6 +162,12 @@ Vector_t runLexar(const char* in, u32 len) {
 			vecAddElement(&vec, makeLexarToken(LSBracket, 0));
 		}
 		ELIFC('=') { // Do we need to keep = if the vars are assignments anyway?
+			if (in[1] == '='){
+				vecAddElement(&vec, makeLexarToken(EqualEqual, 0));
+				in++;
+				continue;
+			}
+
 			if (lx[vec.count - 1].token == Variable)
 				lx[vec.count - 1].token = VariableAssignment;
 
