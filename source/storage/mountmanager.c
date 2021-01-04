@@ -22,6 +22,7 @@ void SetKeySlots(){
         // Not for bis but whatever
         se_aes_key_set(6, dumpedKeys.header_key + 0x00, 0x10);
         se_aes_key_set(7, dumpedKeys.header_key + 0x10, 0x10);
+        se_aes_key_set(8, dumpedKeys.save_mac_key, 0x10);
     }
 }
 

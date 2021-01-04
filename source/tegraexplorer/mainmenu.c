@@ -141,8 +141,7 @@ void EnterMainMenu(){
         // -- Explore --
         mainMenuEntries[MainBrowseSd].hide = !sd_mounted;
         mainMenuEntries[MainMountSd].name = (sd_mounted) ? "Unmount SD" : "Mount SD";
-        mainMenuEntries[MainBrowseEmmc].hide = !TConf.keysDumped;
-        mainMenuEntries[MainBrowseEmummc].hide = (!TConf.keysDumped || !emu_cfg.enabled || !sd_mounted);
+        mainMenuEntries[MainBrowseEmummc].hide = (!emu_cfg.enabled || !sd_mounted);
 
         // -- Tools --
         mainMenuEntries[MainPartitionSd].hide = (!is_sd_inited || sd_get_card_removed());

@@ -118,11 +118,13 @@ void GptMenu(u8 MMCType){
                 DrawError(err);
             }
             else {
-                if (TConf.curExplorerLoc > LOC_SD)
-                    ResetCopyParams();
+                if (TConf.keysDumped){
+                    if (TConf.curExplorerLoc > LOC_SD)
+                        ResetCopyParams();
                     
-                TConf.curExplorerLoc = LOC_EMMC;
-                FileExplorer("bis:/");
+                    TConf.curExplorerLoc = LOC_EMMC;
+                    FileExplorer("bis:/");
+                }
             }
         }
         else {

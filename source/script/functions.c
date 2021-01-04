@@ -16,11 +16,16 @@
 #include "../storage/emummc.h"
 #include "../fs/readers/folderReader.h"
 #include "../utils/utils.h"
+#include "../keys/keys.h"
 #include "../storage/emmcfile.h"
+#include "../keys/nca.h"
+#include "../keys/save.h"
+#include "../tegraexplorer/tconf.h"
 
 #define scriptFunction(name) Variable_t name(scriptCtx_t *ctx, Variable_t *vars, u32 varLen)
 
 #define varInt(i) newVar(IntType, 0, i)
+#define varStr(s) newVar(StringType, 1, .stringType = s)
 
 scriptFunction(funcIf) {
 	setCurIndentInstruction(ctx, (vars[0].integerType == 0), 0, -1);
@@ -267,7 +272,23 @@ scriptFunction(funcMakeMenu){
 
 //  Args: Str, Str
 scriptFunction(funcCombinePath){
-	return newVar(StringType, 1, .stringType = CombinePaths(vars[0].stringType, vars[1].stringType));
+	if (varLen <= 1)
+		return NullVar;
+	
+	for (int i = 0; i < varLen; i++){
+		if (vars[i].varType != StringType)
+			return ErrVar(ERRINVALIDTYPE);
+	}
+
+	char *res = CpyStr(vars[0].stringType);
+
+	for (int i = 1; i < varLen; i++){
+		char *temp = CombinePaths(res, vars[i].stringType);
+		free(res);
+		res = temp;
+	}
+
+	return varStr(res);
 }
 
 // Args: Str
@@ -300,6 +321,9 @@ scriptFunction(funcMmcConnect){
 
 // Args: Str
 scriptFunction(funcMmcMount){
+	if (!TConf.keysDumped)
+		return ErrVar(ERRFATALFUNCFAIL);
+
 	return varInt((mountMMCPart(vars[0].stringType).err));
 }
 
@@ -354,6 +378,20 @@ scriptFunction(funcMmcRestore){
 	return varInt((DumpOrWriteEmmcPart(vars[0].stringType, vars[1].stringType, 1, vars[2].integerType).err));
 }
 
+scriptFunction(funcGetNcaType){
+	if (!TConf.keysDumped)
+		return ErrVar(ERRFATALFUNCFAIL);
+
+	return varInt((GetNcaType(vars[0].stringType)));
+}
+
+scriptFunction(funcSignSave){
+	if (!TConf.keysDumped)
+		return ErrVar(ERRFATALFUNCFAIL);
+
+	return varInt((saveCommit(vars[0].stringType).err));
+}
+
 u8 fiveInts[] = {IntType, IntType, IntType, IntType, IntType};
 u8 singleIntArray[] = { IntArrayType };
 u8 singleInt[] = { IntType };
@@ -390,7 +428,7 @@ functionStruct_t scriptFunctions[] = {
 	{"version", funcGetVer, 0, NULL},
 	{"menu", funcMakeMenu, 2, MenuArgs}, // for the optional arg
 	{"menu", funcMakeMenu, 3, MenuArgs},
-	{"pathCombine", funcCombinePath, 2, twoStrings},
+	{"pathCombine", funcCombinePath, varArgs, NULL},
 	{"pathEscFolder", funcEscFolder, 1, singleStr},
 	{"fileMove", funcFileMove, 2, twoStrings},
 	{"fileCopy", funcFileCopy, 2, twoStrings},
@@ -403,8 +441,9 @@ functionStruct_t scriptFunctions[] = {
 	{"dirDel", funcDelDir, 1, singleStr},
 	{"mmcDump", funcMmcDump, 2, mmcReadWrite},
 	{"mmcRestore", funcMmcRestore, 3, mmcReadWrite},
+	{"ncaGetType", funcGetNcaType, 1, singleStr},
+	{"saveSign", funcSignSave, 1, singleStr},
 	// Left from old: keyboard(?)
-	// Should implement still: saveSign, getNcaType
 };
 
 Variable_t executeFunction(scriptCtx_t* ctx, char* func_name, lexarToken_t *start, u32 len) {

@@ -78,6 +78,9 @@ void RunScript(char *path, FSEntry_t entry){
     if (!script)
         return;
 
+    if (((entry.size >= 64 && entry.sizeDef == 1) || entry.sizeDef >= 2) && !TConf.minervaEnabled)
+        return;
+
     gfx_clearscreen();
     scriptCtx_t ctx = createScriptCtx();
     ctx.script = runLexar(script, size);
@@ -88,10 +91,11 @@ void RunScript(char *path, FSEntry_t entry){
 
     printError(mainLoop(&ctx));
 
-    freeVariableVector(&ctx.varDict);
+    freeDictVector(&ctx.varDict);
     lexarVectorClear(&ctx.script);
-    gfx_printf("\nend of script");
-    hidWait();
+
+    gfx_printf("\nScript done!\nPress any key");
+	hidWait();
 }
 
 void RenameFile(char *path, FSEntry_t entry){

@@ -78,12 +78,14 @@ scriptResult_t mainLoop(scriptCtx_t* ctx) {
 void printToken(lexarToken_t* token) {
 	switch (token->token) {
 		case Variable:
-		case VariableAssignment:
-		case Function:
-		case FunctionAssignment:
 		case ArrayVariable:
-		case ArrayVariableAssignment:
+		case Function:
 			gfx_printf("%s", token->text);
+			break;
+		case FunctionAssignment:
+		case VariableAssignment:
+		case ArrayVariableAssignment:
+			gfx_printf("%s=", token->text);
 			break;
 		case StrLit:
 			//printf("%d: '%s'\n", vec.tokens[i].token, vec.tokens[i].text);
@@ -100,12 +102,24 @@ void printToken(lexarToken_t* token) {
 	}
 }
 
+char *ErrorText[] = {
+	"Bad operator",
+	"Double not",
+	"Syntax err",
+	"Invalid type",
+	"No var",
+	"No func",
+	"Inactive indent",
+	"Div by 0",
+	"Func fail"
+};
+
 void printError(scriptResult_t res) {
 	if (res.resCode) {
 		if (res.resCode == ERRESCSCRIPT)
 			return;
 
-		gfx_printf("Error %d found!\nNear: ", res.resCode);
+		gfx_printf("Error found! %s\nNear: ", ErrorText[res.resCode - 1]);
 		for (int i = 0; i < res.len; i++) {
 			printToken(&res.nearToken[i]);
 		}

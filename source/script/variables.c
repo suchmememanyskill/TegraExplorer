@@ -15,7 +15,7 @@ void freeVariable(Variable_t dv) {
 		case StringArrayType:;
 			char** strArray = vecGetArray(char**, dv.vectorType);
 			for (u32 i = 0; i < dv.vectorType.count; i++){
-				FREE(strArray[i]);
+				free(strArray[i]);
 			}	
 
 		case IntArrayType:
