@@ -123,5 +123,8 @@ void printError(scriptResult_t res) {
 		for (int i = 0; i < res.len; i++) {
 			printToken(&res.nearToken[i]);
 		}
+
+		gfx_printf("\nPress any key to exit");
+		hidWait();
 	}
 }

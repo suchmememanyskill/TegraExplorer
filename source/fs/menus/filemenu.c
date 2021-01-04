@@ -93,9 +93,6 @@ void RunScript(char *path, FSEntry_t entry){
 
     freeDictVector(&ctx.varDict);
     lexarVectorClear(&ctx.script);
-
-    gfx_printf("\nScript done!\nPress any key");
-	hidWait();
 }
 
 void RenameFile(char *path, FSEntry_t entry){
