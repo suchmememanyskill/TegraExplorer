@@ -175,10 +175,7 @@ out:
 
 int emummc_storage_end(sdmmc_storage_t *storage)
 {
-	if (!emu_cfg.enabled || h_cfg.emummc_force_disable)
-		sdmmc_storage_end(storage);
-	else
-		sd_end();
+	sdmmc_storage_end(storage);
 
 	return 1;
 }

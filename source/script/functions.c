@@ -392,6 +392,10 @@ scriptFunction(funcSignSave){
 	return varInt((saveCommit(vars[0].stringType).err));
 }
 
+scriptFunction(funcGetMs){
+	return varInt(get_tmr_ms());
+}
+
 u8 fiveInts[] = {IntType, IntType, IntType, IntType, IntType};
 u8 singleIntArray[] = { IntArrayType };
 u8 singleInt[] = { IntType };
@@ -443,6 +447,7 @@ functionStruct_t scriptFunctions[] = {
 	{"mmcRestore", funcMmcRestore, 3, mmcReadWrite},
 	{"ncaGetType", funcGetNcaType, 1, singleStr},
 	{"saveSign", funcSignSave, 1, singleStr},
+	{"timerMs", funcGetMs, 0, NULL},
 	// Left from old: keyboard(?)
 };
 
