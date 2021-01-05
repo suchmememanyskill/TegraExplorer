@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2018 naehrwert
  *
- * Copyright (c) 2018-2019 CTCaer
+ * Copyright (c) 2018-2020 CTCaer
+ * Copyright (c) 2019-2020 shchmue
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,123 +19,45 @@
 
 #include <string.h>
 
-#include "config/config.h"
-#include "config/ini.h"
-#include "gfx/di.h"
-#include "gfx/gfx.h"
-#include "gfx/tui.h"
-#include "hos/pkg1.h"
-#include "libs/fatfs/ff.h"
-#include "mem/heap.h"
-#include "mem/minerva.h"
-#include "power/max77620.h"
-#include "rtc/max77620-rtc.h"
-#include "soc/bpmp.h"
-#include "soc/hw_init.h"
+#include "config.h"
+#include <gfx/di.h>
+#include <gfx_utils.h>
+#include <libs/fatfs/ff.h>
+#include <mem/heap.h>
+#include <mem/minerva.h>
+#include <power/bq24193.h>
+#include <power/max17050.h>
+#include <power/max77620.h>
+#include <rtc/max77620-rtc.h>
+#include <soc/bpmp.h>
+#include <soc/hw_init.h>
 #include "storage/emummc.h"
 #include "storage/nx_emmc.h"
-#include "storage/sdmmc.h"
-#include "utils/btn.h"
-#include "utils/dirlist.h"
-#include "utils/sprintf.h"
-#include "utils/util.h"
+#include <storage/nx_sd.h>
+#include <storage/sdmmc.h>
+#include <utils/btn.h>
+#include <utils/dirlist.h>
+#include <utils/ini.h>
+#include <utils/sprintf.h>
+#include <utils/util.h>
+#include "hid/hid.h"
+#include <input/joycon.h>
+#include "gfx/menu.h"
+#include "utils/vector.h"
+#include "gfx/gfxutils.h"
 #include "tegraexplorer/mainmenu.h"
-#include "tegraexplorer/gfx/gfxutils.h"
-#include "storage/nx_sd.h"
+#include "tegraexplorer/tconf.h"
+#include "err.h"
+#include <soc/pmc.h>
+#include "keys/keys.h"
+#include "keys/keyfile.h"
+#include "storage/mountmanager.h"
 
-//#include "keys/keys.h"
 
-//sdmmc_t sd_sdmmc;
-//sdmmc_storage_t sd_storage;
-//__attribute__ ((aligned (16))) FATFS sd_fs;
-//bool sd_mounted, sd_inited;
-volatile nyx_storage_t *nyx_str = (nyx_storage_t *)NYX_STORAGE_ADDR;
 hekate_config h_cfg;
 boot_cfg_t __attribute__((section ("._boot_cfg"))) b_cfg;
 
-/*
-bool sd_mount()
-{
-	if (sd_mounted)
-		return true;
-
-	if (!sdmmc_storage_init_sd(&sd_storage, &sd_sdmmc, SDMMC_1, SDMMC_BUS_WIDTH_4, 11))
-	{
-		EPRINTF("Failed to init SD card.\nMake sure that it is inserted.\nOr that SD reader is properly seated!");
-		sd_inited = false;
-	}
-	else
-	{
-		sd_inited = true;
-		int res = 0;
-		res = f_mount(&sd_fs, "sd:", 1);
-		if (res == FR_OK)
-		{
-			sd_mounted = 1;
-			return true;
-		}
-		else
-		{
-			EPRINTFARGS("Failed to mount SD card (FatFS Error %d).\nMake sure that a FAT partition exists..", res);
-		}
-	}
-
-	return false;
-}
-
-void sd_unmount()
-{
-	if (sd_mounted)
-	{
-		f_mount(NULL, "sd:", 1);
-		sdmmc_storage_end(&sd_storage);
-		sd_mounted = false;
-		sd_inited = false;
-	}
-}
-
-void *sd_file_read(const char *path, u32 *fsize)
-{
-	FIL fp;
-	if (f_open(&fp, path, FA_READ) != FR_OK)
-		return NULL;
-
-	u32 size = f_size(&fp);
-	if (fsize)
-		*fsize = size;
-
-	void *buf = malloc(size);
-
-	if (f_read(&fp, buf, size, NULL) != FR_OK)
-	{
-		free(buf);
-		f_close(&fp);
-
-		return NULL;
-	}
-
-	f_close(&fp);
-
-	return buf;
-}
-
-int sd_save_to_file(void *buf, u32 size, const char *filename)
-{
-	FIL fp;
-	u32 res = 0;
-	res = f_open(&fp, filename, FA_CREATE_ALWAYS | FA_WRITE);
-	if (res)
-	{
-		EPRINTFARGS("Error (%d) creating file\n%s.\n", res, filename);
-		return res;
-	}
-
-	f_write(&fp, buf, size, NULL);
-	f_close(&fp);
-
-	return 0;
-}
-*/
+volatile nyx_storage_t *nyx_str = (nyx_storage_t *)NYX_STORAGE_ADDR;
 
 // This is a safe and unused DRAM region for our payloads.
 #define RELOC_META_OFF      0x7C
@@ -145,7 +68,7 @@ int sd_save_to_file(void *buf, u32 size, const char *filename)
 #define RCM_PAYLOAD_ADDR    (EXT_PAYLOAD_ADDR + ALIGN(PATCHED_RELOC_SZ, 0x10))
 #define COREBOOT_END_ADDR   0xD0000000
 #define CBFS_DRAM_EN_ADDR   0x4003e000
-#define CBFS_DRAM_MAGIC     0x4452414D // "DRAM"
+#define  CBFS_DRAM_MAGIC    0x4452414D // "DRAM"
 
 static void *coreboot_addr;
 
@@ -213,12 +136,12 @@ int launch_payload(char *path)
 		{
 			reloc_patcher(PATCHED_RELOC_ENTRY, EXT_PAYLOAD_ADDR, ALIGN(size, 0x10));
 
-			reconfig_hw_workaround(false, byte_swap_32(*(u32 *)(buf + size - sizeof(u32))));
+			hw_reinit_workaround(false, byte_swap_32(*(u32 *)(buf + size - sizeof(u32))));
 		}
 		else
 		{
 			reloc_patcher(PATCHED_RELOC_ENTRY, EXT_PAYLOAD_ADDR, 0x7000);
-			reconfig_hw_workaround(true, 0);
+			hw_reinit_workaround(true, 0);
 		}
 
 		// Some cards (Sandisk U1), do not like a fast power cycle. Wait min 100ms.
@@ -233,283 +156,157 @@ int launch_payload(char *path)
 	return 1;
 }
 
-/*
-void launch_tools()
-{
-	u8 max_entries = 61;
-	char *filelist = NULL;
-	char *file_sec = NULL;
-	char *dir = NULL;
-
-	ment_t *ments = (ment_t *)malloc(sizeof(ment_t) * (max_entries + 3));
-
-	gfx_clear_grey(0x1B);
-	gfx_con_setpos(0, 0);
-
-	if (sd_mount())
-	{
-		dir = (char *)malloc(256);
-
-		memcpy(dir, "sd:/bootloader/payloads", 24);
-
-		filelist = dirlist(dir, NULL, false);
-
-		u32 i = 0;
-		u32 i_off = 2;
-
-		if (filelist)
-		{
-			// Build configuration menu.
-			u32 color_idx = 0;
-
-			ments[0].type = MENT_BACK;
-			ments[0].caption = "Back";
-			ments[0].color = colors[(color_idx++) % 6];
-			ments[1].type = MENT_CHGLINE;
-			ments[1].color = colors[(color_idx++) % 6];
-			if (!f_stat("sd:/atmosphere/reboot_payload.bin", NULL))
-			{
-				ments[i_off].type = INI_CHOICE;
-				ments[i_off].caption = "reboot_payload.bin";
-				ments[i_off].color = colors[(color_idx++) % 6];
-				ments[i_off].data = "sd:/atmosphere/reboot_payload.bin";
-				i_off++;
-			}
-			if (!f_stat("sd:/ReiNX.bin", NULL))
-			{
-				ments[i_off].type = INI_CHOICE;
-				ments[i_off].caption = "ReiNX.bin";
-				ments[i_off].color = colors[(color_idx++) % 6];
-				ments[i_off].data = "sd:/ReiNX.bin";
-				i_off++;
-			}
-
-			while (true)
-			{
-				if (i > max_entries || !filelist[i * 256])
-					break;
-				ments[i + i_off].type = INI_CHOICE;
-				ments[i + i_off].caption = &filelist[i * 256];
-				ments[i + i_off].color = colors[(color_idx++) % 6];
-				ments[i + i_off].data = &filelist[i * 256];
-
-				i++;
-			}
-		}
-
-		if (i > 0)
-		{
-			memset(&ments[i + i_off], 0, sizeof(ment_t));
-			menu_t menu = { ments, "Choose a file to launch", 0, 0 };
-
-			file_sec = (char *)tui_do_menu(&menu);
-
-			if (!file_sec)
-			{
-				free(ments);
-				free(dir);
-				free(filelist);
-				sd_unmount();
-				return;
-			}
-		}
-		else
-			EPRINTF("No payloads or modules found.");
-
-		free(ments);
-		free(filelist);
-	}
-	else
-	{
-		free(ments);
-		goto out;
-	}
-
-	if (file_sec)
-	{
-		if (memcmp("sd:/", file_sec, 4)) {
-			memcpy(dir + strlen(dir), "/", 2);
-			memcpy(dir + strlen(dir), file_sec, strlen(file_sec) + 1);
-		}
-		else
-			memcpy(dir, file_sec, strlen(file_sec) + 1);
-
-		if (launch_payload(dir))
-		{
-			EPRINTF("Failed to launch payload.");
-			free(dir);
-		}
-	}
-
-out:
-	sd_unmount();
-	free(dir);
-
-	btn_wait();
-}
-
-void dump_sysnand()
-{
-	h_cfg.emummc_force_disable = true;
-	b_cfg.extra_cfg &= ~EXTRA_CFG_DUMP_EMUMMC;
-	//dump_keys();
-}
-
-void dump_emunand()
-{
-	if (h_cfg.emummc_force_disable)
-		return;
-	emu_cfg.enabled = 1;
-	b_cfg.extra_cfg |= EXTRA_CFG_DUMP_EMUMMC;
-	//dump_keys();
-}
-
-ment_t ment_top[] = {
-	MDEF_HANDLER("Dump from SysNAND | Key generation: unk", dump_sysnand, COLOR_RED),
-	MDEF_HANDLER("Dump from EmuNAND | Key generation: unk", dump_emunand, COLOR_ORANGE),
-	MDEF_CAPTION("---------------", COLOR_YELLOW),
-	MDEF_HANDLER("Payloads...", launch_tools, COLOR_GREEN),
-	MDEF_CAPTION("---------------", COLOR_BLUE),
-	MDEF_HANDLER("Reboot (Normal)", reboot_normal, COLOR_VIOLET),
-	MDEF_HANDLER("Reboot (RCM)", reboot_rcm, COLOR_RED),
-	MDEF_HANDLER("Power off", power_off, COLOR_ORANGE),
-	MDEF_END()
-};
-
-menu_t menu_top = { ment_top, NULL, 0, 0 };
-
-void _get_key_generations(char *sysnand_label, char *emunand_label) {
-	sdmmc_t sdmmc;
-	sdmmc_storage_t storage;
-	sdmmc_storage_init_mmc(&storage, &sdmmc, SDMMC_4, SDMMC_BUS_WIDTH_8, 4);
-	u8 *pkg1 = (u8 *)malloc(NX_EMMC_BLOCKSIZE);
-	sdmmc_storage_set_mmc_partition(&storage, 1);
-	sdmmc_storage_read(&storage, 0x100000 / NX_EMMC_BLOCKSIZE, 1, pkg1);
-	const pkg1_id_t *pkg1_id = pkg1_identify(pkg1);
-	sdmmc_storage_end(&storage);
-
-	if (pkg1_id)
-		sprintf(sysnand_label + 36, "% 3d", pkg1_id->kb);
-	ment_top[0].caption = sysnand_label;
-	if (h_cfg.emummc_force_disable) {
-		free(pkg1);
-		return;
-	}
-
-	emummc_storage_init_mmc(&storage, &sdmmc);
-	memset(pkg1, 0, NX_EMMC_BLOCKSIZE);
-	emummc_storage_set_mmc_partition(&storage, 1);
-	emummc_storage_read(&storage, 0x100000 / NX_EMMC_BLOCKSIZE, 1, pkg1);
-	pkg1_id = pkg1_identify(pkg1);
-	emummc_storage_end(&storage);
-
-	if (pkg1_id)
-		sprintf(emunand_label + 36, "% 3d", pkg1_id->kb);
-	free(pkg1);
-	ment_top[1].caption = emunand_label;
-}
-*/
+extern void pivot_stack(u32 stack_top);
 
 #define EXCP_EN_ADDR   0x4003FFFC
-#define  EXCP_MAGIC 0x30505645 // EVP0
+#define  EXCP_MAGIC 0x30505645      // EVP0
 #define EXCP_TYPE_ADDR 0x4003FFF8
-#define  EXCP_TYPE_RESET 0x545352 // RST
-#define  EXCP_TYPE_UNDEF 0x464455 // UDF
+#define  EXCP_TYPE_RESET 0x545352   // RST
+#define  EXCP_TYPE_UNDEF 0x464455   // UDF
 #define  EXCP_TYPE_PABRT 0x54424150 // PABT
 #define  EXCP_TYPE_DABRT 0x54424144 // DABT
 #define EXCP_LR_ADDR   0x4003FFF4
 
-static void _show_errors(){
+static inline void _show_errors()
+{
 	u32 *excp_enabled = (u32 *)EXCP_EN_ADDR;
 	u32 *excp_type = (u32 *)EXCP_TYPE_ADDR;
 	u32 *excp_lr = (u32 *)EXCP_LR_ADDR;
 
 	if (*excp_enabled == EXCP_MAGIC)
-		h_cfg.errors |= ERR_EXCEPT_ENB;
+		h_cfg.errors |= ERR_EXCEPTION;
 
-	if (h_cfg.errors & ERR_EXCEPT_ENB){
-		gfx_clearscreen();
-		SWAPCOLOR(COLOR_ORANGE);
-		gfx_printf("\nAn exception has occured while running TegraExplorer!\n(LR %08X)\n\n", *excp_lr);
+	if (h_cfg.errors)
+	{
+		
 
-		SWAPCOLOR(COLOR_VIOLET);
-		gfx_printf("Exception: ");
-		SWAPCOLOR(COLOR_YELLOW);
-		switch (*excp_type){
+		/*
+		if (h_cfg.errors & ERR_SD_BOOT_EN)
+			WPRINTF("Failed to mount SD!\n");
+
+		if (h_cfg.errors & ERR_LIBSYS_LP0)
+			WPRINTF("Missing LP0 (sleep mode) lib!\n");
+		if (h_cfg.errors & ERR_LIBSYS_MTC)
+			WPRINTF("Missing or old Minerva lib!\n");
+
+		if (h_cfg.errors & (ERR_LIBSYS_LP0 | ERR_LIBSYS_MTC))
+			WPRINTF("\nUpdate bootloader folder!\n\n");
+		*/
+
+		if (h_cfg.errors & ERR_EXCEPTION)
+		{
+			gfx_clearscreen();
+			WPRINTFARGS("LR %08X", *excp_lr);
+			u32 exception = 0;
+
+			switch (*excp_type)
+			{
 			case EXCP_TYPE_RESET:
-				gfx_printf("Reset");
+				exception = TE_EXCEPTION_RESET;
 				break;
 			case EXCP_TYPE_UNDEF:
-				gfx_printf("Undefined instruction");
+				exception = TE_EXCEPTION_UNDEFINED;
 				break;
 			case EXCP_TYPE_PABRT:
-				gfx_printf("Prefetch abort");
+				exception = TE_EXCEPTION_PREF_ABORT;
 				break;
 			case EXCP_TYPE_DABRT:
-				gfx_printf("Data abort");
+				exception = TE_EXCEPTION_DATA_ABORT;
 				break;
+			}
+
+			// Clear the exception.
+			*excp_enabled = 0;
+			DrawError(newErrCode(exception));
 		}
-
-		RESETCOLOR;
-		gfx_printf("\n\nPress vol+/- or power to continue");
-
-		*excp_enabled = 0;
-		btn_wait();
 	}
 }
 
-extern void pivot_stack(u32 stack_top);
-
-// todo: chainload to reboot payload or payloads folder option?
-
 void ipl_main()
 {
-	config_hw();
+	// Do initial HW configuration. This is compatible with consecutive reruns without a reset.
+	hw_init();
+
+	// Pivot the stack so we have enough space.
 	pivot_stack(IPL_STACK_TOP);
+
+	// Tegra/Horizon configuration goes to 0x80000000+, package2 goes to 0xA9800000, we place our heap in between.
 	heap_init(IPL_HEAP_START);
 
+#ifdef DEBUG_UART_PORT
+	uart_send(DEBUG_UART_PORT, (u8 *)"hekate: Hello!\r\n", 16);
+	uart_wait_idle(DEBUG_UART_PORT, UART_TX_IDLE);
+#endif
+
+	// Set bootloader's default configuration.
 	set_default_configuration();
 
-	sd_mount();
-	minerva_init();
+	// Mount SD Card.
+	h_cfg.errors |= !sd_mount() ? ERR_SD_BOOT_EN : 0;
+
+	TConf.minervaEnabled = !minerva_init();
+	TConf.FSBuffSize = (TConf.minervaEnabled) ? 0x800000 : 0x10000;
+
+	// Train DRAM and switch to max frequency.
+	if (TConf.minervaEnabled) //!TODO: Add Tegra210B01 support to minerva.
+		h_cfg.errors |= ERR_LIBSYS_MTC;
 	minerva_change_freq(FREQ_1600);
 
 	display_init();
-	u32 *fb = display_init_framebuffer();
+
+	u32 *fb = display_init_framebuffer_pitch();
 	gfx_init_ctxt(fb, 720, 1280, 720);
+
 	gfx_con_init();
+
 	display_backlight_pwm_init();
 	display_backlight_brightness(100, 1000);
 
+	// Overclock BPMP.
 	bpmp_clk_rate_set(BPMP_CLK_DEFAULT_BOOST);
 
-	/*
-	h_cfg.emummc_force_disable = emummc_load_cfg();
+	emummc_load_cfg();
+	// Ignore whether emummc is enabled.
+	h_cfg.emummc_force_disable = emu_cfg.sector == 0 && !emu_cfg.path;
+	emu_cfg.enabled = !h_cfg.emummc_force_disable;
+	h_cfg.emummc_force_disable = 1;
 
-	if (b_cfg.boot_cfg & BOOT_CFG_SEPT_RUN)
-	{
-		if (!(b_cfg.extra_cfg & EXTRA_CFG_DUMP_EMUMMC))
-			h_cfg.emummc_force_disable = true;
-		dump_keys();
-	}
+	TConf.pkg1ID = "Unk";
 
-	if (h_cfg.emummc_force_disable)
-	{
-		ment_top[1].type = MENT_CAPTION;
-		ment_top[1].color = 0xFF555555;
-		ment_top[1].handler = NULL;
-	}
+	hidInit();
 
-	_get_key_generations((char *)ment_top[0].caption, (char *)ment_top[1].caption);
+	//gfx_clearscreen();
+	//Vector_t a = vecFromArray(testEntries, 9, sizeof(MenuEntry_t));
+	//u32 res = newMenu(&a, 0, 40, 5, testAdd, NULL);
 
-	while (true)
-		tui_do_menu(&menu_top);
-	*/
+	//gfx_clearscreen();
+	//DrawError(newErrCode(1));
+
+	// TODO: Write exceptions in err.c and check them here
 
 	_show_errors();
 
-	te_main();
+	gfx_clearscreen();
 
+	int res = -1;
+
+	
+	if (btn_read() & BTN_VOL_DOWN || DumpKeys())
+		res = GetKeysFromFile("sd:/switch/prod.keys");
+
+	TConf.keysDumped = (res > 0) ? 0 : 1;
+
+	if (res > 0)
+		DrawError(newErrCode(TE_ERR_KEYDUMP_FAIL));
+	
+	if (TConf.keysDumped)
+		SetKeySlots();
+	
+	if (res == 0)
+		hidWait();
+	EnterMainMenu();
+
+	// Halt BPMP if we managed to get out of execution.
 	while (true)
 		bpmp_halt();
 }

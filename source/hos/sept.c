@@ -16,24 +16,25 @@
 
 #include <string.h>
 
+#include "hos.h"
+#include "fss.h"
 #include "sept.h"
-#include "../config/ini.h"
-#include "../gfx/di.h"
-#include "../hos/fss.h"
-#include "../hos/hos.h"
-#include "../libs/fatfs/ff.h"
-#include "../mem/heap.h"
-#include "../soc/hw_init.h"
-#include "../soc/pmc.h"
-#include "../soc/t210.h"
+#include "../config.h"
+#include <utils/ini.h>
+#include <gfx/di.h>
+#include <libs/fatfs/ff.h>
+#include <mem/heap.h>
+#include <soc/hw_init.h>
+#include <soc/pmc.h>
+#include <soc/t210.h>
 #include "../storage/nx_emmc.h"
-#include "../storage/nx_sd.h"
-#include "../storage/sdmmc.h"
-#include "../utils/btn.h"
-#include "../utils/list.h"
-#include "../utils/types.h"
+#include <storage/nx_sd.h>
+#include <storage/sdmmc.h>
+#include <utils/btn.h>
+#include <utils/list.h>
+#include <utils/types.h>
 
-#include "../gfx/gfx.h"
+#include <gfx_utils.h>
 
 #define PATCHED_RELOC_SZ 0x94
 
@@ -104,7 +105,6 @@ int reboot_to_sept(const u8 *tsec_fw, const u32 tsec_size, const u32 kb)
 		}
 	}
 
-
 	if (!fss0_sept_used)
 	{
 		// Copy sept-primary.
@@ -172,7 +172,7 @@ int reboot_to_sept(const u8 *tsec_fw, const u32 tsec_size, const u32 kb)
 	PMC(APBDEV_PMC_SCRATCH33) = SEPT_PRI_ADDR;
 	PMC(APBDEV_PMC_SCRATCH40) = 0x6000F208;
 
-	reconfig_hw_workaround(false, 0);
+	hw_reinit_workaround(false, 0);
 
 	(*sept)();
 

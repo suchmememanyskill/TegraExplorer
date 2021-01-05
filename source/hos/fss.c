@@ -19,14 +19,14 @@
 #include <string.h>
 
 #include "fss.h"
-// #include "hos.h"
-#include "../config/config.h"
-#include "../libs/fatfs/ff.h"
-#include "../mem/heap.h"
+#include "hos.h"
+#include "../config.h"
+#include <libs/fatfs/ff.h>
+#include <mem/heap.h>
 #include "../storage/emummc.h"
-#include "../storage/nx_sd.h"
+#include <storage/nx_sd.h>
 
-#include "../gfx/gfx.h"
+#include <gfx_utils.h>
 #define DPRINTF(...)
 
 extern hekate_config h_cfg;
@@ -36,6 +36,7 @@ extern bool is_ipl_updated(void *buf, char *path, bool force);
 // FSS0 Magic and Meta header offset.
 #define FSS0_MAGIC 0x30535346
 #define FSS0_META_OFFSET 0x4
+#define FSS0_VERSION_0_17_0 0x110000
 
 // FSS0 Content Types.
 #define CNT_TYPE_FSP 0
@@ -49,9 +50,10 @@ extern bool is_ipl_updated(void *buf, char *path, bool force);
 #define CNT_TYPE_EMC 8
 #define CNT_TYPE_KLD 9  // Kernel Loader.
 #define CNT_TYPE_KRN 10 // Kernel.
+#define CNT_TYPE_EXF 11 // Exosphere Mariko fatal payload.
 
 // FSS0 Content Flags.
-#define CNT_FLAG0_EXPERIMENTAL (1 << 0)
+#define CNT_FLAG0_EXPERIMENTAL BIT(0)
 
 // FSS0 Meta Header.
 typedef struct _fss_meta_t
@@ -86,8 +88,12 @@ int parse_fss(launch_ctxt_t *ctxt, const char *path, fss0_sept_t *sept_ctxt)
 	bool stock = false;
 	int sept_used = 0;
 
+	// Skip if stock and Exosphere and warmboot are not needed.
 	if (!sept_ctxt)
 	{
+		bool pkg1_old = ctxt->pkg1_id->kb <= KB_FIRMWARE_VERSION_620;
+		bool emummc_disabled = !emu_cfg.enabled || h_cfg.emummc_force_disable;
+
 		LIST_FOREACH_ENTRY(ini_kv_t, kv, &ctxt->cfg->kvs, link)
 		{
 			if (!strcmp("stock", kv->key))
@@ -95,7 +101,11 @@ int parse_fss(launch_ctxt_t *ctxt, const char *path, fss0_sept_t *sept_ctxt)
 					stock = true;
 		}
 
-		if (stock && ctxt->pkg1_id->kb <= KB_FIRMWARE_VERSION_620 && (!emu_cfg.enabled || h_cfg.emummc_force_disable))
+#ifdef HOS_MARIKO_STOCK_SECMON
+		if (stock && emummc_disabled && (pkg1_old || h_cfg.t210b01))
+#else
+		if (stock && emummc_disabled && pkg1_old)
+#endif
 			return 1;
 	}
 
@@ -114,11 +124,24 @@ int parse_fss(launch_ctxt_t *ctxt, const char *path, fss0_sept_t *sept_ctxt)
 	// Check if valid FSS0 and parse it.
 	if (fss_meta->magic == FSS0_MAGIC)
 	{
+		bool mariko_not_supported = false;
+		if (h_cfg.t210b01 && (fss_meta->version < FSS0_VERSION_0_17_0))
+		{
+			gfx_con.mute = false;
+			mariko_not_supported = true;
+		}
+
 		gfx_printf("Found FSS0, Atmosphere %d.%d.%d-%08x\n"
 			"Max HOS supported: %d.%d.%d\n"
 			"Unpacking and loading components..  ",
 			fss_meta->version >> 24, (fss_meta->version >> 16) & 0xFF, (fss_meta->version >> 8) & 0xFF, fss_meta->git_rev,
 			fss_meta->hos_ver >> 24, (fss_meta->hos_ver >> 16) & 0xFF, (fss_meta->hos_ver >> 8) & 0xFF);
+
+		if (mariko_not_supported)
+		{
+			EPRINTF("Mariko not supported on < 0.17.0!");
+			goto fail;
+		}
 
 		if (!sept_ctxt)
 		{
@@ -138,7 +161,7 @@ int parse_fss(launch_ctxt_t *ctxt, const char *path, fss0_sept_t *sept_ctxt)
 				continue;
 
 			// If content is experimental and experimental flag is not enabled, skip it.
-			if ((curr_fss_cnt[i].flags0 & CNT_FLAG0_EXPERIMENTAL) && !ctxt->fss0_enable_experimental)
+			if ((curr_fss_cnt[i].flags0 & CNT_FLAG0_EXPERIMENTAL) && !ctxt->fss0_experimental)
 				continue;
 
 			// Parse content.
@@ -155,14 +178,31 @@ int parse_fss(launch_ctxt_t *ctxt, const char *path, fss0_sept_t *sept_ctxt)
 					list_append(&ctxt->kip1_list, &mkip1->link);
 					DPRINTF("Loaded %s.kip1 from FSS0 (size %08X)\n", curr_fss_cnt[i].name, curr_fss_cnt[i].size);
 					break;
+
+				case CNT_TYPE_KRN:
+					if (stock)
+						continue;
+					ctxt->kernel_size = curr_fss_cnt[i].size;
+					ctxt->kernel = content;
+					break;
+
 				case CNT_TYPE_EXO:
 					ctxt->secmon_size = curr_fss_cnt[i].size;
 					ctxt->secmon = content;
 					break;
+
+				case CNT_TYPE_EXF:
+					ctxt->exofatal_size = curr_fss_cnt[i].size;
+					ctxt->exofatal = content;
+					break;
+
 				case CNT_TYPE_WBT:
+					if (h_cfg.t210b01)
+						continue;
 					ctxt->warmboot_size = curr_fss_cnt[i].size;
 					ctxt->warmboot = content;
 					break;
+
 				default:
 					continue;
 				}
@@ -202,6 +242,7 @@ out:
 		return (!sept_ctxt ? 1 : sept_used);
 	}
 
+fail:
 	f_close(&fp);
 	free(fss);
 

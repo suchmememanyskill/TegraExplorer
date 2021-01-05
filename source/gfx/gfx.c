@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (C) 2018-2019 CTCaer
- * Copyright (c) 2019 shchmue
+ * Copyright (c) 2018-2020 CTCaer
+ * Copyright (c) 2019-2020 shchmue
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -24,8 +24,6 @@ gfx_ctxt_t gfx_ctxt;
 gfx_con_t gfx_con;
 
 static const u8 _gfx_font[] = {
-	0x00, 0x0C, 0x12, 0x7E, 0x42, 0x42, 0x7E, 0x00, // Char 030 (folder)
-	0x00, 0x0E, 0x12, 0x22, 0x22, 0x22, 0x3E, 0x00, // Char 031 (file)
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Char 032 ( )
 	0x00, 0x30, 0x30, 0x18, 0x18, 0x00, 0x0C, 0x00, // Char 033 (!)
 	0x00, 0x22, 0x22, 0x22, 0x00, 0x00, 0x00, 0x00, // Char 034 (")
@@ -120,20 +118,21 @@ static const u8 _gfx_font[] = {
 	0x00, 0x18, 0x08, 0x08, 0x04, 0x08, 0x08, 0x18, // Char 123 ({)
 	0x00, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, // Char 124 (|)
 	0x00, 0x0C, 0x08, 0x08, 0x10, 0x08, 0x08, 0x0C, // Char 125 (})
-	0x00, 0x00, 0x00, 0x4C, 0x32, 0x00, 0x00, 0x00  // Char 126 (~)
+	0x00, 0x00, 0x00, 0x4C, 0x32, 0x00, 0x00, 0x00, // Char 126 (~)
+	0x00, 0x0C, 0x12, 0x7E, 0x42, 0x42, 0x7E, 0x00, // Char 127 (folder)
+	0x00, 0x0E, 0x12, 0x22, 0x22, 0x22, 0x3E, 0x00, // Char 128 (file)
 };
 
-void gfx_init_ctxt(u32 *fb, u32 width, u32 height, u32 stride)
-{
-	gfx_ctxt.fb = fb;
-	gfx_ctxt.width = width;
-	gfx_ctxt.height = height;
-	gfx_ctxt.stride = stride;
-}
+u32 YLeftConfig = YLEFT;
 
 void gfx_clear_grey(u8 color)
 {
 	memset(gfx_ctxt.fb, color, gfx_ctxt.width * gfx_ctxt.height * 4);
+}
+
+void gfx_clear_partial_grey(u8 color, u32 pos_x, u32 height)
+{
+	memset(gfx_ctxt.fb + pos_x * gfx_ctxt.stride, color, height * 4 * gfx_ctxt.stride);
 }
 
 void gfx_clear_color(u32 color)
@@ -142,9 +141,12 @@ void gfx_clear_color(u32 color)
 		gfx_ctxt.fb[i] = color;
 }
 
-void gfx_clear_partial_grey(u8 color, u32 pos_x, u32 height)
+void gfx_init_ctxt(u32 *fb, u32 width, u32 height, u32 stride)
 {
-	memset(gfx_ctxt.fb + pos_x * gfx_ctxt.stride, color, height * 4 * gfx_ctxt.stride);
+	gfx_ctxt.fb = fb;
+	gfx_ctxt.width = width;
+	gfx_ctxt.height = height;
+	gfx_ctxt.stride = stride;
 }
 
 void gfx_con_init()
@@ -186,14 +188,28 @@ void gfx_putc(char c)
 	switch (gfx_con.fntsz)
 	{
 	case 16:
-		if (c >= 30 && c <= 126)
+		if (c >= 32 && c <= 128)
 		{
-			u8 *cbuf = (u8 *)&_gfx_font[8 * (c - 30)];
+			u8 *cbuf = (u8 *)&_gfx_font[8 * (c - 32)];
 			u32 *fb = gfx_ctxt.fb + gfx_con.x + gfx_con.y * gfx_ctxt.stride;
 
 			for (u32 i = 0; i < 16; i+=2)
 			{
 				u8 v = *cbuf;
+				for (u32 t = 0; t < 8; t++){
+					if (v & 1 || gfx_con.fillbg){
+						u32 setColor = (v & 1) ? gfx_con.fgcol : gfx_con.bgcol;
+						*fb = setColor;
+						*(fb + 1) = setColor;
+						*(fb - gfx_ctxt.stride) = setColor;
+						*(fb - gfx_ctxt.stride + 1) = setColor;
+					}
+					v >>= 1;
+					fb -= gfx_ctxt.stride * 2;
+				}
+				fb += gfx_ctxt.stride * 16 + 2;
+				cbuf++;
+				/*
 				for (u32 k = 0; k < 2; k++)
 				{
 					for (u32 j = 0; j < 8; j++)
@@ -221,23 +237,20 @@ void gfx_putc(char c)
 					v = *cbuf;
 				}
 				cbuf++;
+				*/
 			}
-			/*
-			gfx_con.x += 16;
-			if (gfx_con.x >= gfx_ctxt.width - 16) {
-				gfx_con.x = 0;
-				gfx_con.y += 16;
-			}
-			*/
+		
 			gfx_con.y -= 16;
 			if (gfx_con.y < 16){
-				gfx_con.y = YLEFT;
+				gfx_con.y = YLeftConfig;
 				gfx_con.x += 16;
+				if (gfx_con.x > 719)
+					gfx_con.x = 0;
 			}
 		}
 		else if (c == '\n')
 		{
-			gfx_con.y = YLEFT;
+			gfx_con.y = YLeftConfig;
 			gfx_con.x += 16;
 			if (gfx_con.x > gfx_ctxt.width - 16)
 				gfx_con.x = 0;
@@ -247,14 +260,14 @@ void gfx_putc(char c)
 		else if (c == '\a')
 			gfx_con.y = 639;
 		else if (c == '\r')
-			gfx_con.y = YLEFT;
+			gfx_con.y = YLeftConfig;
 
 		break;
 	case 8:
 	default:
 		if (c >= 30 && c <= 126)
 		{
-			u8 *cbuf = (u8 *)&_gfx_font[8 * (c - 30)];
+			u8 *cbuf = (u8 *)&_gfx_font[8 * (c - 32)];
 			u32 *fb = gfx_ctxt.fb + gfx_con.x + gfx_con.y * gfx_ctxt.stride;
 			for (u32 i = 0; i < 8; i++)
 			{
@@ -273,14 +286,14 @@ void gfx_putc(char c)
 
 			gfx_con.y -= 8;
 			if (gfx_con.y < 8){
-				gfx_con.y = YLEFT;
+				gfx_con.y = YLeftConfig;
 				gfx_con.x += 8;
 			}
 
 		}
 		else if (c == '\n')
 		{
-			gfx_con.y = YLEFT;
+			gfx_con.y = YLeftConfig;
 			gfx_con.x += 8;
 			if (gfx_con.x > gfx_ctxt.width - 8)
 				gfx_con.x = 0;
@@ -290,7 +303,7 @@ void gfx_putc(char c)
 		else if (c == '\a')
 			gfx_con.y = 639;
 		else if (c == '\r')
-			gfx_con.y = YLEFT;
+			gfx_con.y = YLeftConfig;
 
 		break;
 	}
@@ -305,6 +318,30 @@ void gfx_puts(const char *s)
 		gfx_putc(*s);
 }
 
+void gfx_puts_small(const char *s){
+	gfx_con.fntsz = 8;
+	
+	gfx_puts(s);
+
+	gfx_con.fntsz = 16;
+}
+
+void gfx_puts_limit(const char *s, u32 limit){
+	if (!s || gfx_con.mute)
+		return;
+
+	u32 len = strlen(s);
+
+	if (len > limit)
+		limit -= 3;
+
+	for (int i = 0; i < MIN(len, limit); i++)
+		gfx_putc(s[i]);
+
+	if (len > limit + 3)
+		gfx_puts("...");
+}
+
 static void _gfx_putn(u32 v, int base, char fill, int fcnt)
 {
 	char buf[65];
@@ -315,6 +352,11 @@ static void _gfx_putn(u32 v, int base, char fill, int fcnt)
 	if (base > 36)
 		return;
 
+	bool minus = (base == 10 && v & 0x80000000);
+
+	if (minus)
+		v = (v ^ 0xFFFFFFFF) + 1;
+
 	p = buf + 64;
 	*p = 0;
 	do
@@ -324,9 +366,16 @@ static void _gfx_putn(u32 v, int base, char fill, int fcnt)
 		v /= base;
 	} while (v);
 
+	if (minus){
+		*--p = '-';
+		c--;	
+	}
+
 	if (fill != 0)
 	{
-		while (c > 0)
+		if (fill == ' ')
+			gfx_con.y -= c * 16;
+		else while (c > 0)
 		{
 			*--p = fill;
 			c--;
@@ -403,6 +452,11 @@ void gfx_vprintf(const char *fmt, va_list ap)
 				gfx_con.bgcol = va_arg(ap, u32);
 				gfx_con.fillbg = 1;
 				break;
+			case 'b':;
+				u32 b = YLEFT - va_arg(ap, u32);
+				gfx_con.y = b;
+				YLeftConfig = gfx_con.y;
+				break;
 			case '%':
 				gfx_putc('%');
 				break;
@@ -432,6 +486,14 @@ void gfx_printf(const char *fmt, ...)
 	va_end(ap);
 }
 
+void gfx_putc_small(char c){
+	gfx_con.fntsz = 8;
+	gfx_putc(c);
+	gfx_con.fntsz = 16;
+}
+
+#define hexDumpLen 0x20
+
 void gfx_hexdump(u32 base, const u8 *buf, u32 len)
 {
 	if (gfx_con.mute)
@@ -441,14 +503,14 @@ void gfx_hexdump(u32 base, const u8 *buf, u32 len)
 	gfx_con.fntsz = 8;
 	for(u32 i = 0; i < len; i++)
 	{
-		if(i % 0x10 == 0)
+		if(i % hexDumpLen == 0)
 		{
 			if(i != 0)
 			{
 				gfx_puts("| ");
-				for(u32 j = 0; j < 0x10; j++)
+				for(u32 j = 0; j < hexDumpLen; j++)
 				{
-					u8 c = buf[i - 0x10 + j];
+					u8 c = buf[i - hexDumpLen + j];
 					if(c >= 32 && c <= 126)
 						gfx_putc(c);
 					else
@@ -461,12 +523,12 @@ void gfx_hexdump(u32 base, const u8 *buf, u32 len)
 		gfx_printf("%02x ", buf[i]);
 		if (i == len - 1)
 		{
-			int ln = len % 0x10 != 0;
-			u32 k = 0x10 - 1;
+			int ln = len % hexDumpLen != 0;
+			u32 k = hexDumpLen - 1;
 			if (ln)
 			{
 				k = (len & 0xF) - 1;
-				for (u32 j = 0; j < 0x10 - k; j++)
+				for (u32 j = 0; j < hexDumpLen - k; j++)
 					gfx_puts("   ");
 			}
 			gfx_puts("| ");
@@ -485,6 +547,50 @@ void gfx_hexdump(u32 base, const u8 *buf, u32 len)
 	gfx_con.fntsz = prevFontSize;
 }
 
+void gfx_hexdiff(u32 base, const u8 *buf1, const u8 *buf2, u32 len)
+{
+	if (gfx_con.mute)
+		return;
+
+	if (memcmp(buf1, buf2, len) == 0)
+	{
+		gfx_printf("Diff: No differences found.\n");
+		return;
+	}
+
+	u8 prevFontSize = gfx_con.fntsz;
+	gfx_con.fntsz = 8;
+	for(u32 i = 0; i < len; i+=0x10)
+	{
+		u32 bytes_left = len - i < 0x10 ? len - i : 0x10;
+		if (memcmp(buf1 + i, buf2 + i, bytes_left) == 0)
+			continue;
+		gfx_printf("Diff 1: %08x: ", base + i);
+		for (u32 j = 0; j < bytes_left; j++)
+		{
+			if (buf1[i+j] != buf2[i+j])
+				gfx_con.fgcol = COLOR_ORANGE;
+			gfx_printf("%02x ", buf1[i+j]);
+			gfx_con.fgcol = 0xFFCCCCCC;
+		}
+		gfx_puts("| ");
+		gfx_putc('\n');
+		gfx_printf("Diff 2: %08x: ", base + i);
+		for (u32 j = 0; j < bytes_left; j++)
+		{
+			if (buf1[i+j] != buf2[i+j])
+				gfx_con.fgcol = COLOR_ORANGE;
+			gfx_printf("%02x ", buf2[i+j]);
+			gfx_con.fgcol = 0xFFCCCCCC;
+		}
+		gfx_puts("| ");
+		gfx_putc('\n');
+		gfx_putc('\n');
+	}
+	gfx_putc('\n');
+	gfx_con.fntsz = prevFontSize;
+}
+
 static int abs(int x)
 {
 	if (x < 0)
@@ -495,6 +601,10 @@ static int abs(int x)
 void gfx_set_pixel(u32 x, u32 y, u32 color)
 {
 	gfx_ctxt.fb[x + y * gfx_ctxt.stride] = color;
+}
+
+void gfx_set_pixel_horz(int x, int y, u32 color) {
+	*(gfx_ctxt.fb + (YLEFT - x) * gfx_ctxt.stride + y) = color;
 }
 
 void gfx_line(int x0, int y0, int x1, int y1, u32 color)
@@ -550,7 +660,7 @@ void gfx_boxGrey_old(int x0, int y0, int x1, int y1, u8 shade){
 void gfx_box(int x0, int y0, int x1, int y1, u32 color){
 	for (int y = (YLEFT - x0); y >= (YLEFT - x1); y--){
 		for (int x = y0; x <= y1; x++){
-			gfx_set_pixel(x, y, color);
+			gfx_ctxt.fb[x + y * gfx_ctxt.stride] = color;
 		}
 	}
 }

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (C) 2018-2019 CTCaer
- * Copyright (C) 2018 M4xw
+ * Copyright (c) 2018-2020 CTCaer
+ * Copyright (c) 2018 M4xw
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,7 +19,7 @@
 #ifndef _GFX_H_
 #define _GFX_H_
 
-#include "../../common/common_gfx.h"
+#include <utils/types.h>
 #include <stdarg.h>
 
 #define EPRINTF(text) gfx_printf("%k"text"%k\n", 0xFFFF0000, 0xFFCCCCCC)
@@ -27,6 +27,30 @@
 #define WPRINTF(text) gfx_printf("%k"text"%k\n", 0xFFFFDD00, 0xFFCCCCCC)
 #define WPRINTFARGS(text, args...) gfx_printf("%k"text"%k\n", 0xFFFFDD00, args, 0xFFCCCCCC)
 
+typedef struct _gfx_ctxt_t
+{
+	u32 *fb;
+	u32 width;
+	u32 height;
+	u32 stride;
+} gfx_ctxt_t;
+
+typedef struct _gfx_con_t
+{
+	gfx_ctxt_t *gfx_ctxt;
+	u32 fntsz;
+	u32 x;
+	u32 y;
+	u32 savedx;
+	u32 savedy;
+	u32 fgcol;
+	int fillbg;
+	u32 bgcol;
+	bool mute;
+} gfx_con_t;
+
+extern gfx_ctxt_t gfx_ctxt;
+extern gfx_con_t gfx_con;
 #define YLEFT 1279
 
 void gfx_init_ctxt(u32 *fb, u32 width, u32 height, u32 stride);
@@ -42,8 +66,13 @@ void gfx_puts(const char *s);
 void gfx_printf(const char *fmt, ...);
 void gfx_vprintf(const char *fmt, va_list ap);
 void gfx_hexdump(u32 base, const u8 *buf, u32 len);
+void gfx_hexdiff(u32 base, const u8 *buf1, const u8 *buf2, u32 len);
+void gfx_puts_limit(const char *s, u32 limit);
+void gfx_puts_small(const char *s);
+void gfx_putc_small(char c);
 
 void gfx_set_pixel(u32 x, u32 y, u32 color);
+void gfx_set_pixel_horz(int x, int y, u32 color);
 void gfx_line(int x0, int y0, int x1, int y1, u32 color);
 void gfx_put_small_sep();
 void gfx_put_big_sep();

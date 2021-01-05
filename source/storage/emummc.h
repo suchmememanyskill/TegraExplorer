@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 CTCaer
+ * Copyright (c) 2019 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -17,8 +17,8 @@
 #ifndef EMUMMC_H
 #define EMUMMC_H
 
-#include "sdmmc.h"
-#include "../utils/types.h"
+#include <storage/sdmmc.h>
+#include <utils/types.h>
 
 typedef enum
 {
@@ -49,7 +49,8 @@ typedef struct _emummc_cfg_t
 
 extern emummc_cfg_t emu_cfg;
 
-bool emummc_load_cfg();
+void emummc_load_cfg();
+bool emummc_set_path(char *path);
 int emummc_storage_init_mmc(sdmmc_storage_t *storage, sdmmc_t *sdmmc);
 int emummc_storage_end(sdmmc_storage_t *storage);
 int emummc_storage_read(sdmmc_storage_t *storage, u32 sector, u32 num_sectors, void *buf);
