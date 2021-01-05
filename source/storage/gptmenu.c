@@ -84,11 +84,6 @@ void GptMenu(u8 MMCType){
             gfx_clearscreen();
             char *fileName = CpyStr(strrchr(TConf.srcCopy, '/') + 1);
 
-            for (int i = 0; i < strlen(fileName); i++){
-                if (fileName[i] >= 'a' && fileName[i] <= 'z')
-                    fileName[i] &= ~BIT(5);
-            }
-
             gfx_printf("Are you sure you want to flash %s?  ", fileName);
             if (MakeYesNoHorzMenu(3, COLOR_DEFAULT)){
                 RESETCOLOR;
