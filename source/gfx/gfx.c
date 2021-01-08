@@ -121,6 +121,7 @@ static const u8 _gfx_font[] = {
 	0x00, 0x00, 0x00, 0x4C, 0x32, 0x00, 0x00, 0x00, // Char 126 (~)
 	0x00, 0x0C, 0x12, 0x7E, 0x42, 0x42, 0x7E, 0x00, // Char 127 (folder)
 	0x00, 0x0E, 0x12, 0x22, 0x22, 0x22, 0x3E, 0x00, // Char 128 (file)
+	0x00, 0x08, 0x0C, 0x0E, 0x7E, 0x70, 0x30, 0x10, // Char 129 (Charging)
 };
 
 u32 YLeftConfig = YLEFT;
@@ -188,7 +189,7 @@ void gfx_putc(char c)
 	switch (gfx_con.fntsz)
 	{
 	case 16:
-		if (c >= 32 && c <= 128)
+		if (c >= 32 && c <= 129)
 		{
 			u8 *cbuf = (u8 *)&_gfx_font[8 * (c - 32)];
 			u32 *fb = gfx_ctxt.fb + gfx_con.x + gfx_con.y * gfx_ctxt.stride;
@@ -265,7 +266,7 @@ void gfx_putc(char c)
 		break;
 	case 8:
 	default:
-		if (c >= 30 && c <= 126)
+		if (c >= 30 && c <= 129)
 		{
 			u8 *cbuf = (u8 *)&_gfx_font[8 * (c - 32)];
 			u32 *fb = gfx_ctxt.fb + gfx_con.x + gfx_con.y * gfx_ctxt.stride;

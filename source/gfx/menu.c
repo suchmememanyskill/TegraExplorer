@@ -160,8 +160,10 @@ int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 op
                     break;
                 }
             }
-            else
+            else {
                 holdTimer = 300;
+                gfx_printTopInfo();
+            }
         }
 
         lastPress = get_tmr_ms();
