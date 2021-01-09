@@ -5,6 +5,8 @@
 #include <utils/types.h>
 #include <utils/util.h>
 #include "../utils/utils.h"
+#include "../tegraexplorer/tools.h"
+#include <gfx/di.h>
 
 static Input_t inputs = {0};
 u16 LbaseX = 0, LbaseY = 0, RbaseX = 0, RbaseY = 0;
@@ -21,6 +23,11 @@ Input_t *hidRead(){
 
     if (controller->home)
         RebootToPayloadOrRcm();
+
+    #ifdef TAKESCREENSHOT
+        if (controller->cap)
+            TakeScreenshot();
+    #endif
 
     inputs.buttons = controller->buttons;
 
