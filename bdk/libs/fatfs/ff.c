@@ -5929,6 +5929,7 @@ FRESULT f_mkfs (
 
 #if FF_FS_EXFAT
 	if (fmt == FS_EXFAT) {	/* Create an exFAT volume */
+		LEAVE_MKFS(FR_NO_FILESYSTEM); // Muh frii bytes
 		DWORD szb_bit, szb_case, sum, nb, cl;
 		WCHAR ch, si;
 		UINT j, st;

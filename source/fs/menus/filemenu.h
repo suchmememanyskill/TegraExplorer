@@ -4,3 +4,4 @@
 typedef void (*fileMenuPath)(char *path, FSEntry_t entry);
 
 void FileMenu(char *path, FSEntry_t entry);
+void RunScript(char *path, FSEntry_t entry);

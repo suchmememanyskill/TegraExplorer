@@ -24,10 +24,8 @@ Input_t *hidRead(){
     if (controller->home)
         RebootToPayloadOrRcm();
 
-    #ifdef TAKESCREENSHOT
-        if (controller->cap)
-            TakeScreenshot();
-    #endif
+    if (controller->cap)
+        TakeScreenshot();
 
     inputs.buttons = controller->buttons;
 

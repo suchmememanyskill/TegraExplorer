@@ -92,7 +92,7 @@ void lexarVectorClear(Vector_t *v){
 
 #define ELIFC(c) else if (*in == c)
 
-Vector_t runLexar(const char* in, u32 len) {
+Vector_t runLexer(const char* in, u32 len) {
 	const char *start = in;
 	Vector_t vec = newVec(sizeof(lexarToken_t), 16);
 	// store last var for re-assignment

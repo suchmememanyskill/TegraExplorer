@@ -83,7 +83,7 @@ void RunScript(char *path, FSEntry_t entry){
 
     gfx_clearscreen();
     scriptCtx_t ctx = createScriptCtx();
-    ctx.script = runLexar(script, size);
+    ctx.script = runLexer(script, size);
     free(script);
 
     dictVectorAdd(&ctx.varDict, newDict(CpyStr("_CWD"), (newVar(StringType, 0, .stringType = path))));

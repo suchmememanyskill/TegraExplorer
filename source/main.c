@@ -52,6 +52,9 @@
 #include "keys/keys.h"
 #include "keys/keyfile.h"
 #include "storage/mountmanager.h"
+#include "fs/fsutils.h"
+#include "fs/fstypes.h"
+#include "fs/menus/filemenu.h"
 
 
 hekate_config h_cfg;
@@ -304,6 +307,10 @@ void ipl_main()
 	
 	if (res == 0)
 		hidWait();
+
+	if (FileExists("sd:/startup.te"))
+		RunScript("sd:/", newFSEntry("startup.te"));
+
 	EnterMainMenu();
 
 	// Halt BPMP if we managed to get out of execution.

@@ -23,3 +23,5 @@ typedef struct {
         u16 sizeUnion;
     };
 } FSEntry_t;
+
+#define newFSEntry(filename) (FSEntry_t) {.name = filename}
