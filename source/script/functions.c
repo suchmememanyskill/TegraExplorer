@@ -396,6 +396,12 @@ scriptFunction(funcGetMs){
 	return varInt(get_tmr_ms());
 }
 
+extern int launch_payload(char *path);
+
+scriptFunction(funcLaunchPayload){
+	return varInt(launch_payload(vars[0].stringType));
+}
+
 u8 fiveInts[] = {IntType, IntType, IntType, IntType, IntType};
 u8 singleIntArray[] = { IntArrayType };
 u8 singleInt[] = { IntType };
@@ -448,6 +454,7 @@ functionStruct_t scriptFunctions[] = {
 	{"ncaGetType", funcGetNcaType, 1, singleStr},
 	{"saveSign", funcSignSave, 1, singleStr},
 	{"timerMs", funcGetMs, 0, NULL},
+	{"launchPayload", funcLaunchPayload, 1, singleStr},
 	// Left from old: keyboard(?)
 };
 

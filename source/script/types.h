@@ -74,6 +74,7 @@ enum Variables {
 	DictType,
 	NullType,
 	ErrType,
+	EmptyArrayType,
 };
 
 typedef struct { // this is to keep track of how many {} we passed. Keep an internal var with the "indentation level", +1 for {, -1 for }. have an array with the following def on what to do (on func: enter, set indentation & jump back, on while, jump to while, use while as if, on if simply set true or false)

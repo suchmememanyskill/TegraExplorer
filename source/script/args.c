@@ -132,42 +132,44 @@ Variable_t getVarFromToken(scriptCtx_t* ctx, lexarToken_t* tokens, int* index, u
 
         val = executeFunction(ctx, tokens[i - 2].text, &tokens[i], argCount);
 
-        //val = IntValue(1);
         i += argCount;
     }
     ELIFTX(LSBracket) {
         i++;
 
         int argCount = distanceBetweenTokens(&tokens[i], maxLen - 1, LSBracket, RSBracket);
-        if (argCount <= 0)
+        if (argCount < 0)
             return ErrValue(ERRSYNTAX);
 
-        // ArrayVars should be a Vector_t containing Variable_t's. Not implemented yet!
-        Vector_t arrayVars = extractVars(ctx, &tokens[i], argCount);
-        Variable_t* variables = vecGetArray(Variable_t*, arrayVars);
-        int type = variables[0].varType;
-        if (!(type == StringType || type == IntType))
-            return ErrValue(ERRINVALIDTYPE);
+        val.varType = EmptyArrayType;
 
-        val.varType = (type + 2);
-        val.free = 1;
-        val.vectorType = newVec((type == IntType) ? sizeof(int) : sizeof(char*), arrayVars.count);
+        if (argCount > 0){
+            Vector_t arrayVars = extractVars(ctx, &tokens[i], argCount);
+            Variable_t* variables = vecGetArray(Variable_t*, arrayVars);
+            int type = variables[0].varType;
+            if (!(type == StringType || type == IntType))
+                return ErrValue(ERRINVALIDTYPE);
 
-        for (int i = 0; i < arrayVars.count; i++) {
-            if (variables[i].varType != type)
-                return ErrValue(ERRINVALIDTYPE); // Free-ing issue!!
+            val.varType = (type + 2);
+            val.free = 1;
+            val.vectorType = newVec((type == IntType) ? sizeof(int) : sizeof(char*), arrayVars.count);
 
-            if (type == StringType) {
-                char* temp = CpyStr(variables[i].stringType);
-                vecAddElement(&val.vectorType, temp);
+            for (int j = 0; j < arrayVars.count; j++) {
+                if (variables[j].varType != type)
+                    return ErrValue(ERRINVALIDTYPE); // Free-ing issue!!
+
+                if (type == StringType) {
+                    char* temp = CpyStr(variables[j].stringType);
+                    vecAddElement(&val.vectorType, temp);
+                }
+                else {
+                    vecAddElement(&val.vectorType, variables[j].integerType);
+                }
             }
-            else {
-                vecAddElement(&val.vectorType, variables[i].integerType);
-            }
+
+            i += argCount;
+            freeVariableVector(&arrayVars);
         }
-
-        i += argCount;
-        freeVariableVector(&arrayVars);
     }
     ELIFTX(LBracket) {
         i++;
@@ -393,6 +395,43 @@ Variable_t solveEquation(scriptCtx_t* ctx, lexarToken_t* tokens, u32 len, u8 sho
                         freeVariable(res);
                         res.stringType = temp;
                         res.free = 1;
+                    }
+                    else
+                        return ErrValue(ERRBADOPERATOR);
+                }
+                else if (res.varType == EmptyArrayType && localOpToken == Plus){
+                    res.free = 1;
+                    res.varType = val.varType + 2;
+
+                    if (val.varType == IntType){
+                        res.vectorType = newVec(sizeof(int), 4);
+                        vecAddElem(&res.vectorType, val.integerType);
+                    }
+                    else if (val.varType == StringType) {
+                        res.vectorType = newVec(sizeof(char*), 4);
+                        char *temp = CpyStr(val.stringType);
+                        vecAddElem(&res.vectorType, temp);
+                    }
+                    else
+                        return ErrValue(ERRBADOPERATOR);
+
+                    freeVariable(val);
+                }
+                else if (res.varType == StringArrayType && val.varType == StringType){
+                    if (localOpToken == Plus){
+                        Vector_t new = vecCopy(&res.vectorType);
+                        vecDefArray(char **, strings, new);
+                        for (int j = 0; j < new.count; j++){
+                            strings[j] = CpyStr(strings[j]);
+                        }
+
+                        freeVariable(res);
+
+                        char *temp = CpyStr(val.stringType);
+                        vecAddElem(&new, temp);
+
+                        res.free = 1;
+                        res.vectorType = new;
                     }
                     else
                         return ErrValue(ERRBADOPERATOR);
