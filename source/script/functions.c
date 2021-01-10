@@ -205,7 +205,8 @@ ColorCombo_t combos[] = {
 	{"YELLOW", COLOR_YELLOW},
 	{"GREEN", COLOR_GREEN},
 	{"BLUE", COLOR_BLUE},
-	{"VIOLET", COLOR_VIOLET}
+	{"VIOLET", COLOR_VIOLET},
+	{"GREY", COLOR_GREY},
 };
 
 u32 GetColor(char *color){
@@ -256,16 +257,26 @@ scriptFunction(funcMakeMenu){
 	Vector_t menuEntries = newVec(sizeof(MenuEntry_t), vars[0].vectorType.count);
 	vecDefArray(char**, names, vars[0].vectorType);
 	char **colors;
-	if (varLen == 3)
+	if (varLen >= 3)
 		colors = vecGetArray(char**, vars[2].vectorType);
+
+	int *options;
+	if (varLen == 4)
+		options = vecGetArray(int*, vars[3].vectorType);
 	
 	for (int i = 0; i < vars[0].vectorType.count; i++){
-		u32 color = COLORTORGB(((varLen == 3) ? GetColor(colors[i]) : COLOR_WHITE));
+		u32 color = COLORTORGB(((varLen >= 3) ? GetColor(colors[i]) : COLOR_WHITE));
 		MenuEntry_t a = {.optionUnion = color, .name = names[i]};
+
+		if (varLen == 4){
+			a.skip = (options[i] & 1) ? 1 : 0;
+			a.hide = (options[i] & 2) ? 1 : 0;
+		}
+
 		vecAddElem(&menuEntries, a);
 	}
 
-	int res = newMenu(&menuEntries, vars[1].integerType, 78, 10, ENABLEB, menuEntries.count);
+	int res = newMenu(&menuEntries, vars[1].integerType, 78, 10, ENABLEB | ALWAYSREDRAW, menuEntries.count);
 	vecFree(menuEntries);
 	return varInt(res);
 }
@@ -409,7 +420,7 @@ u8 singleAny[] = { varArgs };
 u8 singleStr[] = { StringType };
 u8 singleByteArr[] = { ByteArrayType };
 u8 StrByteVec[] = { StringType, ByteArrayType};
-u8 MenuArgs[] = { StringArrayType, IntType, StringArrayType};
+u8 MenuArgs[] = { StringArrayType, IntType, StringArrayType, IntArrayType};
 u8 twoStrings[] = { StringType, StringType };
 u8 mmcReadWrite[] = { StringType, StringType, IntType};
 
@@ -438,6 +449,7 @@ functionStruct_t scriptFunctions[] = {
 	{"version", funcGetVer, 0, NULL},
 	{"menu", funcMakeMenu, 2, MenuArgs}, // for the optional arg
 	{"menu", funcMakeMenu, 3, MenuArgs},
+	{"menu", funcMakeMenu, 4, MenuArgs},
 	{"pathCombine", funcCombinePath, varArgs, NULL},
 	{"pathEscFolder", funcEscFolder, 1, singleStr},
 	{"fileMove", funcFileMove, 2, twoStrings},
