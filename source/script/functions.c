@@ -343,6 +343,7 @@ scriptFunction(funcMkdir){
 	return varInt((f_mkdir(vars[0].stringType)));
 }
 
+// Args: Str
 scriptFunction(funcReadDir){
 	int res = 0;
 	Vector_t files = ReadFolder(vars[0].stringType, &res);
@@ -369,26 +370,32 @@ scriptFunction(funcReadDir){
 	return newVar(StringArrayType, 1, .vectorType = fileNames);
 }
 
+// Args: Str, Str
 scriptFunction(funcCopyDir){
 	return varInt((FolderCopy(vars[0].stringType, vars[1].stringType).err));
 }
 
+// Args: Str
 scriptFunction(funcDelDir){
 	return varInt((FolderDelete(vars[0].stringType).err));
 }
 
+// Args: Str
 scriptFunction(funcDelFile){
 	return varInt((f_unlink(vars[0].stringType)));
 }
 
+// Args: Str, Str
 scriptFunction(funcMmcDump){
 	return varInt((DumpOrWriteEmmcPart(vars[0].stringType, vars[1].stringType, 0, 1).err));
 }
 
+// Args: Str, Str, Int
 scriptFunction(funcMmcRestore){
 	return varInt((DumpOrWriteEmmcPart(vars[0].stringType, vars[1].stringType, 1, vars[2].integerType).err));
 }
 
+// Args: Str
 scriptFunction(funcGetNcaType){
 	if (!TConf.keysDumped)
 		return ErrVar(ERRFATALFUNCFAIL);
@@ -396,6 +403,7 @@ scriptFunction(funcGetNcaType){
 	return varInt((GetNcaType(vars[0].stringType)));
 }
 
+// Args: Str
 scriptFunction(funcSignSave){
 	if (!TConf.keysDumped)
 		return ErrVar(ERRFATALFUNCFAIL);
@@ -409,6 +417,7 @@ scriptFunction(funcGetMs){
 
 extern int launch_payload(char *path);
 
+// Args: Str
 scriptFunction(funcLaunchPayload){
 	return varInt(launch_payload(vars[0].stringType));
 }

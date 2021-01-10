@@ -251,16 +251,24 @@ Vector_t runLexer(const char* in, u32 len) {
 				vecAddElement(&vec, makeLexarToken(BitShiftRight, 0));
 				in++;
 			}
-			else
+			else {
+				int a = (in[1] == '=') ? 1 : 0;
 				vecAddElement(&vec, makeLexarToken(Bigger, 0));
+				in += a;
+			}
+				
 		}
 		ELIFC('<'){
 			if (in[1] == '<'){
 				vecAddElement(&vec, makeLexarToken(BitShiftLeft, 0));
 				in++;
 			}
-			else 
-				vecAddElement(&vec, makeLexarToken(Smaller, 0));
+			else {
+				int a = (in[1] == '=') ? 1 : 0;
+				vecAddElement(&vec, makeLexarToken(Smaller + a, 0));
+				in += a;
+			} 
+				
 		}
 		else {
 			int val = 0;
