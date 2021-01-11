@@ -21,20 +21,30 @@ extern hekate_config h_cfg;
 Input_t *hidRead(){
     jc_gamepad_rpt_t *controller = joycon_poll();
 
-    if (controller->home)
-        RebootToPayloadOrRcm();
+    inputs.buttons = 0;
+    u8 left_connected = 0;
+    u8 right_connected = 0;
 
-    if (controller->cap)
-        TakeScreenshot();
+    if (controller != NULL){
+        if (controller->home)
+            RebootToPayloadOrRcm();
 
-    inputs.buttons = controller->buttons;
+        if (controller->cap)
+            TakeScreenshot();
+
+        inputs.buttons = controller->buttons;
+
+        left_connected = controller->conn_l;
+        right_connected = controller->conn_r;
+    }
+
 
     u8 btn = btn_read();
     inputs.volp = (btn & BTN_VOL_UP) ? 1 : 0;
     inputs.volm = (btn & BTN_VOL_DOWN) ? 1 : 0;
     inputs.power = (btn & BTN_POWER) ? 1 : 0;
 
-    if (controller->conn_l){
+    if (left_connected){
         if ((LbaseX == 0 || LbaseY == 0) || controller->l3){
             LbaseX = controller->lstick_x;
             LbaseY = controller->lstick_y;
@@ -50,7 +60,7 @@ Input_t *hidRead(){
         inputs.down = inputs.volm;
     }
 
-    if (controller->conn_r){
+    if (right_connected){
         if ((RbaseX == 0 || RbaseY == 0) || controller->r3){
             RbaseX = controller->rstick_x;
             RbaseY = controller->rstick_y;
