@@ -20,6 +20,7 @@
 #include "di.h"
 #include <power/max77620.h>
 #include <power/max7762x.h>
+#include <mem/heap.h>
 #include <soc/clock.h>
 #include <soc/gpio.h>
 #include <soc/hw_init.h>
@@ -170,9 +171,9 @@ int display_dsi_read(u8 cmd, u32 len, void *data, bool video_enabled)
 
 void display_dsi_write(u8 cmd, u32 len, void *data, bool video_enabled)
 {
+	u8  *fifo8;
+	u32 *fifo32;
 	u32 host_control;
-	u32 fifo32[DSI_STATUS_RX_FIFO_SIZE] = {0};
-	u8 *fifo8 = (u8 *)fifo32;
 
 	// Enable host cmd packets during video and save host control.
 	if (video_enabled)
@@ -193,6 +194,8 @@ void display_dsi_write(u8 cmd, u32 len, void *data, bool video_enabled)
 		break;
 
 	default:
+		fifo32 = calloc(DSI_STATUS_RX_FIFO_SIZE * 8, 4);
+		fifo8 = (u8 *)fifo32;
 		fifo32[0] = (len << 8) | MIPI_DSI_DCS_LONG_WRITE;
 		fifo8[4] = cmd;
 		memcpy(&fifo8[5], data, len);
@@ -200,6 +203,7 @@ void display_dsi_write(u8 cmd, u32 len, void *data, bool video_enabled)
 		for (u32 i = 0; i < (ALIGN(len, 4) / 4); i++)
 			DSI(_DSIREG(DSI_WR_DATA)) = fifo32[i];
 		DSI(_DSIREG(DSI_TRIGGER)) = DSI_TRIGGER_HOST;
+		free(fifo32);
 		break;
 	}
 
@@ -215,29 +219,30 @@ void display_dsi_write(u8 cmd, u32 len, void *data, bool video_enabled)
 void display_init()
 {
 	// Check if display is already initialized.
-	if (CLOCK(CLK_RST_CONTROLLER_CLK_ENB_L_SET) & BIT(CLK_L_DISP1))
+	if (CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_L) & BIT(CLK_L_DISP1))
 		_display_panel_and_hw_end(true);
 
 	// Get Chip ID.
 	bool tegra_t210 = hw_get_chip_id() == GP_HIDREV_MAJOR_T210;
 
-	// T210B01: Power on SD2 regulator for supplying LD0.
+	// T210B01: Power on SD2 regulator for supplying LDO0.
 	if (!tegra_t210)
 	{
 		// Set SD2 regulator voltage.
-		max77620_regulator_set_voltage(REGULATOR_SD2, 1325000);
+		max7762x_regulator_set_voltage(REGULATOR_SD2, 1325000);
 
 		// Set slew rate and enable SD2 regulator.
 		i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_SD2_CFG, (1 << MAX77620_SD_SR_SHIFT) | MAX77620_SD_CFG1_FSRADE_SD_ENABLE);
-		max77620_regulator_enable(REGULATOR_SD2, 1);
+		max7762x_regulator_enable(REGULATOR_SD2, true);
 
 	}
 
 	// Enable power to display panel controller.
-	max77620_regulator_set_volt_and_flags(REGULATOR_LDO0, 1200000, MAX77620_POWER_MODE_NORMAL); // Configure to 1.2V.
+	max7762x_regulator_set_voltage(REGULATOR_LDO0, 1200000);
+	max7762x_regulator_enable(REGULATOR_LDO0, true);
+
 	if (tegra_t210)
-		i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_GPIO7,
-			MAX77620_CNFG_GPIO_OUTPUT_VAL_HIGH | MAX77620_CNFG_GPIO_DRV_PUSHPULL); // T210: LD0 -> GPIO7 -> Display panel.
+		max77620_config_gpio(7, MAX77620_GPIO_OUTPUT_ENABLE); // T210: LD0 -> GPIO7 -> Display panel.
 
 	// Enable Display Interface specific clocks.
 	CLOCK(CLK_RST_CONTROLLER_RST_DEV_H_CLR) = BIT(CLK_H_MIPI_CAL) | BIT(CLK_H_DSI);
@@ -293,7 +298,7 @@ void display_init()
 
 	// Set DISP1 clock source and parent clock.
 	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_DISP1) = 0x40000000; // PLLD_OUT.
-	u32 plld_div = (3 << 20) | (20 << 11) | 1; // DIVM: 1, DIVN: 20, DIVP: 3. PLLD_OUT: 768 MHz, PLLD_OUT0 (DSI): 96 MHz.
+	u32 plld_div = (3 << 20) | (20 << 11) | 1; // DIVM: 1, DIVN: 20, DIVP: 3. PLLD_OUT: 768 MHz, PLLD_OUT0 (DSI): 97.5 MHz (offset).
 	CLOCK(CLK_RST_CONTROLLER_PLLD_BASE) = PLLCX_BASE_ENABLE | PLLCX_BASE_LOCK | plld_div;
 
 	if (tegra_t210)
@@ -335,9 +340,12 @@ void display_init()
 
 #if 0
 	// Get Display ID.
-	_display_id = 0xCCCCCC;
+	_display_id = 0xCCCCCC; // Set initial value. 4th byte cleared.
 	display_dsi_read(MIPI_DCS_GET_DISPLAY_ID, 3, &_display_id, DSI_VIDEO_DISABLED);
 #else
+	// Drain RX FIFO.
+	_display_dsi_read_rx_fifo(NULL);
+
 	// Set reply size.
 	_display_dsi_send_cmd(MIPI_DSI_SET_MAXIMUM_RETURN_PACKET_SIZE, 3, 0);
 	_display_dsi_wait(250000, _DSIREG(DSI_TRIGGER), DSI_TRIGGER_HOST | DSI_TRIGGER_VIDEO);
@@ -407,11 +415,11 @@ void display_init()
 	_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE, MIPI_DCS_SET_DISPLAY_ON, 20000);
 
 	// Configure PLLD for DISP1.
-	plld_div = (1 << 20) | (24 << 11) | 1; // DIVM: 1, DIVN: 24, DIVP: 1. PLLD_OUT: 768 MHz, PLLD_OUT0 (DSI): 230.4 MHz.
+	plld_div = (1 << 20) | (24 << 11) | 1; // DIVM: 1, DIVN: 24, DIVP: 1. PLLD_OUT: 768 MHz, PLLD_OUT0 (DSI): 234 MHz (offset).
 	CLOCK(CLK_RST_CONTROLLER_PLLD_BASE) = PLLCX_BASE_ENABLE | PLLCX_BASE_LOCK | plld_div;
 
 	if (tegra_t210)
-		CLOCK(CLK_RST_CONTROLLER_PLLD_MISC1) = 0x20; // PLLD_SETUP
+		CLOCK(CLK_RST_CONTROLLER_PLLD_MISC1) = 0x20; // PLLD_SETUP.
 	else
 		CLOCK(CLK_RST_CONTROLLER_PLLD_MISC1) = 0;
 	CLOCK(CLK_RST_CONTROLLER_PLLD_MISC) = 0x2DFC00;  // Use new PLLD_SDM_DIN.
@@ -420,7 +428,7 @@ void display_init()
 	DSI(_DSIREG(DSI_PAD_CONTROL_1)) = 0;
 	DSI(_DSIREG(DSI_PHY_TIMING_0)) = tegra_t210 ? 0x6070601 : 0x6070603;
 	exec_cfg((u32 *)DSI_BASE, _display_dsi_packet_config, 19);
-	// Set pixel clock dividers: 230.4 / 3 / 1 = 76.8 MHz. 60 Hz.
+	// Set pixel clock dividers: 234 / 3 / 1 = 78 MHz (offset) for 60 Hz.
 	DISPLAY_A(_DIREG(DC_DISP_DISP_CLOCK_CONTROL)) = PIXEL_CLK_DIVIDER_PCD1 | SHIFT_CLK_DIVIDER(4); // 4: div3.
 	exec_cfg((u32 *)DSI_BASE, _display_dsi_mode_config, 10);
 	usleep(10000);
@@ -600,9 +608,18 @@ skip_panel_deinit:
 
 void display_end() { _display_panel_and_hw_end(false); };
 
-u16 display_get_decoded_lcd_id()
+u16 display_get_decoded_panel_id()
 {
 	return _display_id;
+}
+
+void display_set_decoded_panel_id(u32 id)
+{
+	// Decode Display ID.
+	_display_id = ((id >> 8) & 0xFF00) | (id & 0xFF);
+
+	if ((_display_id & 0xFF) == PANEL_JDI_XXX062M)
+		_display_id = PANEL_JDI_XXX062M;
 }
 
 void display_color_screen(u32 color)

@@ -9,3 +9,6 @@ void RebootToPayloadOrRcm();
 
 #define FREE(x) free(x); x = NULL;
 char *ShowKeyboard(const char *toEdit, u8 alwaysRet);
+
+void power_off();
+void reboot_rcm();

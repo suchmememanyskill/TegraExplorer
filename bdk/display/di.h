@@ -651,6 +651,7 @@
  * [10] 96 [09]: JDI LAM062M109A
  * [20] 93 [0F]: InnoLux P062CCA-AZ1 (Rev A1)
  * [20] 95 [0F]: InnoLux P062CCA-AZ2
+ * [20] 96 [0F]: InnoLux P062CCA-AZ3
  * [30] 94 [0F]: AUO A062TAN01 (59.06A33.001)
  * [30] 95 [0F]: AUO A062TAN02 (59.06A33.002)
  *
@@ -671,10 +672,12 @@
  * 20h: InnoLux Corporation
  * 30h: AU Optronics
  * 40h: Unknown1
+ * 50h: Unknown2 (OLED? Samsung? LG?)
  *
  * Boards, Panel Size:
  * 0Fh: Icosa/Iowa, 6.2"
  * 10h: Hoag,       5.5"
+ * 20h: Unknown,    x.x"
  */
 
 enum
@@ -693,8 +696,9 @@ void display_init();
 void display_backlight_pwm_init();
 void display_end();
 
-/*! Get Display panel ID. */
-u16 display_get_decoded_lcd_id();
+/*! Get/Set Display panel ID. */
+u16  display_get_decoded_panel_id();
+void display_set_decoded_panel_id(u32 id);
 
 /*! Show one single color on the display. */
 void display_color_screen(u32 color);

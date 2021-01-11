@@ -15,6 +15,7 @@
 #include <utils/util.h>
 #include "../fs/fsutils.h"
 #include <soc/fuse.h>
+#include "../utils/utils.h"
 
 enum {
     MainExplore = 0,

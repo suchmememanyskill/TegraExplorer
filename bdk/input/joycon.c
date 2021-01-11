@@ -39,6 +39,9 @@
 #define JC_WIRED_INIT_REPLY      0x94
 #define JC_INIT_HANDSHAKE        0xA5
 
+#define JC_HORI_INPUT_RPT_CMD    0x9A
+#define JC_HORI_INPUT_RPT        0x00
+
 #define JC_WIRED_CMD_MAC         0x01
 #define JC_WIRED_CMD_10          0x10
 
@@ -61,8 +64,12 @@
 #define JC_BTN_MASK_L 0xFF2900 // 0xFFE900: with charge status.
 #define JC_BTN_MASK_R 0x0056FF
 
-#define JC_ID_L 1
-#define JC_ID_R 2
+#define JC_ID_L     0x01
+#define JC_ID_R     0x02
+#define JC_ID_HORI  0x20
+
+#define JC_CRC8_INIT    0x00
+#define JC_CRC8_POLY    0x8D
 
 enum
 {
@@ -80,25 +87,31 @@ static const u8 init_jc[] = {
 static const u8 init_handshake[] = {
 	0x19, 0x01, 0x03, 0x07, 0x00,      // Uart header.
 	JC_INIT_HANDSHAKE, 0x02,           // Wired cmd and wired subcmd.
-	0x01, 0x7E, 0x00, 0x00, 0x00       // Wired subcmd data.
+	0x01, 0x7E, 0x00, 0x00, 0x00       // Wired subcmd data and crc.
 };
 
 static const u8 init_get_info[]  = {
 	0x19, 0x01, 0x03, 0x07, 0x00,      // Uart header.
 	JC_WIRED_CMD, JC_WIRED_CMD_MAC,    // Wired cmd and subcmd.
-	0x00, 0x00, 0x00, 0x00, 0x24       // Wired subcmd data.
+	0x00, 0x00, 0x00, 0x00, 0x24       // Wired subcmd data and crc.
 };
 
-static const u8 init_finilize[]  = {
+static const u8 init_finalize[]  = {
 	0x19, 0x01, 0x03, 0x07, 0x00,      // Uart header.
 	JC_WIRED_CMD, JC_WIRED_CMD_10,     // Wired cmd and subcmd.
-	0x00, 0x00, 0x00, 0x00, 0x3D       // Wired subcmd data.
+	0x00, 0x00, 0x00, 0x00, 0x3D       // Wired subcmd data and crc.
 };
 
 static const u8 nx_pad_status[]  = {
 	0x19, 0x01, 0x03, 0x08, 0x00,      // Uart header.
 	JC_WIRED_HID, 0x00,                // Wired cmd and hid cmd.
-	0x01, 0x00, 0x00, 0x69, 0x2D, 0x1F // hid data.
+	0x01, 0x00, 0x00, 0x69, 0x2D, 0x1F // hid data and crc.
+};
+
+static const u8 hori_pad_status[] = {
+	0x19, 0x01, 0x03, 0x07, 0x00,      // Uart header.
+	JC_HORI_INPUT_RPT_CMD, 0x01,       // Hori cmd and hori subcmd.
+	0x00, 0x00, 0x00, 0x00, 0x48       // Hori cmd data and crc.
 };
 
 typedef struct _jc_uart_hdr_t
@@ -185,8 +198,8 @@ typedef struct _joycon_ctxt_t
 	u8 connected;
 } joycon_ctxt_t;
 
-static joycon_ctxt_t jc_l;
-static joycon_ctxt_t jc_r;
+static joycon_ctxt_t jc_l = {0};
+static joycon_ctxt_t jc_r = {0};
 
 static bool jc_init_done = false;
 static u32 hid_pkt_inc = 0;
@@ -195,13 +208,29 @@ static jc_gamepad_rpt_t jc_gamepad;
 
 void jc_power_supply(u8 uart, bool enable);
 
+static u8 jc_crc(u8 *data, u16 len)
+{
+	u8 crc = JC_CRC8_INIT;
+	u16 i, j;
+	for (i = 0; i < len; i++) {
+		crc ^= data[i];
+		for (j = 0; j < 8; j++) {
+			if ((crc & 0x80) != 0)
+				crc = (u8)((crc << 1) ^ JC_CRC8_POLY);
+			else
+				crc <<= 1;
+		}
+	}
+	return crc;
+}
+
 void joycon_send_raw(u8 uart_port, const u8 *buf, u16 size)
 {
 	uart_send(uart_port, buf, size);
 	uart_wait_idle(uart_port, UART_TX_IDLE);
 }
 
-static u16 jc_packet_add_uart_hdr(jc_wired_hdr_t *out, u8 wired_cmd, u8 *data, u16 size)
+static u16 jc_packet_add_uart_hdr(jc_wired_hdr_t *out, u8 wired_cmd, u8 *data, u16 size, bool crc)
 {
 	out->uart_hdr.magic[0] = 0x19;
 	out->uart_hdr.magic[1] = 0x01;
@@ -214,14 +243,14 @@ static u16 jc_packet_add_uart_hdr(jc_wired_hdr_t *out, u8 wired_cmd, u8 *data, u
 	if (data)
 		memcpy(out->data, data, size);
 
-	out->crc = 0; // wired crc8ccit can be skipped.
+	out->crc = crc ? jc_crc(&out->uart_hdr.total_size_msb, sizeof(out->uart_hdr.total_size_msb) + sizeof(out->cmd) + sizeof(out->data)) : 0;
 
 	return sizeof(jc_wired_hdr_t);
 }
 
-static u16 jc_hid_output_rpt_craft(jc_wired_hdr_t *rpt, u8 *payload, u16 size)
+static u16 jc_hid_output_rpt_craft(jc_wired_hdr_t *rpt, u8 *payload, u16 size, bool crc)
 {
-	u16 pkt_size = jc_packet_add_uart_hdr(rpt, JC_WIRED_HID, NULL, 0);
+	u16 pkt_size = jc_packet_add_uart_hdr(rpt, JC_WIRED_HID, NULL, 0, crc);
 	pkt_size += size;
 
 	rpt->uart_hdr.total_size_lsb += size;
@@ -234,12 +263,12 @@ static u16 jc_hid_output_rpt_craft(jc_wired_hdr_t *rpt, u8 *payload, u16 size)
 	return pkt_size;
 }
 
-void jc_send_hid_output_rpt(u8 uart, u8 *payload, u16 size)
+void jc_send_hid_output_rpt(u8 uart, u8 *payload, u16 size, bool crc)
 {
 	u8 rpt[0x50];
 	memset(rpt, 0, sizeof(rpt));
 
-	u32 rpt_size = jc_hid_output_rpt_craft((jc_wired_hdr_t *)rpt, payload, size);
+	u32 rpt_size = jc_hid_output_rpt_craft((jc_wired_hdr_t *)rpt, payload, size, crc);
 
 	joycon_send_raw(uart, rpt, rpt_size);
 }
@@ -275,18 +304,18 @@ void jc_send_hid_cmd(u8 uart, u8 subcmd, u8 *data, u16 size)
 		hid_pkt->subcmd = JC_HID_SUBCMD_RUMBLE_CTL;
 		hid_pkt->subcmd_data[0] = 1;
 		if (send_r_rumble)
-			jc_send_hid_output_rpt(UART_B, (u8 *)hid_pkt, 0x10);
+			jc_send_hid_output_rpt(UART_B, (u8 *)hid_pkt, 0x10, false);
 		if (send_l_rumble)
-			jc_send_hid_output_rpt(UART_C, (u8 *)hid_pkt, 0x10);
+			jc_send_hid_output_rpt(UART_C, (u8 *)hid_pkt, 0x10, false);
 
 		// Send rumble.
 		hid_pkt->cmd = JC_HID_RUMBLE_RPT;
 		hid_pkt->pkt_id = jc_hid_pkt_id_incr();
 		memcpy(hid_pkt->rumble, rumble_init, sizeof(rumble_init));
 		if (send_r_rumble)
-			jc_send_hid_output_rpt(UART_B, (u8 *)hid_pkt, 10);
+			jc_send_hid_output_rpt(UART_B, (u8 *)hid_pkt, 10, false);
 		if (send_l_rumble)
-			jc_send_hid_output_rpt(UART_C, (u8 *)hid_pkt, 10);
+			jc_send_hid_output_rpt(UART_C, (u8 *)hid_pkt, 10, false);
 
 		msleep(15);
 
@@ -297,21 +326,21 @@ void jc_send_hid_cmd(u8 uart, u8 subcmd, u8 *data, u16 size)
 		hid_pkt->subcmd_data[0] = 0;
 		memcpy(hid_pkt->rumble, rumble_neutral, sizeof(rumble_neutral));
 		if (send_r_rumble)
-			jc_send_hid_output_rpt(UART_B, (u8 *)hid_pkt, 0x10);
+			jc_send_hid_output_rpt(UART_B, (u8 *)hid_pkt, 0x10, false);
 		if (send_l_rumble)
-			jc_send_hid_output_rpt(UART_C, (u8 *)hid_pkt, 0x10);
+			jc_send_hid_output_rpt(UART_C, (u8 *)hid_pkt, 0x10, false);
 	}
 	else
 	{
+		bool crc_needed = (jc_l.uart == uart) ? (jc_l.type & JC_ID_HORI) : (jc_r.type & JC_ID_HORI);
+
 		hid_pkt->cmd = JC_HID_OUTPUT_RPT;
 		hid_pkt->pkt_id = jc_hid_pkt_id_incr();
 		hid_pkt->subcmd = subcmd;
 		if (data)
 			memcpy(hid_pkt->subcmd_data, data, size);
 
-		u8 pkt_size = sizeof(jc_hid_out_rpt_t) + size;
-
-		jc_send_hid_output_rpt(uart, (u8 *)hid_pkt, pkt_size);
+		jc_send_hid_output_rpt(uart, (u8 *)hid_pkt, sizeof(jc_hid_out_rpt_t) + size, crc_needed);
 	}
 }
 
@@ -333,6 +362,7 @@ static void jc_parse_wired_hid(joycon_ctxt_t *jc, const u8* packet, u32 size)
 
 	switch (hid_pkt->cmd)
 	{
+	case JC_HORI_INPUT_RPT:
 	case JC_HID_INPUT_RPT:
 		btn_tmp = hid_pkt->btn_right | hid_pkt->btn_shared << 8 | hid_pkt->btn_left << 16;
 
@@ -412,6 +442,7 @@ static void jc_uart_pkt_parse(joycon_ctxt_t *jc, const u8* packet, size_t size)
 	jc_wired_hdr_t *pkt = (jc_wired_hdr_t *)packet;
 	switch (pkt->cmd)
 	{
+	case JC_HORI_INPUT_RPT_CMD:
 	case JC_WIRED_HID:
 		jc_parse_wired_hid(jc, pkt->payload, (pkt->data[0] << 8) | pkt->data[1]);
 		break;
@@ -474,10 +505,15 @@ static bool jc_send_init_rumble(joycon_ctxt_t *jc)
 
 static void jc_req_nx_pad_status(joycon_ctxt_t *jc)
 {
-	bool sent_rumble = jc_send_init_rumble(jc);
+	bool is_nxpad = !(jc->type & JC_ID_HORI);
 
-	if (sent_rumble)
-		return;
+	if (is_nxpad)
+	{
+		bool sent_rumble = jc_send_init_rumble(jc);
+
+		if (sent_rumble)
+			return;
+	}
 
 	if (jc->last_status_req_time > get_tmr_ms() || !jc->connected)
 		return;
@@ -488,7 +524,10 @@ static void jc_req_nx_pad_status(joycon_ctxt_t *jc)
 	else
 		gpio_config(GPIO_PORT_D, GPIO_PIN_1, GPIO_MODE_SPIO);
 
-	joycon_send_raw(jc->uart, nx_pad_status, sizeof(nx_pad_status));
+	if (is_nxpad)
+		joycon_send_raw(jc->uart, nx_pad_status, sizeof(nx_pad_status));
+	else
+		joycon_send_raw(jc->uart, hori_pad_status, sizeof(hori_pad_status));
 
 	// Turn Joy-Con detect on.
 	if (jc->uart == UART_B)
@@ -660,12 +699,12 @@ void jc_deinit()
 
 	u8 data = HCI_STATE_SLEEP;
 
-	if (jc_r.connected)
+	if (jc_r.connected && !(jc_r.type & JC_ID_HORI))
 	{
 		jc_send_hid_cmd(UART_B, JC_HID_SUBCMD_HCI_STATE, &data, 1);
 		jc_rcv_pkt(&jc_r);
 	}
-	if (jc_l.connected)
+	if (jc_l.connected && !(jc_l.type & JC_ID_HORI))
 	{
 		jc_send_hid_cmd(UART_C, JC_HID_SUBCMD_HCI_STATE, &data, 1);
 		jc_rcv_pkt(&jc_l);
@@ -709,9 +748,12 @@ static void jc_init_conn(joycon_ctxt_t *jc)
 		msleep(5);
 		jc_rcv_pkt(jc);
 
-		joycon_send_raw(jc->uart, init_finilize, sizeof(init_finilize));
-		msleep(5);
-		jc_rcv_pkt(jc);
+		if (!(jc->type & JC_ID_HORI))
+		{
+			joycon_send_raw(jc->uart, init_finalize, sizeof(init_finalize));
+			msleep(5);
+			jc_rcv_pkt(jc);
+		}
 
 		// Turn Joy-Con detect on.
 		if (jc->uart == UART_B)
@@ -766,10 +808,10 @@ void jc_power_supply(u8 uart, bool enable)
 {
 	if (enable)
 	{
-		if (regulator_get_5v_dev_enabled(1 << uart))
+		if (regulator_5v_get_dev_enabled(1 << uart))
 			return;
 
-		regulator_enable_5v(1 << uart);
+		regulator_5v_enable(1 << uart);
 
 		if (jc_init_done)
 		{
@@ -799,10 +841,10 @@ void jc_power_supply(u8 uart, bool enable)
 	}
 	else
 	{
-		if (!regulator_get_5v_dev_enabled(1 << uart))
+		if (!regulator_5v_get_dev_enabled(1 << uart))
 			return;
 
-		regulator_disable_5v(1 << uart);
+		regulator_5v_disable(1 << uart);
 
 		if (uart == UART_C)
 			gpio_write(GPIO_PORT_CC, GPIO_PIN_3, GPIO_LOW);
@@ -816,10 +858,10 @@ void jc_init_hw()
 	jc_l.uart = UART_C;
 	jc_r.uart = UART_B;
 
+#if !defined(DEBUG_UART_PORT) || !(DEBUG_UART_PORT)
 	if (fuse_read_hw_type() == FUSE_NX_HW_TYPE_HOAG)
 		return;
 
-#ifndef DEBUG_UART_PORT
 	jc_power_supply(UART_C, true);
 	jc_power_supply(UART_B, true);
 

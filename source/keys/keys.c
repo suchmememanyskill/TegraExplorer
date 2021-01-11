@@ -1,7 +1,7 @@
 #include "keys.h"
 
 #include "../config.h"
-#include <gfx/di.h>
+#include <display/di.h>
 #include <gfx_utils.h>
 #include "../hos/pkg1.h"
 #include "../hos/pkg2.h"

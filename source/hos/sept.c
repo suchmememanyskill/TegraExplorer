@@ -21,7 +21,7 @@
 #include "sept.h"
 #include "../config.h"
 #include <utils/ini.h>
-#include <gfx/di.h>
+#include <display/di.h>
 #include <libs/fatfs/ff.h>
 #include <mem/heap.h>
 #include <soc/hw_init.h>

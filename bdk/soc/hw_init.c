@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include <soc/hw_init.h>
-#include <gfx/di.h>
+#include <display/di.h>
 #include <input/joycon.h>
 #include <input/touch.h>
 #include <sec/se.h>
@@ -285,17 +285,21 @@ static void _config_se_brom()
 
 static void _config_regulators(bool tegra_t210)
 {
+	// Set RTC/AO domain to POR voltage.
+	if (tegra_t210)
+		max7762x_regulator_set_voltage(REGULATOR_LDO4, 1000000);
+
 	// Disable low battery shutdown monitor.
 	max77620_low_battery_monitor_config(false);
 
 	// Disable SDMMC1 IO power.
 	gpio_write(GPIO_PORT_E, GPIO_PIN_4, GPIO_LOW);
-	max77620_regulator_enable(REGULATOR_LDO2, 0);
+	max7762x_regulator_enable(REGULATOR_LDO2, false);
 	sd_power_cycle_time_start = get_tmr_ms();
 
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_CNFGBBC, MAX77620_CNFGBBC_RESISTOR_1K);
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_ONOFFCNFG1,
-		BIT(6) | (3 << MAX77620_ONOFFCNFG1_MRT_SHIFT)); // PWR delay for forced shutdown off.
+		MAX77620_ONOFFCNFG1_RSVD | (3 << MAX77620_ONOFFCNFG1_MRT_SHIFT)); // PWR delay for forced shutdown off.
 
 	if (tegra_t210)
 	{
@@ -313,28 +317,18 @@ static void _config_regulators(bool tegra_t210)
 			(4 << MAX77620_FPS_TIME_PERIOD_SHIFT) | (2 << MAX77620_FPS_PD_PERIOD_SHIFT)); // 3.x+
 
 		// Set vdd_core voltage to 1.125V.
-		max77620_regulator_set_voltage(REGULATOR_SD0, 1125000);
+		max7762x_regulator_set_voltage(REGULATOR_SD0, 1125000);
 
-		// Fix CPU/GPU after a L4T warmboot.
-		i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_GPIO5, 2);
-		i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_GPIO6, 2);
+		// Fix CPU/GPU after L4T warmboot.
+		max77620_config_gpio(5, MAX77620_GPIO_OUTPUT_DISABLE);
+		max77620_config_gpio(6, MAX77620_GPIO_OUTPUT_DISABLE);
 
-		i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_VOUT_REG,     MAX77621_VOUT_0_95V); // Disable power.
-		i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_VOUT_DVS_REG, MAX77621_VOUT_ENABLE | MAX77621_VOUT_1_09V); // Enable DVS power.
-		i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_CONTROL1_REG, MAX77621_RAMP_50mV_PER_US);
-		i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_CONTROL2_REG,
-			MAX77621_T_JUNCTION_120 | MAX77621_FT_ENABLE | MAX77621_CKKADV_TRIP_75mV_PER_US_HIST_DIS |
-			MAX77621_CKKADV_TRIP_150mV_PER_US | MAX77621_INDUCTOR_NOMINAL);
-
-		i2c_send_byte(I2C_5, MAX77621_GPU_I2C_ADDR, MAX77621_VOUT_REG,     MAX77621_VOUT_0_95V); // Disable power.
-		i2c_send_byte(I2C_5, MAX77621_GPU_I2C_ADDR, MAX77621_VOUT_DVS_REG, MAX77621_VOUT_ENABLE | MAX77621_VOUT_1_09V); // Enable DVS power.
-		i2c_send_byte(I2C_5, MAX77621_GPU_I2C_ADDR, MAX77621_CONTROL1_REG, MAX77621_RAMP_50mV_PER_US);
-		i2c_send_byte(I2C_5, MAX77621_GPU_I2C_ADDR, MAX77621_CONTROL2_REG,
-			MAX77621_T_JUNCTION_120 | MAX77621_FT_ENABLE | MAX77621_CKKADV_TRIP_75mV_PER_US_HIST_DIS |
-			MAX77621_CKKADV_TRIP_150mV_PER_US | MAX77621_INDUCTOR_NOMINAL);
+		// Set POR configuration.
+		max77621_config_default(REGULATOR_CPU0, MAX77621_CTRL_POR_CFG);
+		max77621_config_default(REGULATOR_GPU0, MAX77621_CTRL_POR_CFG);
 	}
 	else // Tegra X1+ set vdd_core voltage to 1.05V.
-		max77620_regulator_set_voltage(REGULATOR_SD0, 1050000);
+		max7762x_regulator_set_voltage(REGULATOR_SD0, 1050000);
 }
 
 void hw_init()
@@ -373,7 +367,8 @@ void hw_init()
 
 #ifdef DEBUG_UART_PORT
 	clock_enable_uart(DEBUG_UART_PORT);
-	uart_init(DEBUG_UART_PORT, 115200);
+	uart_init(DEBUG_UART_PORT, DEBUG_UART_BAUDRATE);
+	uart_invert(DEBUG_UART_PORT, DEBUG_UART_INVERT, UART_INVERT_TXD);
 #endif
 
 	// Enable Dynamic Voltage and Frequency Scaling device clock.
@@ -391,16 +386,19 @@ void hw_init()
 
 	//! TODO: Why? Device is NFC MCU on Lite.
 	if (nx_hoag)
-		max77620_regulator_set_volt_and_flags(REGULATOR_LDO8, 2800000, MAX77620_POWER_MODE_NORMAL);
+	{
+		max7762x_regulator_set_voltage(REGULATOR_LDO8, 2800000);
+		max7762x_regulator_enable(REGULATOR_LDO8, true);
+	}
 
 	// Initialize I2C1 for various power related devices.
 	i2c_init(I2C_1);
 
-	// Enable charger in case it's disabled.
-	bq24193_enable_charger();
-
 	// Initialize various regulators based on Erista/Mariko platform.
 	_config_regulators(tegra_t210);
+
+	// Enable charger in case it's disabled.
+	bq24193_enable_charger();
 
 	_config_pmc_scratch(); // Missing from 4.x+
 
@@ -421,7 +419,7 @@ void hw_init()
 	bpmp_mmu_enable();
 }
 
-void hw_reinit_workaround(bool extra_reconfig, u32 magic)
+void hw_reinit_workaround(bool coreboot, u32 magic)
 {
 	// Disable BPMP max clock.
 	bpmp_clk_rate_set(BPMP_CLK_NORMAL);
@@ -431,7 +429,7 @@ void hw_reinit_workaround(bool extra_reconfig, u32 magic)
 	touch_power_off();
 	set_fan_duty(0);
 	jc_deinit();
-	regulator_disable_5v(REGULATOR_5V_ALL);
+	regulator_5v_disable(REGULATOR_5V_ALL);
 	clock_disable_uart(UART_B);
 	clock_disable_uart(UART_C);
 #endif
@@ -445,10 +443,10 @@ void hw_reinit_workaround(bool extra_reconfig, u32 magic)
 	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= BIT(CLK_V_AHUB);
 	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= BIT(CLK_Y_APE);
 
-	if (extra_reconfig)
+	// Do coreboot mitigations.
+	if (coreboot)
 	{
 		msleep(10);
-		PMC(APBDEV_PMC_PWR_DET_VAL) |= PMC_PWR_DET_SDMMC1_IO_EN;
 
 		clock_disable_cl_dvfs();
 
@@ -457,6 +455,9 @@ void hw_reinit_workaround(bool extra_reconfig, u32 magic)
 		gpio_config(GPIO_PORT_D, GPIO_PIN_1, GPIO_MODE_SPIO);
 		gpio_config(GPIO_PORT_E, GPIO_PIN_6, GPIO_MODE_SPIO);
 		gpio_config(GPIO_PORT_H, GPIO_PIN_6, GPIO_MODE_SPIO);
+
+		// Reinstate SD controller power.
+		PMC(APBDEV_PMC_NO_IOPOWER) &= ~(PMC_NO_IOPOWER_SDMMC1_IO_EN);
 	}
 
 	// Power off display.

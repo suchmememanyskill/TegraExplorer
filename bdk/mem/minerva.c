@@ -60,7 +60,7 @@ u32 minerva_init()
 		mtc_config_t mtc_tmp;
 
 		mtc_tmp.mtc_table = mtc_cfg->mtc_table;
-		mtc_tmp.sdram_id = (fuse_read_odm(4) >> 3) & 0x1F;
+		mtc_tmp.sdram_id  = fuse_read_dramid(false);
 		mtc_tmp.init_done = MTC_NEW_MAGIC;
 
 		u32 ep_addr = ianos_loader("bootloader/sys/libsys_minerva.bso", DRAM_LIB, (void *)&mtc_tmp);
@@ -81,7 +81,7 @@ u32 minerva_init()
 	// Set table to nyx storage.
 	mtc_cfg->mtc_table = (emc_table_t *)nyx_str->mtc_table;
 
-	mtc_cfg->sdram_id = (fuse_read_odm(4) >> 3) & 0x1F;
+	mtc_cfg->sdram_id  = fuse_read_dramid(false);
 	mtc_cfg->init_done = MTC_NEW_MAGIC; // Initialize mtc table.
 
 	u32 ep_addr = ianos_loader("bootloader/sys/libsys_minerva.bso", DRAM_LIB, (void *)mtc_cfg);
@@ -129,6 +129,7 @@ void minerva_change_freq(minerva_freq_t freq)
 	if (!minerva_cfg)
 		return;
 
+	// Check if requested frequency is different. Do not allow otherwise because it will hang.
 	mtc_config_t *mtc_cfg = (mtc_config_t *)&nyx_str->mtc_cfg;
 	if (mtc_cfg->rate_from != freq)
 	{

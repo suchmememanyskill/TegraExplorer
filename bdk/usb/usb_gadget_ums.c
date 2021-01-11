@@ -58,7 +58,7 @@
 
 #define UMS_SCSI_TRANSFER_512K (0x80000 >> UMS_DISK_LBA_SHIFT)
 
-#define UMS_EP_OUT_MAX_XFER (USB_EP_BULK_OUT_MAX_XFER >> UMS_DISK_LBA_SHIFT)
+#define UMS_EP_OUT_MAX_XFER (USB_EP_BULK_OUT_MAX_XFER)
 
 // Length of a SCSI Command Data Block.
 #define SCSI_MAX_CMD_SZ 16
@@ -120,6 +120,15 @@ enum ums_state {
 	UMS_STATE_EXIT,
 	UMS_STATE_TERMINATED
 };
+
+enum ums_result {
+	UMS_RES_OK          = 0,
+	UMS_RES_IO_ERROR    = -5,
+	UMS_RES_TIMEOUT     = -3,
+	UMS_RES_PROT_FATAL  = -4,
+	UMS_RES_INVALID_ARG = -22
+};
+
 
 enum data_direction {
 	DATA_DIR_UNKNOWN = 0,
@@ -283,21 +292,21 @@ static int ums_wedge_bulk_in_endpoint(usbd_gadget_ums_t *ums)
 {
 	/* usbd_set_ep_wedge(bulk_ctxt->bulk_in); */
 
-	return 0;
+	return UMS_RES_OK;
 }
 
 static int ums_set_stall(u32 ep)
 {
 	usb_ops.usbd_set_ep_stall(ep, USB_EP_CFG_STALL);
 
-	return 0;
+	return UMS_RES_OK;
 }
 
 static int ums_clear_stall(u32 ep)
 {
 	usb_ops.usbd_set_ep_stall(ep, USB_EP_CFG_CLEAR);
 
-	return 0;
+	return UMS_RES_OK;
 }
 
 static void ums_flush_endpoint(u32 ep)
@@ -306,13 +315,13 @@ static void ums_flush_endpoint(u32 ep)
 		usb_ops.usbd_flush_endpoint(ep);
 }
 
-static void _ums_transfer_start(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt, u32 ep, bool sync)
+static void _ums_transfer_start(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt, u32 ep, u32 sync_timeout)
 {
 	if (ep == bulk_ctxt->bulk_in)
 	{
 		bulk_ctxt->bulk_in_status = usb_ops.usb_device_ep1_in_write(
 			bulk_ctxt->bulk_in_buf, bulk_ctxt->bulk_in_length,
-			&bulk_ctxt->bulk_in_length_actual, sync);
+			&bulk_ctxt->bulk_in_length_actual, sync_timeout);
 
 		if (bulk_ctxt->bulk_in_status == USB_ERROR_XFER_ERROR)
 		{
@@ -322,14 +331,14 @@ static void _ums_transfer_start(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt, 
 		else if (bulk_ctxt->bulk_in_status == USB2_ERROR_XFER_NOT_ALIGNED)
 			ums->set_text(ums->label, "#FFDD00 Error:# EP IN Buffer not aligned!");
 
-		if (sync)
+		if (sync_timeout)
 			bulk_ctxt->bulk_in_buf_state = BUF_STATE_EMPTY;
 	}
 	else
 	{
 		bulk_ctxt->bulk_out_status = usb_ops.usb_device_ep1_out_read(
 			bulk_ctxt->bulk_out_buf, bulk_ctxt->bulk_out_length,
-			&bulk_ctxt->bulk_out_length_actual, sync);
+			&bulk_ctxt->bulk_out_length_actual, sync_timeout);
 
 		if (bulk_ctxt->bulk_out_status == USB_ERROR_XFER_ERROR)
 		{
@@ -339,7 +348,7 @@ static void _ums_transfer_start(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt, 
 		else if (bulk_ctxt->bulk_out_status == USB2_ERROR_XFER_NOT_ALIGNED)
 			ums->set_text(ums->label, "#FFDD00 Error:# EP OUT Buffer not aligned!");
 
-		if (sync)
+		if (sync_timeout)
 			bulk_ctxt->bulk_out_buf_state = BUF_STATE_FULL;
 	}
 }
@@ -377,7 +386,7 @@ static void _ums_transfer_finish(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt,
 	else
 	{
 		bulk_ctxt->bulk_out_status = usb_ops.usb_device_ep1_out_reading_finish(
-			&bulk_ctxt->bulk_out_length_actual, 1000000);
+			&bulk_ctxt->bulk_out_length_actual);
 
 		if (bulk_ctxt->bulk_out_status == USB_ERROR_XFER_ERROR)
 		{
@@ -446,20 +455,20 @@ static int _scsi_read(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		{
 			ums->lun.sense_data = SS_INVALID_FIELD_IN_CDB;
 
-			return -22; // Invalid argument.
+			return UMS_RES_INVALID_ARG;
 		}
 	}
 	if (lba_offset >= ums->lun.num_sectors)
 	{
 		ums->lun.sense_data = SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	// Check that request data size is not 0.
 	u32 amount_left = ums->data_size_from_cmnd >> UMS_DISK_LBA_SHIFT;
 	if (!amount_left)
-		return -5; // I/O error. /* No default reply */
+		return UMS_RES_IO_ERROR; // No default reply.
 
 	// Limit IO transfers based on request for faster concurrent reads.
 	u32 max_io_transfer = (amount_left >= UMS_SCSI_TRANSFER_512K) ?
@@ -520,7 +529,7 @@ static int _scsi_read(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		sdmmc_buf += amount << UMS_DISK_LBA_SHIFT;
 	}
 
-	return -5; // I/O error no default reply here. /* No default reply */
+	return UMS_RES_IO_ERROR; // No default reply.
 }
 
 /*
@@ -541,7 +550,7 @@ static int _scsi_write(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 	{
 		ums->lun.sense_data = SS_WRITE_PROTECTED;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	if (ums->cmnd[0] == SC_WRITE_6)
@@ -555,7 +564,7 @@ static int _scsi_write(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		{
 			ums->lun.sense_data = SS_INVALID_FIELD_IN_CDB;
 
-			return -22; // Invalid argument.
+			return UMS_RES_INVALID_ARG;
 		}
 	}
 
@@ -564,7 +573,7 @@ static int _scsi_write(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 	{
 		ums->lun.sense_data = SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	/* Carry out the file writes */
@@ -580,7 +589,7 @@ static int _scsi_write(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		{
 
 			// Limit write to max supported read from EP OUT.
-			amount = MIN(amount_left_to_req, UMS_EP_OUT_MAX_XFER << UMS_DISK_LBA_SHIFT);
+			amount = MIN(amount_left_to_req, UMS_EP_OUT_MAX_XFER);
 
 			if (usb_lba_offset >= ums->lun.num_sectors) //////////Check if it works with concurrency
 			{
@@ -612,7 +621,7 @@ static int _scsi_write(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 				ums->lun.sense_data = SS_COMMUNICATION_FAILURE;
 				ums->lun.sense_data_info = lba_offset;
 				ums->lun.info_valid = 1;
-				sprintf(txt_buf, "#FFDD00 Error:# Write - Comm failure %d!", bulk_ctxt->bulk_out_status);
+				s_printf(txt_buf, "#FFDD00 Error:# Write - Comm failure %d!", bulk_ctxt->bulk_out_status);
 				ums->set_text(ums->label, txt_buf);
 				break;
 			}
@@ -668,7 +677,7 @@ DPRINTF("file write %X @ %X\n", amount, lba_offset);
 		}
 	}
 
-	return -5; // I/O error. /* No default reply */
+	return UMS_RES_IO_ERROR; // No default reply.
 }
 
 static int _scsi_verify(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
@@ -679,7 +688,7 @@ static int _scsi_verify(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 	{
 		ums->lun.sense_data = SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	// We allow DPO but we don't implement it. Check that nothing else is enabled.
@@ -687,12 +696,12 @@ static int _scsi_verify(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 	{
 		ums->lun.sense_data = SS_INVALID_FIELD_IN_CDB;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	u32  verification_length = get_array_be_to_le16(&ums->cmnd[7]);
 	if (verification_length == 0)
-		return -5; // I/O error. /* No default reply */
+		return UMS_RES_IO_ERROR; // No default reply.
 
 	u32 amount;
 	while (verification_length > 0)
@@ -724,7 +733,7 @@ DPRINTF("File read %X @ %X\n", amount, lba_offset);
 		lba_offset += amount;
 		verification_length -= amount;
 	}
-	return 0;
+	return UMS_RES_OK;
 }
 
 static int _scsi_inquiry(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
@@ -742,7 +751,7 @@ static int _scsi_inquiry(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		buf[3] = 20;  // Additional length.
 
 		buf += 4;
-		sprintf((char *)buf, "%04X%s",
+		s_printf((char *)buf, "%04X%s",
 			ums->lun.storage->cid.serial, ums->lun.type == MMC_SD ? " SD " : " eMMC ");
 
 		switch (ums->lun.partition)
@@ -751,13 +760,13 @@ static int _scsi_inquiry(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 			strcpy((char *)buf + strlen((char *)buf), "RAW");
 			break;
 		case EMMC_GPP + 1:
-			sprintf((char *)buf + strlen((char *)buf), "GPP");
+			s_printf((char *)buf + strlen((char *)buf), "GPP");
 			break;
 		case EMMC_BOOT0 + 1:
-			sprintf((char *)buf + strlen((char *)buf), "BOOT0");
+			s_printf((char *)buf + strlen((char *)buf), "BOOT0");
 			break;
 		case EMMC_BOOT1 + 1:
-			sprintf((char *)buf + strlen((char *)buf), "BOOT1");
+			s_printf((char *)buf + strlen((char *)buf), "BOOT1");
 			break;
 		}
 
@@ -784,18 +793,18 @@ static int _scsi_inquiry(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		switch (ums->lun.partition)
 		{
 		case 0:
-			sprintf((char *)buf, "%s", "SD RAW");
+			s_printf((char *)buf, "%s", "SD RAW");
 			break;
 		case EMMC_GPP + 1:
-			sprintf((char *)buf, "%s%s",
+			s_printf((char *)buf, "%s%s",
 				ums->lun.type == MMC_SD ? "SD " : "eMMC ", "GPP");
 			break;
 		case EMMC_BOOT0 + 1:
-			sprintf((char *)buf, "%s%s",
+			s_printf((char *)buf, "%s%s",
 				ums->lun.type == MMC_SD ? "SD " : "eMMC ", "BOOT0");
 			break;
 		case EMMC_BOOT1 + 1:
-			sprintf((char *)buf, "%s%s",
+			s_printf((char *)buf, "%s%s",
 				ums->lun.type == MMC_SD ? "SD " : "eMMC ", "BOOT1");
 			break;
 		}
@@ -843,7 +852,7 @@ static int _scsi_read_capacity(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 	{
 		ums->lun.sense_data = SS_INVALID_FIELD_IN_CDB;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	put_array_le_to_be32(ums->lun.num_sectors - 1, &buf[0]); // Max logical block.
@@ -866,14 +875,14 @@ static int _scsi_log_sense(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 	{
 		ums->lun.sense_data = SS_SAVING_PARAMETERS_NOT_SUPPORTED;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	if (pc != 1) // Current cumulative values.
 	{
 		ums->lun.sense_data = SS_INVALID_FIELD_IN_CDB;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	memset(buf, 0, 8);
@@ -915,7 +924,7 @@ static int _scsi_log_sense(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 	{
 		ums->lun.sense_data = SS_INVALID_FIELD_IN_CDB;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	put_array_le_to_be16(len - 4, &buf0[2]);
@@ -938,14 +947,14 @@ static int _scsi_mode_sense(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 	{
 		ums->lun.sense_data = SS_INVALID_FIELD_IN_CDB;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	if (pc == 3)
 	{
 		ums->lun.sense_data = SS_SAVING_PARAMETERS_NOT_SUPPORTED;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	/* Write the mode parameter header.  Fixed values are: default
@@ -995,7 +1004,7 @@ static int _scsi_mode_sense(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 	{
 		ums->lun.sense_data = SS_INVALID_FIELD_IN_CDB;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	/*  Store the mode data length */
@@ -1015,14 +1024,14 @@ static int _scsi_start_stop(usbd_gadget_ums_t *ums)
 	{
 		ums->lun.sense_data = SS_INVALID_COMMAND;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 	else if ((ums->cmnd[1] & ~0x01) != 0 || // Mask away Immed.
 		(ums->cmnd[4] & ~0x03) != 0)        // Mask LoEj, Start.
 	{
 		ums->lun.sense_data = SS_INVALID_FIELD_IN_CDB;
 
-		return -22;
+		return UMS_RES_INVALID_ARG;
 	}
 
 	loej  = ums->cmnd[4] & 0x02;
@@ -1035,10 +1044,10 @@ static int _scsi_start_stop(usbd_gadget_ums_t *ums)
 		{
 			ums->lun.sense_data = SS_MEDIUM_NOT_PRESENT;
 
-			return -22;
+			return UMS_RES_INVALID_ARG;
 		}
 
-		return 0;
+		return UMS_RES_OK;
 	}
 
 	// Check if we are allowed to unload the media.
@@ -1047,16 +1056,16 @@ static int _scsi_start_stop(usbd_gadget_ums_t *ums)
 		ums->set_text(ums->label, "#C7EA46 Status:# Unload attempt prevented");
 		ums->lun.sense_data = SS_MEDIUM_REMOVAL_PREVENTED;
 
-		return -22;
+		return UMS_RES_INVALID_ARG;
 	}
 
 	if (!loej)
-		return 0;
+		return UMS_RES_OK;
 
 	// Unmount means we exit UMS because of ejection.
 	ums->lun.unmounted = 1;
 
-	return 0;
+	return UMS_RES_OK;
 }
 
 static int _scsi_prevent_allow_removal(usbd_gadget_ums_t *ums)
@@ -1067,7 +1076,7 @@ static int _scsi_prevent_allow_removal(usbd_gadget_ums_t *ums)
 	{
 		ums->lun.sense_data = SS_INVALID_COMMAND;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	prevent = ums->cmnd[4] & 0x01;
@@ -1075,7 +1084,7 @@ static int _scsi_prevent_allow_removal(usbd_gadget_ums_t *ums)
 	{
 		ums->lun.sense_data = SS_INVALID_FIELD_IN_CDB;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	// Notify for possible unmounting?
@@ -1085,7 +1094,7 @@ static int _scsi_prevent_allow_removal(usbd_gadget_ums_t *ums)
 
 	ums->lun.prevent_medium_removal = prevent;
 
-	return 0;
+	return UMS_RES_OK;
 }
 
 static int _scsi_read_format_capacities(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
@@ -1132,7 +1141,7 @@ DPRINTF("SCSI command: %X;  Dc=%d, D%c=%X;  Hc=%d, H%c=%X\n",
 	{
 		ums->phase_error = 1;
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	// Cmd length verification.
@@ -1146,7 +1155,7 @@ DPRINTF("SCSI command: %X;  Dc=%d, D%c=%X;  Hc=%d, H%c=%X\n",
 		{
 			ums->phase_error = 1;
 
-			return -22; // Invalid argument.
+			return UMS_RES_INVALID_ARG;
 		}
 	}
 
@@ -1167,7 +1176,7 @@ DPRINTF("SCSI command: %X;  Dc=%d, D%c=%X;  Hc=%d, H%c=%X\n",
 		ums->lun.sense_data = ums->lun.unit_attention_data;
 		ums->lun.unit_attention_data = SS_NO_SENSE;
 
-		return -22;
+		return UMS_RES_INVALID_ARG;
 	}
 
 	// Check that only command bytes listed in the mask are set.
@@ -1178,7 +1187,7 @@ DPRINTF("SCSI command: %X;  Dc=%d, D%c=%X;  Hc=%d, H%c=%X\n",
 		{
 			ums->lun.sense_data = SS_INVALID_FIELD_IN_CDB;
 
-			return -22; // Invalid argument.
+			return UMS_RES_INVALID_ARG;
 		}
 	}
 
@@ -1187,16 +1196,16 @@ DPRINTF("SCSI command: %X;  Dc=%d, D%c=%X;  Hc=%d, H%c=%X\n",
 	{
 		ums->lun.sense_data = SS_MEDIUM_NOT_PRESENT;
 
-		return -22;
+		return UMS_RES_INVALID_ARG;
 	}
 
-	return 0;
+	return UMS_RES_OK;
 }
 
 static int _ums_parse_scsi_cmd(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 {
 	u32 len;
-	int reply = -22; // Invalid argument.
+	int reply = UMS_RES_INVALID_ARG;
 
 	ums->phase_error = 0;
 	ums->short_packet_received = 0;
@@ -1227,7 +1236,7 @@ static int _ums_parse_scsi_cmd(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		{
 			// We don't support MODE SELECT.
 			ums->lun.sense_data = SS_INVALID_COMMAND;
-			reply = -22;
+			reply = UMS_RES_INVALID_ARG;
 		}
 		break;
 
@@ -1238,7 +1247,7 @@ static int _ums_parse_scsi_cmd(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		{
 			// We don't support MODE SELECT.
 			ums->lun.sense_data = SS_INVALID_COMMAND;
-			reply = -22;
+			reply = UMS_RES_INVALID_ARG;
 		}
 		break;
 
@@ -1367,12 +1376,12 @@ static int _ums_parse_scsi_cmd(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		if (reply == 0)
 		{
 			ums->lun.sense_data = SS_INVALID_COMMAND;
-			reply = -22; // Invalid argument.
+			reply = UMS_RES_INVALID_ARG;
 		}
 		break;
 	}
 
-	if (reply == -22) // Invalid argument.
+	if (reply == UMS_RES_INVALID_ARG)
 		reply = 0;    // Error reply length.
 
 	// Set up reply buffer for finish_reply(). Otherwise it's already set.
@@ -1384,7 +1393,7 @@ static int _ums_parse_scsi_cmd(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		ums->residue -= reply;
 	}
 
-	return 0;
+	return UMS_RES_OK;
 }
 
 static int pad_with_zeros(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
@@ -1398,12 +1407,12 @@ static int pad_with_zeros(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		u32 nsend = MIN(ums->usb_amount_left, USB_EP_BUFFER_MAX_SIZE);
 		memset(bulk_ctxt->bulk_in_buf + current_len_to_keep, 0, nsend - current_len_to_keep);
 		bulk_ctxt->bulk_in_length = nsend;
-		_ums_transfer_start(ums, bulk_ctxt, bulk_ctxt->bulk_in, USB_XFER_SYNCED);
+		_ums_transfer_start(ums, bulk_ctxt, bulk_ctxt->bulk_in, USB_XFER_SYNCED_DATA);
 		ums->usb_amount_left -= nsend;
 		current_len_to_keep = 0;
 	}
 
-	return 0;
+	return UMS_RES_OK;
 }
 
 static int throw_away_data(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
@@ -1416,10 +1425,10 @@ static int throw_away_data(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 			u32 amount = MIN(ums->usb_amount_left, USB_EP_BUFFER_MAX_SIZE);
 
 			bulk_ctxt->bulk_out_length = amount;
-			_ums_transfer_start(ums, bulk_ctxt, bulk_ctxt->bulk_out, USB_XFER_SYNCED);
+			_ums_transfer_start(ums, bulk_ctxt, bulk_ctxt->bulk_out, USB_XFER_SYNCED_DATA);
 			ums->usb_amount_left -= amount;
 
-			return 0;
+			return UMS_RES_OK;
 		}
 
 		// Throw away the data in a filled buffer.
@@ -1431,15 +1440,15 @@ static int throw_away_data(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 			bulk_ctxt->bulk_out_status != USB_RES_OK)
 		{
 			raise_exception(ums, UMS_STATE_ABORT_BULK_OUT);
-			return -4; // Interrupted system call
+			return UMS_RES_PROT_FATAL;
 		}
 	}
-	return 0;
+	return UMS_RES_OK;
 }
 
 static int finish_reply(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 {
-	int rc = 0;
+	int rc = UMS_RES_OK;
 
 	switch (ums->data_dir) {
 	case DATA_DIR_NONE:
@@ -1463,7 +1472,7 @@ static int finish_reply(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 			// If there's no residue, simply send the last buffer.
 			if (!ums->residue)
 			{
-				_ums_transfer_start(ums, bulk_ctxt, bulk_ctxt->bulk_in, USB_XFER_SYNCED);
+				_ums_transfer_start(ums, bulk_ctxt, bulk_ctxt->bulk_in, USB_XFER_SYNCED_DATA);
 
 			/* For Bulk-only, if we're allowed to stall then send the
 			 * short packet and halt the bulk-in endpoint.  If we can't
@@ -1471,7 +1480,7 @@ static int finish_reply(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 			}
 			else if (ums->can_stall)
 			{
-				_ums_transfer_start(ums, bulk_ctxt, bulk_ctxt->bulk_in, USB_XFER_SYNCED);
+				_ums_transfer_start(ums, bulk_ctxt, bulk_ctxt->bulk_in, USB_XFER_SYNCED_DATA);
 				rc = ums_set_stall(bulk_ctxt->bulk_in);
 				ums->set_text(ums->label, "#FFDD00 Error:# Residue. Stalled EP IN!");
 			}
@@ -1491,7 +1500,7 @@ static int finish_reply(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 			if (ums->short_packet_received) // Did the host stop sending unexpectedly early?
 			{
 				raise_exception(ums, UMS_STATE_ABORT_BULK_OUT);
-				rc = -4; // Interrupted system call
+				rc = UMS_RES_PROT_FATAL;
 			}
 			else // We can't stall. Read in the excess data and throw it away.
 				rc = throw_away_data(ums, bulk_ctxt);
@@ -1574,7 +1583,7 @@ static int received_cbw(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		}
 
 		if (bulk_ctxt->bulk_out_status || bulk_ctxt->bulk_out_ignore)
-			return -22; // Invalid argument.
+			return UMS_RES_INVALID_ARG;
 	}
 
 	/* Is the CBW valid? */
@@ -1594,7 +1603,7 @@ static int received_cbw(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 		 // until the next reset.
 		ums_wedge_bulk_in_endpoint(ums);
 		bulk_ctxt->bulk_out_ignore = 1;
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	/* Is the CBW meaningful? */
@@ -1613,7 +1622,7 @@ static int received_cbw(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 			ums->set_text(ums->label, "#FFDD00 Error:# CBW unknown - Stalled both EP!");
 		}
 
-		return -22; // Invalid argument.
+		return UMS_RES_INVALID_ARG;
 	}
 
 	/* Save the command for later */
@@ -1636,12 +1645,12 @@ static int received_cbw(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 	if (!ums->lun.unmounted)
 		ums->timeouts = 0;
 
-	return 0;
+	return UMS_RES_OK;
 }
 
 static int get_next_command(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 {
-	int rc = 0;
+	int rc = UMS_RES_OK;
 
 	/* Wait for the next buffer to become available */
 	// while (bulk_ctxt->bulk_out_buf_state != BUF_STATE_EMPTY)
@@ -1652,7 +1661,7 @@ static int get_next_command(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 	bulk_ctxt->bulk_out_length = USB_BULK_CB_WRAP_LEN;
 
 	/* Queue a request to read a Bulk-only CBW */
-	_ums_transfer_start(ums, bulk_ctxt, bulk_ctxt->bulk_out, USB_XFER_SYNCED);
+	_ums_transfer_start(ums, bulk_ctxt, bulk_ctxt->bulk_out, USB_XFER_SYNCED_CMD);
 
 	/* We will drain the buffer in software, which means we
 	 * can reuse it for the next filling.  No need to advance
@@ -1698,7 +1707,7 @@ static void send_status(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
 	csw->Status = status;
 
 	bulk_ctxt->bulk_in_length = USB_BULK_CS_WRAP_LEN;
-	_ums_transfer_start(ums, bulk_ctxt, bulk_ctxt->bulk_in, USB_XFER_SYNCED);
+	_ums_transfer_start(ums, bulk_ctxt, bulk_ctxt->bulk_in, USB_XFER_SYNCED_CMD);
 }
 
 static void handle_exception(usbd_gadget_ums_t *ums, bulk_ctxt_t *bulk_ctxt)
@@ -1765,15 +1774,15 @@ static inline void _system_maintainance(usbd_gadget_ums_t *ums)
 
 	u32 time = get_tmr_ms();
 
-	if (timer_dram < time)
-	{
-		minerva_periodic_training();
-		timer_dram = get_tmr_ms() + 100;
-	}
-	else if (timer_status_bar < time)
+	if (timer_status_bar < time)
 	{
 		ums->system_maintenance(true);
 		timer_status_bar = get_tmr_ms() + 30000;
+	}
+	else if (timer_dram < time)
+	{
+		minerva_periodic_training();
+		timer_dram = get_tmr_ms() + EMC_PERIODIC_TRAIN_MS;
 	}
 }
 

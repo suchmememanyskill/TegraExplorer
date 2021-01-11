@@ -91,6 +91,8 @@
 #define APBDEV_PMC_SEC_DISABLE6 0x5B8
 #define APBDEV_PMC_SEC_DISABLE7 0x5BC
 #define APBDEV_PMC_SEC_DISABLE8 0x5C0
+#define APBDEV_PMC_SEC_DISABLE9 0x5C4
+#define APBDEV_PMC_SEC_DISABLE10 0x5C8
 #define APBDEV_PMC_SCRATCH188 0x810
 #define APBDEV_PMC_SCRATCH190 0x818
 #define APBDEV_PMC_SCRATCH200 0x840
@@ -98,6 +100,54 @@
 #define APBDEV_PMC_TZRAM_SEC_DISABLE 0xBEC
 #define APBDEV_PMC_TZRAM_NON_SEC_DISABLE 0xBF0
 
-int pmc_enable_partition(u32 part, int enable);
+typedef enum _pmc_sec_lock_t
+{
+	PMC_SEC_LOCK_MISC       = BIT(0),
+	PMC_SEC_LOCK_LP0_PARAMS = BIT(1),
+	PMC_SEC_LOCK_RST_VECTOR = BIT(2),
+	PMC_SEC_LOCK_CARVEOUTS  = BIT(3),
+	PMC_SEC_LOCK_TZ_CMAC_W  = BIT(4),
+	PMC_SEC_LOCK_TZ_CMAC_R  = BIT(5),
+	PMC_SEC_LOCK_TZ_KEK_W   = BIT(6),
+	PMC_SEC_LOCK_TZ_KEK_R   = BIT(7),
+	PMC_SEC_LOCK_SE_SRK     = BIT(8),
+} pmc_sec_lock_t;
+
+typedef enum _pmc_power_rail_t
+{
+	POWER_RAIL_CRAIL = 0,
+	POWER_RAIL_3D0   = 1,
+	POWER_RAIL_VENC  = 2,
+	POWER_RAIL_PCIE  = 3,
+	POWER_RAIL_VDEC  = 4,
+	POWER_RAIL_L2C   = 5,
+	POWER_RAIL_MPE   = 6,
+	POWER_RAIL_HEG   = 7,
+	POWER_RAIL_SATA  = 8,
+	POWER_RAIL_CE1   = 9,
+	POWER_RAIL_CE2   = 10,
+	POWER_RAIL_CE3   = 11,
+	POWER_RAIL_CELP  = 12,
+	POWER_RAIL_3D1   = 13,
+	POWER_RAIL_CE0   = 14,
+	POWER_RAIL_C0NC  = 15,
+	POWER_RAIL_C1NC  = 16,
+	POWER_RAIL_SOR   = 17,
+	POWER_RAIL_DIS   = 18,
+	POWER_RAIL_DISB  = 19,
+	POWER_RAIL_XUSBA = 20,
+	POWER_RAIL_XUSBB = 21,
+	POWER_RAIL_XUSBC = 22,
+	POWER_RAIL_VIC   = 23,
+	POWER_RAIL_IRAM  = 24,
+	POWER_RAIL_NVDEC = 25,
+	POWER_RAIL_NVJPG = 26,
+	POWER_RAIL_AUD   = 27,
+	POWER_RAIL_DFD   = 28,
+	POWER_RAIL_VE2   = 29
+} pmc_power_rail_t;
+
+void pmc_scratch_lock(pmc_sec_lock_t lock_mask);
+int  pmc_enable_partition(pmc_power_rail_t part, u32 enable);
 
 #endif

@@ -16,7 +16,6 @@
  */
 
 #include <soc/ccplex.h>
-#include <soc/fuse.h>
 #include <soc/hw_init.h>
 #include <soc/i2c.h>
 #include <soc/clock.h>
@@ -29,27 +28,24 @@
 
 void _ccplex_enable_power_t210()
 {
-	u8 tmp = i2c_recv_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_AME_GPIO); // Get current pinmuxing
-	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_AME_GPIO, tmp & ~BIT(5)); // Disable GPIO5 pinmuxing.
-	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_GPIO5, MAX77620_CNFG_GPIO_DRV_PUSHPULL | MAX77620_CNFG_GPIO_OUTPUT_VAL_HIGH);
+	// Configure GPIO5 and enable output in order to power CPU pmic.
+	max77620_config_gpio(5, MAX77620_GPIO_OUTPUT_ENABLE);
 
-	// Enable cores power.
+	// Configure CPU pmic.
 	// 1-3.x: MAX77621_NFSR_ENABLE.
-	i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_CONTROL1_REG,
-		MAX77621_AD_ENABLE | MAX77621_NFSR_ENABLE | MAX77621_SNS_ENABLE | MAX77621_RAMP_12mV_PER_US);
 	// 1.0.0-3.x: MAX77621_T_JUNCTION_120 | MAX77621_CKKADV_TRIP_DISABLE | MAX77621_INDUCTOR_NOMINAL.
-	i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_CONTROL2_REG,
-		MAX77621_T_JUNCTION_120 | MAX77621_WDTMR_ENABLE | MAX77621_CKKADV_TRIP_75mV_PER_US| MAX77621_INDUCTOR_NOMINAL);
-	i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_VOUT_REG, MAX77621_VOUT_ENABLE | MAX77621_VOUT_0_95V);
-	i2c_send_byte(I2C_5, MAX77621_CPU_I2C_ADDR, MAX77621_VOUT_DVS_REG, MAX77621_VOUT_ENABLE | MAX77621_VOUT_0_95V);
+	max77621_config_default(REGULATOR_CPU0, MAX77621_CTRL_HOS_CFG);
+
+	// Set voltage and enable cores power.
+	max7762x_regulator_set_voltage(REGULATOR_CPU0, 950000);
+	max7762x_regulator_enable(REGULATOR_CPU0, true);
 }
 
 void _ccplex_enable_power_t210b01()
 {
-	u8 pmic_cpu_addr = !(FUSE(FUSE_RESERVED_ODM28) & 1) ? MAX77812_PHASE31_CPU_I2C_ADDR : MAX77812_PHASE211_CPU_I2C_ADDR;
-	u8 tmp = i2c_recv_byte(I2C_5, pmic_cpu_addr, MAX77812_REG_EN_CTRL);
-	i2c_send_byte(I2C_5, pmic_cpu_addr, MAX77812_REG_EN_CTRL, tmp | MAX77812_EN_CTRL_EN_M4);
-	i2c_send_byte(I2C_5, pmic_cpu_addr, MAX77812_REG_M4_VOUT, MAX77812_M4_VOUT_0_80V);
+	// Set voltage and enable cores power.
+	max7762x_regulator_set_voltage(REGULATOR_CPU1, 800000);
+	max7762x_regulator_enable(REGULATOR_CPU1, true);
 }
 
 void ccplex_boot_cpu0(u32 entry)
@@ -62,24 +58,31 @@ void ccplex_boot_cpu0(u32 entry)
 	else
 		_ccplex_enable_power_t210b01();
 
-	if (!(CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) & 0x40000000)) // PLLX_ENABLE.
+	// Enable PLLX and set it to 300 MHz.
+	if (!(CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) & PLLX_BASE_ENABLE)) // PLLX_ENABLE.
 	{
 		CLOCK(CLK_RST_CONTROLLER_PLLX_MISC_3) &= 0xFFFFFFF7; // Disable IDDQ.
 		usleep(2);
-		CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) = 0x80404E02;
-		CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) = 0x404E02;
+
+		// Bypass dividers.
+		CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) = PLLX_BASE_BYPASS | (4 << 20) | (78 << 8) | 2; // P div: 4 (5), N div: 78, M div: 2.
+		// Disable bypass
+		CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) = (4 << 20) | (78 << 8) | 2;
+		// Set PLLX_LOCK_ENABLE.
 		CLOCK(CLK_RST_CONTROLLER_PLLX_MISC) = (CLOCK(CLK_RST_CONTROLLER_PLLX_MISC) & 0xFFFBFFFF) | 0x40000;
-		CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) = 0x40404E02;
+		// Enable PLLX.
+		CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) = PLLX_BASE_ENABLE | (4 << 20) | (78 << 8) | 2;
 	}
-	while (!(CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) & 0x8000000))
+	// Wait for PLL to stabilize.
+	while (!(CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) & PLLX_BASE_LOCK))
 		;
 
-	// Configure MSELECT source and enable clock.
+	// Configure MSELECT source and enable clock to 102MHz.
 	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_MSELECT) = (CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_MSELECT) & 0x1FFFFF00) | 6;
-	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) = (CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) & ~BIT(CLK_V_MSELECT)) | BIT(CLK_V_MSELECT);
+	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_V_SET) = BIT(CLK_V_MSELECT);
 
 	// Configure initial CPU clock frequency and enable clock.
-	CLOCK(CLK_RST_CONTROLLER_CCLK_BURST_POLICY) = 0x20008888;
+	CLOCK(CLK_RST_CONTROLLER_CCLK_BURST_POLICY)  = 0x20008888; // PLLX_OUT0_LJ.
 	CLOCK(CLK_RST_CONTROLLER_SUPER_CCLK_DIVIDER) = 0x80000000;
 	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_V_SET) = BIT(CLK_V_CPUG);
 
@@ -88,12 +91,12 @@ void ccplex_boot_cpu0(u32 entry)
 	// CAR2PMC_CPU_ACK_WIDTH should be set to 0.
 	CLOCK(CLK_RST_CONTROLLER_CPU_SOFTRST_CTRL2) &= 0xFFFFF000;
 
-	// Enable CPU rail.
-	pmc_enable_partition(0, 1);
+	// Enable CPU main rail.
+	pmc_enable_partition(POWER_RAIL_CRAIL, ENABLE);
 	// Enable cluster 0 non-CPU rail.
-	pmc_enable_partition(15, 1);
-	// Enable CE0 rail.
-	pmc_enable_partition(14, 1);
+	pmc_enable_partition(POWER_RAIL_C0NC,  ENABLE);
+	// Enable CPU0 rail.
+	pmc_enable_partition(POWER_RAIL_CE0,   ENABLE);
 
 	// Request and wait for RAM repair.
 	FLOW_CTLR(FLOW_CTLR_RAM_REPAIR) = 1;
@@ -113,7 +116,7 @@ void ccplex_boot_cpu0(u32 entry)
 	// MC(MC_TZ_SECURITY_CTRL) = 1;
 
 	// Clear MSELECT reset.
-	CLOCK(CLK_RST_CONTROLLER_RST_DEVICES_V) &= ~BIT(CLK_V_MSELECT);
+	CLOCK(CLK_RST_CONTROLLER_RST_DEV_V_CLR) = BIT(CLK_V_MSELECT);
 	// Clear NONCPU reset.
 	CLOCK(CLK_RST_CONTROLLER_RST_CPUG_CMPLX_CLR) = 0x20000000;
 	// Clear CPU0 reset.

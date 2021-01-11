@@ -12,6 +12,14 @@
 
 extern int launch_payload(char *path);
 
+void ALWAYS_INLINE power_off(){
+    power_set_state(POWER_OFF);
+}
+
+void ALWAYS_INLINE reboot_rcm(){
+    power_set_state(REBOOT_RCM);
+}
+
 void RebootToPayloadOrRcm(){
     if (FileExists("sd:/atmosphere/reboot_payload.bin"))
         launch_payload("sd:/atmosphere/reboot_payload.bin");
