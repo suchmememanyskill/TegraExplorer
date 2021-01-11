@@ -37,9 +37,8 @@ ErrCode_t FileCopy(const char *locin, const char *locout, u8 options){
     }
 
     if (options & COPY_MODE_PRINT){
-        gfx_printf("[    ]");
+        gfx_printf("[  0%%]");
         x += 16;
-        gfx_con_setpos(x, y);
     }
 
     buff = malloc(TConf.FSBuffSize);
@@ -62,8 +61,8 @@ ErrCode_t FileCopy(const char *locin, const char *locout, u8 options){
         sizeRemaining -= toCopy;
 
         if (options & COPY_MODE_PRINT){
-            gfx_printf("%3d%%",  (u32)(((totalsize - sizeRemaining) * 100) / totalsize));
             gfx_con_setpos(x, y);
+            gfx_printf("%3d%%",  (u32)(((totalsize - sizeRemaining) * 100) / totalsize));
         }
 
         if (options & COPY_MODE_CANCEL && btn_read() & (BTN_VOL_DOWN | BTN_VOL_UP)){
@@ -78,6 +77,10 @@ ErrCode_t FileCopy(const char *locin, const char *locout, u8 options){
 
     f_chmod(locout, in_info.fattrib, 0x3A);
 
+    if (options & COPY_MODE_PRINT){
+        gfx_con_setpos(x - 16, y);
+    }
+    
     //f_stat(locin, &in_info); //somehow stops fatfs from being weird
     return err;
 }
