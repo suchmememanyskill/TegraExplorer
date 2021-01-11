@@ -59,7 +59,8 @@ void DeleteFile(char *path, FSEntry_t entry){
     gfx_con_setpos(384 + 16, 200 + 16 + 10 * 16);
     SETCOLOR(COLOR_RED, COLOR_DARKGREY);
     gfx_printf("Are you sure?      ");
-
+    
+    WaitFor(500);
     if (!MakeYesNoHorzMenu(3, COLOR_DARKGREY))
         return;
 

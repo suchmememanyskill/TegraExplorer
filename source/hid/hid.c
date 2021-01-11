@@ -7,6 +7,7 @@
 #include "../utils/utils.h"
 #include "../tegraexplorer/tools.h"
 #include <gfx/di.h>
+#include "../config.h"
 
 static Input_t inputs = {0};
 u16 LbaseX = 0, LbaseY = 0, RbaseX = 0, RbaseY = 0;
@@ -15,11 +16,15 @@ void hidInit(){
     jc_init_hw();
 }
 
+extern hekate_config h_cfg;
+
 Input_t *hidRead(){
     jc_gamepad_rpt_t *controller = joycon_poll();
 
-    //if (controller->cap)
-    //    utils_takeScreenshot();
+    if (h_cfg.t210b01){ // Disable home and capture buttons on mariko to avoid weird behaviour
+        controller->home = 0;
+        controller->cap = 0;
+    }
 
     if (controller->home)
         RebootToPayloadOrRcm();

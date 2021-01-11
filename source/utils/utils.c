@@ -142,6 +142,7 @@ char *ShowKeyboard(const char *toEdit, u8 alwaysRet){
         }
         int val = (input->up || input->down) ? 11 : 1;
 
+        // Btn buttons do not work lol
         if (input->buttons & (JoyLLeft | JoyLUp | BtnVolM)){
             if (pos > -1 + val)
                 pos -= val;
