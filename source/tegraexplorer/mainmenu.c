@@ -16,6 +16,9 @@
 #include "../fs/fsutils.h"
 #include <soc/fuse.h>
 #include "../utils/utils.h"
+#include "../config.h"
+
+extern hekate_config h_cfg;
 
 enum {
     MainExplore = 0,
@@ -31,6 +34,7 @@ enum {
     MainExit,
     MainPowerOff,
     MainRebootRCM,
+    MainRebootNormal,
     MainRebootHekate,
     MainRebootAMS
 };
@@ -49,6 +53,7 @@ MenuEntry_t mainMenuEntries[] = {
     [MainExit] = {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "\n-- Exit --"},
     [MainPowerOff] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Power off"},
     [MainRebootRCM] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot to RCM"},
+    [MainRebootNormal] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot normally"},
     [MainRebootHekate] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot to bootloader/update.bin"},
     [MainRebootAMS] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot to atmosphere/reboot_payload.bin"}
 };
@@ -99,7 +104,10 @@ void ViewKeys(){
 
 void ViewCredits(){
     gfx_clearscreen();
-    gfx_printf("\nTegraexplorer v%d.%d.%d\nBy SuchMemeManySkill\n\nBased on Lockpick_RCM & Hekate, from shchmue & CTCaer", LP_VER_MJ, LP_VER_MN, LP_VER_BF);
+    gfx_printf("\nTegraexplorer v%d.%d.%d\nBy SuchMemeManySkill\n\nBased on Lockpick_RCM & Hekate, from shchmue & CTCaer\n\n\n", LP_VER_MJ, LP_VER_MN, LP_VER_BF);
+
+    if (hidRead()->r)
+        gfx_printf("%k\"I'm not even sure if it works\" - meme", COLOR_ORANGE);
     hidWait();
 }
 
@@ -132,9 +140,11 @@ menuPaths mainMenuPaths[] = {
     [MainRebootRCM] = reboot_rcm,
     [MainPowerOff] = power_off,
     [MainViewCredits] = ViewCredits,
+    [MainRebootNormal] = reboot_normal,
 };
 
 void EnterMainMenu(){
+    int res = 0;
     while (1){
         if (sd_get_card_removed())
             sd_unmount();
@@ -152,8 +162,15 @@ void EnterMainMenu(){
         // -- Exit --
         mainMenuEntries[MainRebootAMS].hide = (!sd_mounted || !FileExists("sd:/atmosphere/reboot_payload.bin"));
         mainMenuEntries[MainRebootHekate].hide = (!sd_mounted || !FileExists("sd:/bootloader/update.bin"));
+        mainMenuEntries[MainRebootRCM].hide = h_cfg.t210b01;
 
-        FunctionMenuHandler(mainMenuEntries, ARR_LEN(mainMenuEntries), mainMenuPaths, ALWAYSREDRAW);
+        gfx_clearscreen();
+        gfx_putc('\n');
+        
+        Vector_t ent = vecFromArray(mainMenuEntries, ARR_LEN(mainMenuEntries), sizeof(MenuEntry_t));
+        res = newMenu(&ent, res, 79, 30, ALWAYSREDRAW, 0);
+        if (mainMenuPaths[res] != NULL)
+            mainMenuPaths[res]();
     }
 }
 

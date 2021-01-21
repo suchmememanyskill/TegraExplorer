@@ -41,21 +41,15 @@ void _printEntry(MenuEntry_t entry, u32 maxLen, u8 highlighted, u32 bg){
     gfx_putc('\n');
 }
 
-void FunctionMenuHandler(MenuEntry_t *entries, int entryCount, menuPaths *paths, u8 options){
-    Vector_t ent = vecFromArray(entries, entryCount, sizeof(MenuEntry_t));
-    gfx_clearscreen();
-    gfx_putc('\n');
-    int res = newMenu(&ent, 0, 79, 30, options, entryCount);
-    if (paths[res] != NULL)
-        paths[res]();
-}
-
 int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 options, int entryCount) {
     vecPDefArray(MenuEntry_t*, entries, vec);
     u32 selected = startIndex;
 
-    while (entries[selected].skip || entries[selected].hide)
+    while (entries[selected].skip || entries[selected].hide){
         selected++;
+        if (selected >= vec->count)
+            selected = 0;
+    }
 
     u32 lastIndex = selected;
     u32 startX = 0, startY = 0;
@@ -63,12 +57,6 @@ int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 op
 
     u32 bgColor = (options & USELIGHTGREY) ? COLOR_DARKGREY : COLOR_DEFAULT;
 
-    /*
-    if (options & ENABLEPAGECOUNT){
-        screenLenY -= 2;
-        startY += 32;
-    }
-    */
 
     bool redrawScreen = true;
     Input_t *input = hidRead();

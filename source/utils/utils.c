@@ -9,15 +9,22 @@
 #include "../gfx/menu.h"
 #include "../hid/hid.h"
 #include "../fs/fsutils.h"
+#include "../config.h"
+
+extern hekate_config h_cfg;
 
 extern int launch_payload(char *path);
 
 void ALWAYS_INLINE power_off(){
-    power_set_state(POWER_OFF);
+    power_set_state(POWER_OFF_RESET);
 }
 
 void ALWAYS_INLINE reboot_rcm(){
     power_set_state(REBOOT_RCM);
+}
+
+void ALWAYS_INLINE reboot_normal(){
+    power_set_state((h_cfg.t210b01) ? REBOOT_BYPASS_FUSES : POWER_OFF_REBOOT);
 }
 
 void RebootToPayloadOrRcm(){
