@@ -219,6 +219,10 @@ static int nx_emmc_bis_read_block(u32 sector, u32 count, void *buff)
 		// Check if cache entry was previously in use in case of cache loop.
 		if (cache_filled == 1 && bis_cache->cluster_cache[cluster_cache_end_index].dirty == 1)
 			_nx_emmc_bis_flush_cluster(&bis_cache->cluster_cache[cluster_cache_end_index]);
+
+		if (cache_filled == 1)
+			cluster_lookup[bis_cache->cluster_cache[cluster_cache_end_index].cluster_num] = -1;
+
 		bis_cache->cluster_cache[cluster_cache_end_index].cluster_num = cluster;
 		bis_cache->cluster_cache[cluster_cache_end_index].visit_count = 1;
 		bis_cache->cluster_cache[cluster_cache_end_index].dirty = 0;
