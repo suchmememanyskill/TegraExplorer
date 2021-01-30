@@ -26,7 +26,7 @@ Input_t *hidRead(){
     u8 right_connected = 0;
 
     if (controller != NULL){
-        if (controller->home)
+        if (controller->home && !h_cfg.t210b01)
             RebootToPayloadOrRcm();
 
         if (controller->cap)
