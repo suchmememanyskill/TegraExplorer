@@ -103,6 +103,14 @@ typedef struct __attribute__((__packed__)) _boot_cfg_t
 	};
 } boot_cfg_t;
 
+typedef struct __attribute__((__packed__)) _ipl_ver_meta_t
+{
+	u32 magic;
+	u32 version;
+	u16 rsvd0;
+	u16 rsvd1;
+} ipl_ver_meta_t;
+
 typedef struct __attribute__((__packed__)) _reloc_meta_t
 {
 	u32 start;

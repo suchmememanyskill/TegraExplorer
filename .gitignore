@@ -2,3 +2,9 @@
 build
 output
 research
+
+loader/payload_00.h
+
+loader/payload_01.h
+
+*.exe
