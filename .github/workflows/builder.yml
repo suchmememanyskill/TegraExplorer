@@ -12,7 +12,7 @@ jobs:
         
     - name: Build TegraExplorer
       run: |
-        pacman -S gcc --noconfirm
+        sudo dkp-pacman -S gcc --noconfirm
         make -j$(nproc)
         
     - uses: actions/upload-artifact@master
