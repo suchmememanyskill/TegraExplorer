@@ -12,7 +12,7 @@ jobs:
         
     - name: Build TegraExplorer
       run: |
-        sudo apt install gcc -y
+        sudo apt install build-essential -y
         make -j$(nproc)
         
     - uses: actions/upload-artifact@master
