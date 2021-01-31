@@ -12,6 +12,7 @@ jobs:
         
     - name: Build TegraExplorer
       run: |
+        sudo apt update -y
         sudo apt install build-essential -y
         make -j$(nproc)
         
