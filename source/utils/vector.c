@@ -57,4 +57,3 @@ Vector_t vecCopyOffset(Vector_t* orig, u32 offset) {
 Vector_t vecCopy(Vector_t* orig) {
     return vecCopyOffset(orig, 0);
 }
-

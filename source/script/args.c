@@ -123,6 +123,24 @@ Variable_t getVarFromToken(scriptCtx_t* ctx, lexarToken_t* tokens, int* index, u
                 return ErrValue(ERRINVALIDTYPE);
         }
     }
+    ELIFTX(MemberVariable){
+        Variable_t* var = dictVectorFind(&ctx->varDict, tokens[i].text);
+        i++;
+
+        if (var == NULL)
+            return ErrValue(ERRNOVAR);
+
+        if (tokens[i].token == MemberVariable){
+            return ErrValue(ERRINVALIDTYPE); // Recursive members currently not supported!
+        }
+
+        Variable_t *find = dictVectorFind(&var->vectorType, tokens[i].text);
+        if (find == NULL)
+            return ErrValue(ERRNOVAR); // No member with that variable was found
+        
+        val = *find;
+        val.free = 0;
+    }
     ELIFTX(Function) {
         i += 2;
 

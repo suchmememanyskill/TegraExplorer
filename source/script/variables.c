@@ -2,6 +2,7 @@
 #include "types.h"
 #include <string.h>
 #include <mem/heap.h>
+#include "../utils/utils.h"
 
 void freeVariable(Variable_t dv) {
 	if (!dv.free)
@@ -22,7 +23,25 @@ void freeVariable(Variable_t dv) {
 		case ByteArrayType:
 			vecFree(dv.vectorType);
 			break;
+		
+		case DictionaryType:
+			freeDictVector(&dv.vectorType);
+			break;
 	}
+}
+
+Variable_t copyVariable(Variable_t copy){
+	switch (copy.varType){
+		case IntType:
+			return copy;
+		case StringType:
+			return newVar(StringType, 1, .stringType = CpyStr(copy.stringType));
+		case IntArrayType:
+		case StringArrayType:
+			return newVar(copy.varType, 1, .vectorType = vecCopy(&copy.vectorType));
+	}
+
+	return NullVar; // Other types are not supported or whatever
 }
 
 void freeVariableVector(Vector_t *v) {
@@ -69,6 +88,10 @@ void dictVectorAdd(Vector_t* v, dict_t add) {
 	}
 	else {
 		vecAddElement(v, add);
+		dict_t *dict = vecGetArrayPtr(v, dict_t*);
+		for (int i = 0; i < v->count; i++){
+			dict[i].value.vectorPtr = &dict[i].value.vectorType;
+		}
 	}
 }
 

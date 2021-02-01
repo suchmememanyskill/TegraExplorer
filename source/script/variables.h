@@ -7,6 +7,7 @@ void freeDictVector(Vector_t* v);
 void freeVariableVector(Vector_t* v);
 void freeVariable(Variable_t dv);
 scriptCtx_t createScriptCtx();
+Variable_t copyVariable(Variable_t copy);
 
 u8 setIndentInstruction(scriptCtx_t* ctx, u8 level, u8 skip, u8 func, int jumpLoc);
 indentInstructor_t* getCurIndentInstruction(scriptCtx_t* ctx);

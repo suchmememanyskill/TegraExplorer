@@ -422,6 +422,22 @@ scriptFunction(funcLaunchPayload){
 	return varInt(launch_payload(vars[0].stringType));
 }
 
+scriptFunction(funcNewDict){
+	Variable_t dict = {0};
+	dict.varType = DictionaryType;
+	dict.free = 1;
+	dict.vectorType = newVec(sizeof(dict_t), 4);
+	dict.vectorPtr = &dict.vectorType;
+	return dict;
+}
+
+// Args: Dict, Str, Var
+scriptFunction(funcAddToDict){
+	Variable_t copy = copyVariable(vars[2]);
+	dictVectorAdd(vars[0].vectorPtr, newDict(CpyStr(vars[1].stringType), copy));
+	return NullVar;
+}
+
 u8 fiveInts[] = {IntType, IntType, IntType, IntType, IntType};
 u8 singleIntArray[] = { IntArrayType };
 u8 singleInt[] = { IntType };
@@ -432,6 +448,7 @@ u8 StrByteVec[] = { StringType, ByteArrayType};
 u8 MenuArgs[] = { StringArrayType, IntType, StringArrayType, IntArrayType};
 u8 twoStrings[] = { StringType, StringType };
 u8 mmcReadWrite[] = { StringType, StringType, IntType};
+u8 dictAdd[] = {DictionaryType, StringType, varArgs};
 
 functionStruct_t scriptFunctions[] = {
 	{"if", funcIf, 1, singleInt},
@@ -476,6 +493,8 @@ functionStruct_t scriptFunctions[] = {
 	{"saveSign", funcSignSave, 1, singleStr},
 	{"timerMs", funcGetMs, 0, NULL},
 	{"launchPayload", funcLaunchPayload, 1, singleStr},
+	{"dict", funcNewDict, 0, NULL},
+	{"dictAdd", funcAddToDict, 3, dictAdd},
 	// Left from old: keyboard(?)
 };
 

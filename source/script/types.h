@@ -7,6 +7,7 @@ enum Tokens {
 	Invalid = 0,
 	Variable = 1,
 	ArrayVariable,	
+	MemberVariable,
 	Function,
 	LBracket,
 	StrLit,
@@ -70,6 +71,7 @@ enum Variables {
 	IntArrayType,
 	StringArrayType,
 	ByteArrayType,
+	DictionaryType,
 	JumpType,
 	DictType,
 	NullType,
@@ -103,6 +105,7 @@ typedef struct {
 		char* stringType;
 		Vector_t vectorType;
 	};
+	Vector_t *vectorPtr;
 } Variable_t;
 
 typedef struct {
