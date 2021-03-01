@@ -124,7 +124,11 @@ void RebootToHekate(){
 }
 
 void MountOrUnmountSD(){
-    (sd_mounted) ? sd_unmount() : sd_mount();
+    gfx_clearscreen();
+    if (sd_mounted)
+        sd_unmount();
+    else if (!sd_mount())
+        hidWait();
 }
 
 menuPaths mainMenuPaths[] = {
