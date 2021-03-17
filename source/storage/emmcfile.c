@@ -12,10 +12,11 @@
 #include <storage/nx_sd.h>
 #include <string.h>
 #include "../fs/fsutils.h"
+#include "nx_emmc_bis.h"
 
 // Uses default storage in nx_emmc.c
 // Expects the correct mmc & partition to be set
-ErrCode_t EmmcDumpToFile(const char *path, u32 lba_start, u32 lba_end, u8 force){
+ErrCode_t EmmcDumpToFile(const char *path, u32 lba_start, u32 lba_end, u8 force, u8 crypt){
     FIL fp;
     u32 curLba = lba_start;
     u32 totalSectors = lba_end - lba_start + 1;
@@ -41,7 +42,14 @@ ErrCode_t EmmcDumpToFile(const char *path, u32 lba_start, u32 lba_end, u8 force)
 
     while (totalSectors > 0){
         u32 num = MIN(totalSectors, TConf.FSBuffSize / NX_EMMC_BLOCKSIZE);
-        if (!emummc_storage_read(&emmc_storage, curLba, num, buff)){
+        
+        int readRes = 0;
+        if (crypt)
+            readRes = !nx_emmc_bis_read(curLba, num, buff);
+        else 
+            readRes = emummc_storage_read(&emmc_storage, curLba, num, buff);
+
+        if (!readRes){
             err = newErrCode(TE_ERR_EMMC_READ_FAIL);
             break;
         }
@@ -64,7 +72,7 @@ ErrCode_t EmmcDumpToFile(const char *path, u32 lba_start, u32 lba_end, u8 force)
     return err;
 }
 
-ErrCode_t EmmcRestoreFromFile(const char *path, u32 lba_start, u32 lba_end, u8 force){
+ErrCode_t EmmcRestoreFromFile(const char *path, u32 lba_start, u32 lba_end, u8 force, u8 crypt){
     FIL fp;
     u32 curLba = lba_start;
     u32 totalSectorsDest = lba_end - lba_start + 1;
@@ -99,7 +107,13 @@ ErrCode_t EmmcRestoreFromFile(const char *path, u32 lba_start, u32 lba_end, u8 f
             break;
         }
 
-        if (!emummc_storage_write(&emmc_storage, curLba, num, buff)){
+        int writeRes = 0;
+        if (crypt)
+            writeRes = !nx_emmc_bis_write(curLba, num, buff);
+        else 
+            writeRes = emummc_storage_write(&emmc_storage, curLba, num, buff);
+
+        if (!writeRes){
             err = newErrCode(TE_ERR_EMMC_WRITE_FAIL);
             break;
         }
@@ -117,10 +131,24 @@ ErrCode_t EmmcRestoreFromFile(const char *path, u32 lba_start, u32 lba_end, u8 f
     return err;
 }
 
+int isSystemPartCrypt(emmc_part_t *part){
+    switch (part->index){
+        case 0:
+        case 1:
+        case 8:
+        case 9:
+        case 10:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
 ErrCode_t DumpOrWriteEmmcPart(const char *path, const char *part, u8 write, u8 force){
     const u32 BOOT_PART_SIZE = emmc_storage.ext_csd.boot_mult << 17;
     u32 lba_start = 0;
     u32 lba_end = 0;
+    u8 crypt = false;
 
     if (!sd_mount())
         return newErrCode(TE_ERR_NO_SD);
@@ -143,9 +171,17 @@ ErrCode_t DumpOrWriteEmmcPart(const char *path, const char *part, u8 write, u8 f
         if (!system_part)
             return newErrCode(TE_ERR_PARTITION_NOT_FOUND);
 
-        lba_start = system_part->lba_start;
-        lba_end = system_part->lba_end;
+        if (isSystemPartCrypt(system_part)){
+            nx_emmc_bis_init(system_part);
+            crypt = true;
+            lba_start = 0;
+            lba_end = system_part->lba_end - system_part->lba_start;
+        }
+        else {
+            lba_start = system_part->lba_start;
+            lba_end = system_part->lba_end;
+        }
     }
 
-    return ((write) ? EmmcRestoreFromFile(path, lba_start, lba_end, force) : EmmcDumpToFile(path, lba_start, lba_end, force));
+    return ((write) ? EmmcRestoreFromFile(path, lba_start, lba_end, force, crypt) : EmmcDumpToFile(path, lba_start, lba_end, force, crypt));
 }
