@@ -11,7 +11,7 @@ include $(DEVKITARM)/base_rules
 IPL_LOAD_ADDR := 0x40003000
 LPVERSION_MAJOR := 3
 LPVERSION_MINOR := 0
-LPVERSION_BUGFX := 2
+LPVERSION_BUGFX := 3
 
 ################################################################################
 
