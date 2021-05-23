@@ -108,18 +108,16 @@ void GptMenu(u8 MMCType){
         }
         else if (entries[res].icon == 127){
             unmountMMCPart();
-            ErrCode_t err = mountMMCPart(entries[res].name);
+            ErrCode_t err = (TConf.keysDumped) ? mountMMCPart(entries[res].name) : newErrCode(TE_ERR_KEYDUMP_FAIL);
             if (err.err){
                 DrawError(err);
             }
             else {
-                if (TConf.keysDumped){
-                    if (TConf.curExplorerLoc > LOC_SD)
-                        ResetCopyParams();
+                if (TConf.curExplorerLoc > LOC_SD)
+                    ResetCopyParams();
                     
-                    TConf.curExplorerLoc = LOC_EMMC;
-                    FileExplorer("bis:/");
-                }
+                TConf.curExplorerLoc = LOC_EMMC;
+                FileExplorer("bis:/");
             }
         }
         else {

@@ -171,7 +171,7 @@ ErrCode_t DumpOrWriteEmmcPart(const char *path, const char *part, u8 write, u8 f
         if (!system_part)
             return newErrCode(TE_ERR_PARTITION_NOT_FOUND);
 
-        if (isSystemPartCrypt(system_part)){
+        if (isSystemPartCrypt(system_part) && TConf.keysDumped){
             nx_emmc_bis_init(system_part);
             crypt = true;
             lba_start = 0;

@@ -130,7 +130,7 @@ void HexView(char *path, FSEntry_t entry){
         hidRead();
 
     gfx_clearscreen();
-    print = malloc(2048);
+    print = calloc(2048, 1);
 
     if ((res = f_open(&in, filePath, FA_READ | FA_OPEN_EXISTING))){
         DrawError(newErrCode(res));
@@ -146,7 +146,7 @@ void HexView(char *path, FSEntry_t entry){
         }
 
         gfx_con_setpos(0, 31);
-        gfx_hexdump(offset * 32, print, size);
+        gfx_hexdump(offset * 32, print, ((size + 31) / 32) * 32);
 
         input = hidRead();
 
