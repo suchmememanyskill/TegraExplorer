@@ -56,7 +56,7 @@ static u32 _putn(char *buffer, u32 v, int base, char fill, int fcnt) {
     return _puts(buffer, p);
 }
 
-u32 sprintf(char *buffer, const char *fmt, ...) {
+u32 s_printf(char *buffer, const char *fmt, ...) {
     va_list ap;
     int fill, fcnt;
     u32 count = 0;

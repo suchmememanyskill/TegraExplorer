@@ -114,7 +114,7 @@ int FolderMenu(const char *path){
 
     char attribs[16];
     char *attribList = GetFileAttribs(file);
-    sprintf(attribs, "Attribs:%s\n", attribList);
+    s_printf(attribs, "Attribs:%s\n", attribList);
     free(attribList);
     FolderMenuEntries[2].name = attribs;
 

@@ -41,7 +41,7 @@ void DumpSysFw(){
 	}
 
 	baseSdPath = malloc(36 + 16);
-	sprintf(baseSdPath, "sd:/tegraexplorer/Firmware/%d (%s)", TConf.pkg1ver, TConf.pkg1ID);
+	s_printf(baseSdPath, "sd:/tegraexplorer/Firmware/%d (%s)", TConf.pkg1ver, TConf.pkg1ID);
 	int baseSdPathLen = strlen(baseSdPath);
 
 	f_mkdir("sd:/tegraexplorer");
@@ -81,7 +81,7 @@ void DumpSysFw(){
 	int total = 1;
 	vecDefArray(FSEntry_t*, fsEntries, fileVec);
 	for (int i = 0; i < fileVec.count; i++){
-		sprintf(sysPath, (fsEntries[i].isDir) ? "%s/%s/00" : "%s/%s", "bis:/Contents/registered", fsEntries[i].name);
+		s_printf(sysPath, (fsEntries[i].isDir) ? "%s/%s/00" : "%s/%s", "bis:/Contents/registered", fsEntries[i].name);
 		int contentType = GetNcaType(sysPath);
 
 		if (contentType < 0){
@@ -90,7 +90,7 @@ void DumpSysFw(){
 		}
 
 		char *sdPath = malloc(baseSdPathLen + 45);
-		sprintf(sdPath, "%s/%s", baseSdPath, fsEntries[i].name);
+		s_printf(sdPath, "%s/%s", baseSdPath, fsEntries[i].name);
 		if (contentType == Meta)
 			memcpy(sdPath + strlen(sdPath) - 4, ".cnmt.nca", 10);
 		
@@ -214,7 +214,7 @@ void TakeScreenshot(){
     char *name, *path;
     const char basepath[] = "sd:/tegraexplorer/screenshots";
     name = malloc(40);
-    sprintf(name, "Screenshot_%08X.bmp", get_tmr_us());
+    s_printf(name, "Screenshot_%08X.bmp", get_tmr_us());
 
     f_mkdir("sd:/tegraexplorer");
     f_mkdir(basepath);

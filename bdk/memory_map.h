@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 CTCaer
+ * Copyright (c) 2019-2021 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,8 +19,8 @@
 
 //#define IPL_STACK_TOP  0x4003FF00
 /* --- BIT/BCT: 0x40000000 - 0x40003000 --- */
-/* ---     IPL: 0x40003000 - 0x40028000 --- */
-#define LDR_LOAD_ADDR     0x40003000
+/* ---     IPL: 0x40008000 - 0x40028000 --- */
+#define LDR_LOAD_ADDR     0x40007000
 
 #define IPL_LOAD_ADDR     0x40008000
 #define  IPL_SZ_MAX          0x20000 // 128KB.
@@ -49,8 +49,14 @@
 
 // Virtual disk / Chainloader buffers.
 #define RAM_DISK_ADDR     0xA4000000
-#define NX_BIS_CACHE_ADDR RAM_DISK_ADDR
 #define  RAM_DISK_SZ      0x41000000 // 1040MB.
+#define  RAM_DISK2_SZ 0x21000000 //  528MB.
+
+// NX BIS driver sector cache.
+#define NX_BIS_CACHE_ADDR  0xC5000000
+#define  NX_BIS_CACHE_SZ   0x10020000 // 256MB.
+#define NX_BIS_LOOKUP_ADDR 0xD6000000
+#define  NX_BIS_LOOKUP_SZ   0xF000000 // 240MB.
 
 // L4T Kernel Panic Storage (PSTORE).
 #define PSTORE_ADDR   0xB0000000
@@ -91,14 +97,9 @@
 #define  NYX_FB_SZ         0x384000 // 1280 x 720 x 4.
 
 #define DRAM_MEM_HOLE_ADR 0xF6A00000
-#define NX_BIS_LOOKUP_ADR DRAM_MEM_HOLE_ADR
 #define DRAM_MEM_HOLE_SZ   0x8140000
 /* ---   Hole: 129MB 0xF6A00000 - 0xFEB3FFFF --- */
 #define DRAM_START2       0xFEB40000
-
-// NX BIS driver sector cache.
-// #define NX_BIS_CACHE_ADDR 0xFEE00000
-// #define  NX_BIS_CACHE_SZ    0x100000
 
 // USB buffers.
 #define USBD_ADDR                 0xFEF00000

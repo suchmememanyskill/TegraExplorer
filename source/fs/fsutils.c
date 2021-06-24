@@ -12,7 +12,7 @@ char *CombinePaths(const char *current, const char *add){
     size_t size = strlen(current) + strlen(add) + 2;
     ret = (char*) malloc (size);
 
-    sprintf(ret, (current[strlen(current) - 1] == '/') ? "%s%s" : "%s/%s", current, add);
+    s_printf(ret, (current[strlen(current) - 1] == '/') ? "%s%s" : "%s/%s", current, add);
 
     return ret;
 }

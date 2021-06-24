@@ -650,8 +650,9 @@
  * [10] 81 [26]: JDI LPM062M326A
  * [10] 96 [09]: JDI LAM062M109A
  * [20] 93 [0F]: InnoLux P062CCA-AZ1 (Rev A1)
- * [20] 95 [0F]: InnoLux P062CCA-AZ2
- * [20] 96 [0F]: InnoLux P062CCA-AZ3
+ * [20] 95 [0F]: InnoLux P062CCA-AZ2 (Rev B1)
+ * [20] 96 [0F]: InnoLux P062CCA-AZ3 [UNCONFIRMED MODEL REV]
+ * [20] 98 [0F]: InnoLux P062CCA-??? [UNCONFIRMED MODEL REV]
  * [30] 94 [0F]: AUO A062TAN01 (59.06A33.001)
  * [30] 95 [0F]: AUO A062TAN02 (59.06A33.002)
  *
@@ -706,6 +707,7 @@ void display_color_screen(u32 color);
 /*! Switches screen backlight ON/OFF. */
 void display_backlight(bool enable);
 void display_backlight_brightness(u32 brightness, u32 step_delay);
+u32  display_get_backlight_brightness();
 
 /*! Init display in full 1280x720 resolution (B8G8R8A8, line stride 768, framebuffer size = 1280*768*4 bytes). */
 u32 *display_init_framebuffer_pitch();

@@ -19,6 +19,6 @@
 
 #include "types.h"
 
-u32 sprintf(char *buffer, const char *fmt, ...);
+u32 s_printf(char *buffer, const char *fmt, ...);
 
 #endif

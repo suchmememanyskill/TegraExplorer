@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2020 CTCaer
+ * Copyright (c) 2018 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,8 +20,6 @@
 
 #include <utils/types.h>
 #include <mem/minerva.h>
-
-#define NYX_NEW_INFO 0x3058594E
 
 typedef enum
 {
@@ -52,6 +50,8 @@ typedef enum
 
 #define byte_swap_32(num) ((((num) >> 24) & 0xff) | (((num) << 8) & 0xff0000) | \
 						(((num) >> 8 )& 0xff00) | (((num) << 24) & 0xff000000))
+
+#define byte_swap_16(num) ((((num) >> 8) & 0xff) | (((num) << 8) & 0xff00))
 
 typedef struct _cfg_op_t
 {
@@ -84,9 +84,9 @@ typedef struct _nyx_storage_t
 void exec_cfg(u32 *base, const cfg_op_t *ops, u32 num_ops);
 u32  crc32_calc(u32 crc, const u8 *buf, u32 len);
 
-u32  get_tmr_us();
-u32  get_tmr_ms();
-u32  get_tmr_s();
+u32 get_tmr_us();
+u32 get_tmr_ms();
+u32 get_tmr_s();
 void usleep(u32 us);
 void msleep(u32 ms);
 

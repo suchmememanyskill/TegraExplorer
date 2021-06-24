@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2019 CTCaer
+ * Copyright (c) 2018-2021 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -45,12 +45,15 @@ extern FATFS sd_fs;
 void sd_error_count_increment(u8 type);
 u16 *sd_get_error_count();
 bool sd_get_card_removed();
+bool sd_get_card_initialized();
+bool sd_get_card_mounted();
 u32  sd_get_mode();
 int  sd_init_retry(bool power_cycle);
 bool sd_initialize(bool power_cycle);
 bool sd_mount();
 void sd_unmount();
 void sd_end();
+bool sd_is_gpt();
 void *sd_file_read(const char *path, u32 *fsize);
 int  sd_save_to_file(void *buf, u32 size, const char *filename);
 

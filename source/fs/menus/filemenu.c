@@ -180,7 +180,7 @@ void FileMenu(char *path, FSEntry_t entry){
     FileMenuEntries[0].sizeUnion = entry.sizeUnion;
     char attribs[16];
     char *attribList = GetFileAttribs(entry);
-    sprintf(attribs, "Attribs:%s\n", attribList);
+    s_printf(attribs, "Attribs:%s\n", attribList);
     free(attribList);
     FileMenuEntries[2].name = attribs;
 

@@ -1,7 +1,7 @@
 /*
  * Joy-Con UART driver for Nintendo Switch
  *
- * Copyright (c) 2019 CTCaer
+ * Copyright (c) 2019-2021 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -463,7 +463,7 @@ static void jc_rcv_pkt(joycon_ctxt_t *jc)
 
 	// Check if device stopped sending data.
 	u32 uart_irq = uart_get_IIR(jc->uart);
-	if ((uart_irq & 0x8) != 0x8)
+	if (uart_irq != UART_IIR_REDI)
 		return;
 
 	u32 len = uart_recv(jc->uart, (u8 *)jc->buf, 0x100);
@@ -694,9 +694,15 @@ retry:
 
 void jc_deinit()
 {
+	// Disable power.
+	jc_power_supply(UART_B, false);
+	jc_power_supply(UART_C, false);
+
+	// Turn off Joy-Con detect.
 	gpio_config(GPIO_PORT_G, GPIO_PIN_0, GPIO_MODE_SPIO);
 	gpio_config(GPIO_PORT_D, GPIO_PIN_1, GPIO_MODE_SPIO);
 
+	// Send sleep command.
 	u8 data = HCI_STATE_SLEEP;
 
 	if (jc_r.connected && !(jc_r.type & JC_ID_HORI))
@@ -710,8 +716,9 @@ void jc_deinit()
 		jc_rcv_pkt(&jc_l);
 	}
 
-	jc_power_supply(UART_B, false);
-	jc_power_supply(UART_C, false);
+	// Disable UART B and C clocks.
+	clock_disable_uart(UART_B);
+	clock_disable_uart(UART_C);
 }
 
 static void jc_init_conn(joycon_ctxt_t *jc)
@@ -878,14 +885,14 @@ void jc_init_hw()
 	pinmux_config_uart(UART_C);
 
 	// Ease the stress to APB.
-	bpmp_clk_rate_set(BPMP_CLK_NORMAL);
+	bpmp_freq_t prev_fid = bpmp_clk_rate_set(BPMP_CLK_NORMAL);
 
 	// Enable UART B and C clocks.
 	clock_enable_uart(UART_B);
 	clock_enable_uart(UART_C);
 
 	// Restore OC.
-	bpmp_clk_rate_set(BPMP_CLK_DEFAULT_BOOST);
+	bpmp_clk_rate_set(prev_fid);
 
 	// Turn Joy-Con detect on.
 	gpio_config(GPIO_PORT_G, GPIO_PIN_0, GPIO_MODE_GPIO);

@@ -22,7 +22,7 @@
 #define ALWAYS_INLINE inline __attribute__((always_inline))
 
 #define ALIGN(x, a) (((x) + (a) - 1) & ~((a) - 1))
-#define ALIGN_DOWN(x, a) (((x) - ((a) - 1)) & ~((a) - 1))
+#define ALIGN_DOWN(x, a) ((x) & ~((a) - 1))
 #define BIT(n) (1U << (n))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -102,14 +102,6 @@ typedef struct __attribute__((__packed__)) _boot_cfg_t
 		u8 xt_str[0x80];
 	};
 } boot_cfg_t;
-
-typedef struct __attribute__((__packed__)) _ipl_ver_meta_t
-{
-	u32 magic;
-	u32 version;
-	u16 rsvd0;
-	u16 rsvd1;
-} ipl_ver_meta_t;
 
 typedef struct __attribute__((__packed__)) _reloc_meta_t
 {
