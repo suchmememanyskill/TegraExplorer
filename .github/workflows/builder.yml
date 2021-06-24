@@ -11,9 +11,14 @@ jobs:
     - uses: actions/checkout@v1
         
     - name: Build TegraExplorer
-      run: make -j$(nproc)
+      run: |
+        sudo apt update -y
+        sudo apt install build-essential -y
+        make -j$(nproc)
         
     - uses: actions/upload-artifact@master
       with:
         name: TegraExplorer
-        path: output/TegraExplorer.bin 
+        path: | 
+          output/TegraExplorer.bin
+          output/TegraExplorer_small.bin

@@ -8,7 +8,7 @@ include $(DEVKITARM)/base_rules
 
 ################################################################################
 
-IPL_LOAD_ADDR := 0x40003000
+IPL_LOAD_ADDR := 0x40008000
 LPVERSION_MAJOR := 3
 LPVERSION_MINOR := 0
 LPVERSION_BUGFX := 5
@@ -21,6 +21,9 @@ OUTPUTDIR := output
 SOURCEDIR = source
 BDKDIR := bdk
 BDKINC := -I./$(BDKDIR)
+LOADERDIR := ./loader
+LZ77DIR := ./tools/lz
+BIN2CDIR := ./tools/bin2c
 VPATH = $(dir ./$(SOURCEDIR)/) $(dir $(wildcard ./$(SOURCEDIR)/*/)) $(dir $(wildcard ./$(SOURCEDIR)/*/*/))
 VPATH += $(dir $(wildcard ./$(BDKDIR)/)) $(dir $(wildcard ./$(BDKDIR)/*/)) $(dir $(wildcard ./$(BDKDIR)/*/*/))
 
@@ -53,16 +56,30 @@ LDFLAGS = $(ARCH) -nostartfiles -lgcc -Wl,--nmagic,--gc-sections -Xlinker --defs
 
 .PHONY: all clean
 
-all: $(OUTPUTDIR)/$(TARGET).bin
-	@echo -n "Payload size is "
+all: $(OUTPUTDIR)/$(TARGET)_small.bin
 	$(eval BIN_SIZE = $(shell wc -c < $(OUTPUTDIR)/$(TARGET).bin))
-	@echo $(BIN_SIZE)
+	@echo "Payload size is $(BIN_SIZE)"
+	$(eval COMPR_BIN_SIZE = $(shell wc -c < $(OUTPUTDIR)/$(TARGET)_small.bin))
+	@echo "Compressed Payload size is $(COMPR_BIN_SIZE)"
+
 	@echo "Max size is 126296 Bytes."
 	@if [ ${BIN_SIZE} -gt 126296 ]; then echo "\e[1;33mPayload size exceeds limit!\e[0m"; fi
+	@if [ ${COMPR_BIN_SIZE} -gt 126296 ]; then echo "\e[1;33mCompressed Payload size exceeds limit!\e[0m"; fi
 
 clean:
 	@rm -rf $(BUILDDIR)
 	@rm -rf $(OUTPUTDIR)
+	@rm -rf $(LOADERDIR)/payload_*.h
+
+$(OUTPUTDIR)/$(TARGET)_small.bin: $(OUTPUTDIR)/$(TARGET).bin
+	@$(MAKE) -C $(LZ77DIR)
+	@$(LZ77DIR)/lz77 $(OUTPUTDIR)/$(TARGET).bin
+	@$(MAKE) -C $(BIN2CDIR)
+	@$(BIN2CDIR)/bin2c $(OUTPUTDIR)/$(TARGET).bin.00.lz payload_00 > $(LOADERDIR)/payload_00.h
+	@$(BIN2CDIR)/bin2c $(OUTPUTDIR)/$(TARGET).bin.01.lz payload_01 > $(LOADERDIR)/payload_01.h
+	@rm -rf $(OUTPUTDIR)/$(TARGET).bin.*.lz
+
+	$(MAKE) -C $(LOADERDIR) PAYLOAD_NAME=$(TARGET)_small
 
 $(OUTPUTDIR)/$(TARGET).bin: $(BUILDDIR)/$(TARGET)/$(TARGET).elf
 	@mkdir -p "$(@D)"
