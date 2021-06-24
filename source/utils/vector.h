@@ -5,7 +5,7 @@ typedef struct {
     void* data;
     u32 capacity; 
     u32 count;
-    u32 elemSz;
+    u8 elemSz;
     // u32 typeTag;
 } Vector_t;
 
@@ -23,8 +23,14 @@ typedef struct {
 
 #define vecGetArrayPtr(vec, type) (type)((vec)->data)
 
-Vector_t newVec(u32 typesz, u32 preallocate);
+#define vecForEach(type, varname, vecPtr) for (type varname = vecPtr->data; ((u8*)varname - (u8*)vecPtr->data) < (vecPtr->count * vecPtr->elemSz); varname++)
+
+Vector_t newVec(u8 typesz, u32 preallocate);
 Vector_t vecFromArray(void* array, u32 count, u32 typesz);
-bool vecAdd(Vector_t* v, void* elem, u32 sz);
+bool vecAdd(Vector_t* v, void* elem, u8 sz);
 Vector_t vecCopy(Vector_t* orig);
 Vector_t vecCopyOffset(Vector_t* orig, u32 offset);
+
+void* getStackEntry(Vector_t* stack);
+void* popStackEntry(Vector_t* stack);
+void vecRem(Vector_t * vec, int idx);
