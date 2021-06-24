@@ -37,7 +37,7 @@ Vector_t vecFromArray(void* array, u32 count, u32 typesz)
 	return res;
 }
 
-int vecAdd(Vector_t* v, void* elem, u8 sz) {
+int _vecAdd(Vector_t* v, void* elem, u8 sz) {
 	if (!v || !elem || v->elemSz != sz)
 		return 0;
 
