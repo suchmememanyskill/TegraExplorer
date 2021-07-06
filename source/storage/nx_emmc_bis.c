@@ -318,8 +318,8 @@ void nx_emmc_bis_cluster_cache_init()
 		free(cluster_lookup_buf);
 
 	// Check if carveout protected, in case of old hwinit (pre 4.0.0) chainload.
-	*(vu32 *)NX_BIS_LOOKUP_ADDR = 0;
-	if (*(vu32 *)NX_BIS_LOOKUP_ADDR != 0)
+	*(vu32 *)NX_BIS_LOOKUP_ADR = 0;
+	if (*(vu32 *)NX_BIS_LOOKUP_ADR != 0)
 	{
 		cluster_lookup_buf = (u32 *)malloc(cluster_lookup_size + 0x2000);
 		cluster_lookup = (u32 *)ALIGN((u32)cluster_lookup_buf, 0x1000);
@@ -327,7 +327,7 @@ void nx_emmc_bis_cluster_cache_init()
 	else
 	{
 		cluster_lookup_buf = NULL;
-		cluster_lookup = (u32 *)NX_BIS_LOOKUP_ADDR;
+		cluster_lookup = (u32 *)NX_BIS_LOOKUP_ADR;
 	}
 
 	// Clear cluster lookup table and reset end index.
