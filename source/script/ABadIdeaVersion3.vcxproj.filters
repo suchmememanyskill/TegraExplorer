@@ -34,6 +34,9 @@
     <Filter Include="Source Files\Classes\Int">
       <UniqueIdentifier>{64738969-63b9-4d0e-85b9-d9a63a7e36b3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Classes\Elseable">
+      <UniqueIdentifier>{ba83a808-23f1-44c6-85e4-d0c6c77200fa}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ABadIdeaVersion3.c">
@@ -80,6 +83,9 @@
     </ClCompile>
     <ClCompile Include="scriptError.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="else.c">
+      <Filter>Source Files\Classes\Elseable</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -130,6 +136,9 @@
     </ClInclude>
     <ClInclude Include="scriptError.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="else.h">
+      <Filter>Source Files\Classes\Elseable</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

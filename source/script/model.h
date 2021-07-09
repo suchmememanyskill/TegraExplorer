@@ -35,6 +35,7 @@ typedef enum {
 	EmptyClass,
 	SolvedArrayReferenceClass,
 	SaveClass,
+	ElseClass,
 } VariableType_t;
 
 typedef enum {

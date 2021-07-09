@@ -145,6 +145,7 @@
     <ClCompile Include="ABadIdeaVersion3.c" />
     <ClCompile Include="arrayClass.c" />
     <ClCompile Include="arrayReferenceClass.c" />
+    <ClCompile Include="else.c" />
     <ClCompile Include="eval.c" />
     <ClCompile Include="functionClass.c" />
     <ClCompile Include="garbageCollector.c" />
@@ -163,6 +164,7 @@
     <ClInclude Include="arrayReferenceClass.h" />
     <ClInclude Include="compat.h" />
     <ClInclude Include="dictionaryClass.h" />
+    <ClInclude Include="else.h" />
     <ClInclude Include="eval.h" />
     <ClInclude Include="functionClass.h" />
     <ClInclude Include="garbageCollector.h" />

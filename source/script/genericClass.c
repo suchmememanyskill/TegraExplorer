@@ -12,6 +12,7 @@
 #include "scriptError.h"
 #include "saveClass.h"
 #include "unsolvedArrayClass.h"
+#include "else.h"
 
 Variable_t* copyVariableToPtr(Variable_t var) {
 	Variable_t* a = malloc(sizeof(Variable_t));
@@ -28,6 +29,7 @@ MemberGetters_t memberGetters[] = {
 	{ByteArrayClass, getArrayMember},
 	{SolvedArrayReferenceClass, getArrayReferenceMember},
 	{UnresolvedArrayClass, getUnsolvedArrayMember},
+	{ElseClass, getElseMember},
 #ifndef WIN32
 	{SaveClass, getSaveMember},
 #endif

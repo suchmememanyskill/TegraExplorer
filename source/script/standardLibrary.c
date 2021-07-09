@@ -15,7 +15,6 @@
 ClassFunction(stdIf) {
 	s64 value = getIntValue(args[0]);
 
-
 	if (value) {
 		Variable_t* res = genericCallDirect(args[1], NULL, 0);
 		if (res == NULL)
@@ -24,10 +23,11 @@ ClassFunction(stdIf) {
 		removePendingReference(res);
 	}
 
-	return &emptyClass;
-}
+	Variable_t* ret = newIntVariablePtr(value);
+	ret->variableType = ElseClass;
 
-// TODO: implement else by making if return a class that is else-able
+	return ret;
+}
 
 ClassFunction(stdWhile) {
 	Variable_t* result = eval(args[0]->function.function.operations.data, args[0]->function.function.operations.count, 1);

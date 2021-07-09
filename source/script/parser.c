@@ -389,15 +389,17 @@ ParserRet_t parseScript(char* in) {
 							SCRIPT_PARSER_ERR("GET variable before {}");
 							continue;
 						}
-						
+
+						// Set last arg to {} 
 						CallArgs_t* lastCall = getLastRef(&lastOp->callArgs);
 						if (lastCall->extraAction == ActionExtraCallArgs) {
 							Function_t* funcArgs = lastCall->extra;
-
-							op.token = EquationSeperator;
-							op.lineNumber = lineNumber;
-							vecAdd(&funcArgs->operations, op);
-							op.token = Variable;
+							if (funcArgs->operations.count != 0) {
+								op.token = EquationSeperator;
+								op.lineNumber = lineNumber;
+								vecAdd(&funcArgs->operations, op);
+								op.token = Variable;
+							}
 
 							Variable_t a = newFunctionVariable(createFunctionClass(*popFunc, NULL));
 							vecAdd(&staticVariableHolder, a);
