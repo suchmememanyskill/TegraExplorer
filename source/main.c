@@ -308,8 +308,8 @@ void ipl_main()
 	if (res == 0)
 		hidWait();
 
-	if (FileExists("sd:/startup.te"))
-		RunScript("sd:/", newFSEntry("startup.te"));
+	//if (FileExists("sd:/startup.te"))
+	//	RunScript("sd:/", newFSEntry("startup.te"));
 
 	EnterMainMenu();
 

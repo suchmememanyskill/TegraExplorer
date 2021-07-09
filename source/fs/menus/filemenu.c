@@ -11,11 +11,12 @@
 #include <libs/fatfs/ff.h>
 #include "../../utils/utils.h"
 #include "../../keys/nca.h"
-#include "../../script/lexer.h"
-#include "../../script/parser.h"
-#include "../../script/variables.h"
 #include <storage/nx_sd.h>
 #include "../../storage/emummc.h"
+#include "../../script/eval.h"
+#include "../../script/parser.h"
+#include "../../script/garbageCollector.h"
+
 
 MenuEntry_t FileMenuEntries[] = {
     {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "-- File menu --"},
@@ -79,10 +80,11 @@ void RunScript(char *path, FSEntry_t entry){
     if (!script)
         return;
 
-    if (((entry.size >= 64 && entry.sizeDef == 1) || entry.sizeDef >= 2) && !TConf.minervaEnabled)
+    if (((entry.size >= 16 && entry.sizeDef == 1) || entry.sizeDef >= 2) && !TConf.minervaEnabled)
         return;
 
     gfx_clearscreen();
+    /*
     scriptCtx_t ctx = createScriptCtx();
     ctx.script = runLexer(script, size);
     free(script);
@@ -94,6 +96,30 @@ void RunScript(char *path, FSEntry_t entry){
 
     freeDictVector(&ctx.varDict);
     lexarVectorClear(&ctx.script);
+    */
+
+    gfx_printf("Init gc\n");
+    initGarbageCollector();
+    gfx_printf("Parsing\n");
+    ParserRet_t ret = parseScript(script);
+    free(script);
+    gfx_printf("Init vars\n");
+    setStaticVars(&ret.staticVarHolder);
+    initRuntimeVars();
+    
+    gfx_printf("start script\n");
+    Variable_t* res = eval(ret.main.operations.data, ret.main.operations.count, 1);
+
+    exitRuntimeVars();
+    exitGarbageCollector();
+    exitStaticVars(&ret.staticVarHolder);
+    exitFunction(ret.main.operations.data, ret.main.operations.count);
+    vecFree(ret.staticVarHolder);
+    vecFree(ret.main.operations);
+
+    hidWait();
+    hidWait();
+    hidWait();
 }
 
 void RenameFile(char *path, FSEntry_t entry){
