@@ -11,6 +11,7 @@
 
 u8 anotherOneIntArg[] = { IntClass };
 u8 oneStringoneFunction[] = { StringClass, FunctionClass };
+u8 doubleInt[] = {IntClass, IntClass};
 u8 oneIntOneAny[] = { IntClass, VARARGCOUNT };
 u8 anotherAnotherOneVarArg[] = { VARARGCOUNT };
 u8 oneByteArrayClass[] = {ByteArrayClass};
@@ -36,6 +37,34 @@ Variable_t arrayClassGetIdx(Variable_t *caller, s64 idx) {
 	return (Variable_t) { 0 };
 }
 
+int arrayClassAdd(Variable_t *caller, Variable_t *add){
+	if (caller->variableType == IntArrayClass) {
+		if (add->variableType != IntClass) {
+			return 1;
+		}
+
+		vecAdd(&caller->solvedArray.vector, add->integer.value);
+	}
+	else if (caller->variableType == StringArrayClass) {
+		if (add->variableType != StringClass) {
+			return 1;
+		}
+
+		char* str = CpyStr(add->string.value);
+		vecAdd(&caller->solvedArray.vector, str);
+	}
+	else if (caller->variableType == ByteArrayClass) {
+		if (add->variableType != IntClass) {
+			return 1;
+		}
+
+		u8 val = (u8)(add->integer.value & 0xFF);
+		vecAdd(&caller->solvedArray.vector, val);
+	}
+
+	return 0;
+}
+
 ClassFunction(getArrayIdx) {
 	s64 getVal = (*args)->integer.value;
 	// Out of bounds
@@ -53,34 +82,21 @@ ClassFunction(getArrayLen) {
 	return newIntVariablePtr(caller->solvedArray.vector.count);
 }
 
-ClassFunction(createRefSkip) {
+ClassFunction(arraySlice) {
 	s64 skipAmount = getIntValue(*args);
-	if (caller->solvedArray.vector.count < skipAmount || skipAmount <= 0) {
-		SCRIPT_FATAL_ERR("Accessing index %d while array is %d long", (int)skipAmount, (int)caller->solvedArray.vector.count);
+	s64 takeAmount = getIntValue(args[1]);
+
+	if (caller->solvedArray.vector.count < (skipAmount + takeAmount)  || skipAmount <= 0 || takeAmount <= 0) {
+		SCRIPT_FATAL_ERR("Slicing out of range of array with len %d", (int)caller->solvedArray.vector.count);
 	}
 		
 	Variable_t refSkip = { .variableType = SolvedArrayReferenceClass };
 	refSkip.solvedArray.arrayClassReference = caller;
 	refSkip.solvedArray.offset = skipAmount;
-	refSkip.solvedArray.len = caller->solvedArray.vector.count - skipAmount;
+	refSkip.solvedArray.len = takeAmount;
 	addPendingReference(caller);
 	return copyVariableToPtr(refSkip);
 }
-
-
-ClassFunction(takeArray) {
-	s64 skipAmount = getIntValue(*args);
-	if (caller->solvedArray.vector.count < skipAmount || skipAmount <= 0) {
-		SCRIPT_FATAL_ERR("Accessing index %d while array is %d long", (int)skipAmount, (int)caller->solvedArray.vector.count);
-	}
-
-	Variable_t refSkip = { .variableType = SolvedArrayReferenceClass };
-	refSkip.solvedArray.arrayClassReference = caller;
-	refSkip.solvedArray.len = skipAmount;
-	addPendingReference(caller);
-	return copyVariableToPtr(refSkip);
-}
-
 
 ClassFunction(arrayForEach) {
 	Vector_t* v = &caller->solvedArray.vector;
@@ -112,39 +128,16 @@ ClassFunction(arrayCopy) {
 ClassFunction(arraySet) {
 	s64 idx = getIntValue(*args);
 	Vector_t* v = &caller->solvedArray.vector;
-	if (v->count < idx || idx <= 0) {
+	if (v->count < idx || idx < 0) {
 		SCRIPT_FATAL_ERR("Accessing index %d while array is %d long", (int)idx, (int)caller->solvedArray.vector.count);
 	}
 
-	if (caller->readOnly) {
-		SCRIPT_FATAL_ERR("Array is read-only");
+	u32 oldCount = caller->solvedArray.vector.count;
+	caller->solvedArray.vector.count = idx;
+	if (arrayClassAdd(caller, args[1])){
+		SCRIPT_FATAL_ERR("Adding the wrong type to a typed array");
 	}
-
-	if (caller->variableType == IntArrayClass) {
-		if (args[1]->variableType != IntClass) {
-			return NULL; // TODO: add proper error handling
-		}
-
-		s64* a = v->data;
-		a[idx] = getIntValue(args[1]);
-	}
-	else if (caller->variableType == StringArrayClass) {
-		if (args[1]->variableType != StringClass) {
-			return NULL; // TODO: add proper error handling
-		}
-
-		char** a = v->data;
-		FREE(a[idx]);
-		a[idx] = CpyStr(args[1]->string.value);
-	}
-	else if (caller->variableType == ByteArrayClass) {
-		if (args[1]->variableType != IntClass) {
-			return NULL; // TODO: add proper error handling
-		}
-
-		u8* a = v->data;
-		a[idx] = (u8)(getIntValue(args[1]) & 0xFF);
-	}
+	caller->solvedArray.vector.count = oldCount;
 
 	return &emptyClass;
 }
@@ -152,28 +145,12 @@ ClassFunction(arraySet) {
 ClassFunction(arrayAdd) {
 	Variable_t* arg = *args;
 
-	if (caller->variableType == IntArrayClass) {
-		if (arg->variableType != IntClass) {
-			return NULL; // TODO: add proper error handling
-		}
-
-		vecAdd(&caller->solvedArray.vector, arg->integer.value);
+	if (caller->readOnly) {
+		SCRIPT_FATAL_ERR("Array is read-only");
 	}
-	else if (caller->variableType == StringArrayClass) {
-		if (arg->variableType != StringClass) {
-			return NULL; // TODO: add proper error handling
-		}
 
-		char* str = CpyStr(arg->string.value);
-		vecAdd(&caller->solvedArray.vector, str);
-	}
-	else if (caller->variableType == ByteArrayClass) {
-		if (arg->variableType != IntClass) {
-			return NULL; // TODO: add proper error handling
-		}
-
-		u8 val = (u8)(arg->integer.value & 0xFF);
-		vecAdd(&caller->solvedArray.vector, val);
+	if (arrayClassAdd(caller, arg)){
+		SCRIPT_FATAL_ERR("Adding the wrong type to a typed array");
 	}
 
 	return &emptyClass;
@@ -219,7 +196,7 @@ ClassFunction(arrayMinus) {
 
 ClassFunction(bytesToStr) {
 	if (caller->variableType != ByteArrayClass) {
-		SCRIPT_FATAL_ERR("Nedd a bytearray to convert to str");
+		SCRIPT_FATAL_ERR("Need a bytearray to convert to str");
 	}
 
 	char* buff = malloc(caller->solvedArray.vector.count + 1);
@@ -241,13 +218,12 @@ ClassFunction(eqArray){
 ClassFunctionTableEntry_t arrayFunctions[] = {
 	{"get", getArrayIdx, 1, anotherOneIntArg },
 	{"len", getArrayLen, 0, 0},
-	{"skip", createRefSkip, 1, anotherOneIntArg},
+	{"slice", arraySlice, 2, doubleInt},
 	{"foreach", arrayForEach, 2, oneStringoneFunction},
 	{"copy", arrayCopy, 0, 0},
 	{"set", arraySet, 2, oneIntOneAny},
 	{"+", arrayAdd, 1, anotherAnotherOneVarArg},
 	{"-", arrayMinus, 1, anotherOneIntArg},
-	{"take", takeArray, 1, anotherOneIntArg},
 	{"contains", arrayContains, 1, anotherAnotherOneVarArg},
 	{"bytestostr", bytesToStr, 0, 0},
 	{"==", eqArray, 1, oneByteArrayClass},
