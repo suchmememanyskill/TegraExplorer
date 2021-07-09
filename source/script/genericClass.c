@@ -17,6 +17,7 @@
 Variable_t* copyVariableToPtr(Variable_t var) {
 	Variable_t* a = malloc(sizeof(Variable_t));
 	*a = var;
+	a->tagCount = 0;
 	addPendingReference(a);
 	return a;
 }
@@ -201,6 +202,7 @@ Variable_t getGenericFunctionMember(Variable_t* var, char* memberName, ClassFunc
 		}
 	}
 
+	printScriptError(SCRIPT_FATAL, "Could not find member of class");
 	return (Variable_t){ 0 };
 }
 

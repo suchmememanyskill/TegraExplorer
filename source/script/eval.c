@@ -69,6 +69,10 @@ Variable_t* opToVar(Operator_t* op, Callback_SetVar_t *setCallback) {
 			else if (op->variable.staticVariableType == 3) {
 				var = copyVariableToPtr(newFunctionVariable(createFunctionClass((Function_t) { 0 }, op->variable.staticFunction)));
 				var->reference = 1;
+
+				if (!strcmp(var->function.builtInPtr->name,"while")) {
+					var->function.firstArgAsFunction = 1;
+				}
 			}
 		}
 		else {

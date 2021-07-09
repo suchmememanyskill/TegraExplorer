@@ -24,6 +24,23 @@ void modReference(Variable_t* ref, u8 add) {
 	if (ref == NULL || ref->gcDoNotFree)
 		return;
 
+	if (add) {
+		ref->tagCount++;
+	}
+	else {
+		ref->tagCount--;
+		if (ref->tagCount <= 0) {
+			if (ref->variableType == FunctionClass && ref->function.builtIn && ref->function.origin != NULL)
+				modReference(ref->function.origin, 0);
+
+			if (ref->variableType == SolvedArrayReferenceClass)
+				modReference(ref->solvedArray.arrayClassReference, 0);
+
+			freeVariable(&ref);
+		}
+	}
+
+	/*
 	ReferenceCounter_t* additionalFree = NULL;
 
 	vecForEach(ReferenceCounter_t*, references, (&storedReferences)) {
@@ -59,6 +76,7 @@ void modReference(Variable_t* ref, u8 add) {
 
 	ReferenceCounter_t r = { .ref = ref, .refCount = 1 };
 	vecAdd(&storedReferences, r);
+	*/
 }
 /*
 void addPendingReference(Variable_t* ref) {

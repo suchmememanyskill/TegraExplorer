@@ -185,6 +185,7 @@ typedef struct _Variable_t {
 			u8 gcDoNotFree : 1;
 		};
 	};
+	u8 tagCount;
 } Variable_t;
 
 typedef struct _CallArgs_t {

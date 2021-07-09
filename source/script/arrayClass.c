@@ -98,22 +98,27 @@ ClassFunction(arraySlice) {
 	return copyVariableToPtr(refSkip);
 }
 
+// TODO: arrayForEach does not like the new garbage collector
 ClassFunction(arrayForEach) {
 	Vector_t* v = &caller->solvedArray.vector;
 
 	Callback_SetVar_t setVar = { .isTopLevel = 1, .varName = (*args)->string.value };
 	Variable_t* iter = NULL;
 	iter = copyVariableToPtr(newIntVariable(0));
-
+	iter->gcDoNotFree = 1;
 	runtimeVariableEdit(&setVar, iter);
 
 	for (int i = 0; i < v->count; i++) {
 		*iter = arrayClassGetIdx(caller, i);
+		iter->gcDoNotFree = 1;
 
 		Variable_t* res = genericCallDirect(args[1], NULL, 0);
 		if (res == NULL)
 			return NULL;
 	}
+
+	iter->reference = 1;
+	free(iter);
 
 	return &emptyClass;
 }

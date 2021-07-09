@@ -47,12 +47,23 @@ ClassFunction(getStringLength) {
 	return newIntVariablePtr(strlen(s1));
 }
 
+ClassFunction(stringBytes) {
+	Variable_t v = { 0 };
+	v.variableType = ByteArrayClass;
+	u32 len = strlen(caller->string.value);
+	v.solvedArray.vector = newVec(1, len);
+	v.solvedArray.vector.count = len;
+	memcpy(v.solvedArray.vector.data, caller->string.value, len);
+	return copyVariableToPtr(v);
+}
+
 u8 oneStringArg[] = { StringClass };
 
 ClassFunctionTableEntry_t stringFunctions[] = {
 	{"print", printStringVariable, 0, 0},
 	{"+", addStringVariables, 1, oneStringArg },
 	{"len", getStringLength, 0, 0},
+	{"bytes", stringBytes, 0, 0},
 };
 
 Variable_t getStringMember(Variable_t* var, char* memberName) {
