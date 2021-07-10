@@ -5,9 +5,11 @@ enum {
 	SCRIPT_FATAL = 0,
 	SCRIPT_PARSER_FATAL,
 	SCRIPT_WARN,
+	SCRIPT_BREAK,
 };
 
 extern s64 scriptCurrentLine;
+extern u8 scriptLastError;
 
 void printScriptError(u8 errLevel, char* message, ...);
 

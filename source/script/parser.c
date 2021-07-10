@@ -420,7 +420,6 @@ ParserRet_t parseScript(char* in) {
 
 					op.token = EquationSeperator;
 					op.lineNumber = lineNumber;
-					vecAdd(&lastFunc->operations, op);
 				}
 				else {
 					SCRIPT_PARSER_ERR("Stack count is 1 or state is not a function");

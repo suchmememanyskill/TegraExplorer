@@ -5,6 +5,7 @@
 #include "garbageCollector.h"
 #include "intClass.h"
 #include "standardLibrary.h"
+#include "scriptError.h"
 #include <string.h>
 
 #ifndef WIN32
@@ -37,8 +38,14 @@ ClassFunction(stdWhile) {
 	while (result->integer.value) {
 		removePendingReference(result);
 		Variable_t* res = genericCallDirect(args[1], NULL, 0);
-		if (res == NULL)
-			return NULL;
+		if (res == NULL) {
+			if (scriptLastError == SCRIPT_BREAK) {
+				break;
+			}
+			else {
+				return NULL;
+			}
+		}
 
 		removePendingReference(res);
 
@@ -64,6 +71,11 @@ ClassFunction(stdPrint) {
 }
 
 ClassFunction(stdExit) {
+	return NULL;
+}
+
+ClassFunction(stdBreak) {
+	scriptLastError = SCRIPT_BREAK;
 	return NULL;
 }
 
@@ -108,6 +120,7 @@ enum standardFunctionIndexes {
 	STD_MOUNTSYSMMC,
 	STD_MOUNTSAVE,
 	STD_EXIT,
+	STD_BREAK,
 };
 
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
@@ -121,6 +134,7 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	[STD_MOUNTSYSMMC] = {"mountsys", stdMountSysmmc, 1, oneStringArgStd},
 	[STD_MOUNTSAVE] = {"readsave", stdMountSave, 1, oneStringArgStd},
 	[STD_EXIT] = {"exit", stdExit, 0, 0},
+	[STD_BREAK] = {"break", stdBreak, 0, 0},
 };
 
 ClassFunctionTableEntry_t* searchStdLib(char* funcName) {

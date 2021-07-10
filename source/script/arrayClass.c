@@ -113,8 +113,14 @@ ClassFunction(arrayForEach) {
 		iter->gcDoNotFree = 1;
 
 		Variable_t* res = genericCallDirect(args[1], NULL, 0);
-		if (res == NULL)
-			return NULL;
+		if (res == NULL) {
+			if (scriptLastError == SCRIPT_BREAK) {
+				break;
+			}
+			else {
+				return NULL;
+			}
+		}
 	}
 
 	iter->reference = 1;
