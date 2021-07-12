@@ -36,6 +36,7 @@ typedef enum {
 	SolvedArrayReferenceClass,
 	SaveClass,
 	ElseClass,
+	ReferenceType,
 } VariableType_t;
 
 typedef enum {
@@ -176,6 +177,7 @@ typedef struct _Variable_t {
 		#ifndef WIN32
 		SaveClass_t *save;
 		#endif
+		struct _Variable_t* referenceType;
 	};
 	union {
 		struct {

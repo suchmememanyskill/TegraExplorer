@@ -87,6 +87,9 @@
     <ClCompile Include="else.c">
       <Filter>Source Files\Classes\Elseable</Filter>
     </ClCompile>
+    <ClCompile Include="dictionaryClass.c">
+      <Filter>Source Files\Classes\Dictionary</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="compat.h">

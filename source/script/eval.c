@@ -187,6 +187,9 @@ void runtimeVariableEdit(Callback_SetVar_t* set, Variable_t* curRes) {
 		callMemberFunctionDirect(set->setVar, "set", args, 2);
 	}
 
+	removePendingReference(curRes);
+	removePendingReference(set->setVar);
+
 	// TODO: add non-top level sets
 }
 

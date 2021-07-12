@@ -79,6 +79,13 @@ ClassFunction(stdBreak) {
 	return NULL;
 }
 
+ClassFunction(stdDict) {
+	Variable_t a = { 0 };
+	a.variableType = DictionaryClass;
+	a.dictionary.vector = newVec(sizeof(Dict_t), 0);
+	return copyVariableToPtr(a);
+}
+
 #ifndef WIN32
 ClassFunction(stdMountSysmmc){
 	if (connectMMC(MMC_CONN_EMMC))
@@ -121,6 +128,7 @@ enum standardFunctionIndexes {
 	STD_MOUNTSAVE,
 	STD_EXIT,
 	STD_BREAK,
+	STD_DICT,
 };
 
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
@@ -135,6 +143,7 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	[STD_MOUNTSAVE] = {"readsave", stdMountSave, 1, oneStringArgStd},
 	[STD_EXIT] = {"exit", stdExit, 0, 0},
 	[STD_BREAK] = {"break", stdBreak, 0, 0},
+	[STD_DICT] = {"dict", stdDict, 0, 0},
 };
 
 ClassFunctionTableEntry_t* searchStdLib(char* funcName) {

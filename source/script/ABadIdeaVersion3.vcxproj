@@ -145,6 +145,7 @@
     <ClCompile Include="ABadIdeaVersion3.c" />
     <ClCompile Include="arrayClass.c" />
     <ClCompile Include="arrayReferenceClass.c" />
+    <ClCompile Include="dictionaryClass.c" />
     <ClCompile Include="else.c" />
     <ClCompile Include="eval.c" />
     <ClCompile Include="functionClass.c" />

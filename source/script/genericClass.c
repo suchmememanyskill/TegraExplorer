@@ -13,6 +13,7 @@
 #include "saveClass.h"
 #include "unsolvedArrayClass.h"
 #include "else.h"
+#include "dictionaryClass.h"
 
 Variable_t* copyVariableToPtr(Variable_t var) {
 	Variable_t* a = malloc(sizeof(Variable_t));
@@ -31,11 +32,11 @@ MemberGetters_t memberGetters[] = {
 	{SolvedArrayReferenceClass, getArrayReferenceMember},
 	{UnresolvedArrayClass, getUnsolvedArrayMember},
 	{ElseClass, getElseMember},
+	{DictionaryClass, getDictMember},
 #ifndef WIN32
 	{SaveClass, getSaveMember},
 #endif
 };
-
 
 Variable_t* genericGet(Variable_t* var, CallArgs_t* ref) {
 	if (ref->extraAction == ActionExtraMemberName) {
@@ -45,6 +46,10 @@ Variable_t* genericGet(Variable_t* var, CallArgs_t* ref) {
 				if (member.variableType == None)
 					return NULL;
 
+				if (member.variableType == ReferenceType) {
+					return member.referenceType;
+				}
+				
 				addPendingReference(var); // So caller doesn't fall out of scope. Don't forget to free!
 				return copyVariableToPtr(member);
 			}
@@ -186,6 +191,7 @@ Variable_t* genericCall(Variable_t* var, CallArgs_t* ref) {
 	}
 }
 
+// TODO: add staticStorage
 Variable_t getGenericFunctionMember(Variable_t* var, char* memberName, ClassFunctionTableEntry_t* entries, u8 len) {
 	Variable_t newVar = {.readOnly = 1, .variableType = FunctionClass};
 	newVar.function.origin = var;
@@ -213,7 +219,12 @@ Variable_t* callMemberFunction(Variable_t* var, char* memberName, CallArgs_t* ar
 			if (funcRef.variableType == None)
 				return NULL;
 
-			return genericCall(&funcRef, args);
+			Variable_t* ptr = &funcRef;
+			if (funcRef.variableType == ReferenceType) {
+				ptr = funcRef.referenceType;
+			}
+
+			return genericCall(ptr, args);
 		}
 	}
 
@@ -228,7 +239,12 @@ Variable_t* callMemberFunctionDirect(Variable_t* var, char* memberName, Variable
 				SCRIPT_FATAL_ERR("Did not find member '%s'", memberName);
 			}
 
-			return genericCallDirect(&funcRef, args, argsLen);
+			Variable_t* ptr = &funcRef;
+			if (funcRef.variableType == ReferenceType) {
+				ptr = funcRef.referenceType;
+			}
+
+			return genericCallDirect(ptr, args, argsLen);
 		}
 	}
 
@@ -250,6 +266,13 @@ void freeVariableInternal(Variable_t* referencedTarget) {
 		case ByteArrayClass:
 		case IntArrayClass:
 			vecFree(referencedTarget->solvedArray.vector);
+			break;
+		case DictionaryClass:;
+			vecForEach(Dict_t*, dict, (&referencedTarget->dictionary.vector)) {
+				modReference(dict->var, 0);
+				free(dict->name);
+			}
+			FREE(referencedTarget->dictionary.vector.data);
 			break;
 	}
 }
