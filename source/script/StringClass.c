@@ -1,6 +1,7 @@
 #include "StringClass.h"
 #include "compat.h"
 #include "intClass.h"
+#include "scriptError.h"
 #include <string.h>
 
 char* getStringValue(Variable_t* var) {
@@ -57,6 +58,19 @@ ClassFunction(stringBytes) {
 	return copyVariableToPtr(v);
 }
 
+ClassFunction(stringIndexGet) {
+	u32 len = strlen(caller->string.value);
+	u32 idx = args[0]->integer.value;
+	if (len < idx || idx < 0) {
+		SCRIPT_FATAL_ERR("Index of string out of range");
+	}
+
+	char* a = calloc(1,2);
+	a[0] = caller->string.value[idx];
+	return newStringVariablePtr(a, 0, 0);
+}
+
+u8 strOneIntArg[] = { IntClass };
 u8 oneStringArg[] = { StringClass };
 
 ClassFunctionTableEntry_t stringFunctions[] = {
@@ -64,6 +78,7 @@ ClassFunctionTableEntry_t stringFunctions[] = {
 	{"+", addStringVariables, 1, oneStringArg },
 	{"len", getStringLength, 0, 0},
 	{"bytes", stringBytes, 0, 0},
+	{"get", stringIndexGet, 1, strOneIntArg},
 };
 
 Variable_t getStringMember(Variable_t* var, char* memberName) {

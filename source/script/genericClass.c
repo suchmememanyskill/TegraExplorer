@@ -208,7 +208,6 @@ Variable_t getGenericFunctionMember(Variable_t* var, char* memberName, ClassFunc
 		}
 	}
 
-	printScriptError(SCRIPT_FATAL, "Could not find member of class");
 	return (Variable_t){ 0 };
 }
 
@@ -216,8 +215,9 @@ Variable_t* callMemberFunction(Variable_t* var, char* memberName, CallArgs_t* ar
 	for (u32 i = 0; i < ARRAY_SIZE(memberGetters); i++) {
 		if (var->variableType == memberGetters[i].classType) {
 			Variable_t funcRef = memberGetters[i].func(var, memberName);
-			if (funcRef.variableType == None)
-				return NULL;
+			if (funcRef.variableType == None) {
+				SCRIPT_FATAL_ERR("Did not find member '%s'", memberName);
+			}
 
 			Variable_t* ptr = &funcRef;
 			if (funcRef.variableType == ReferenceType) {
