@@ -50,9 +50,6 @@ int vecAddElem(Vector_t* v, void* elem, u8 sz) {
 	u32 usedbytes = v->count * sz;
 	if (usedbytes >= v->capacity)
 	{
-		if (v->capacity > 5000) {
-			printf("uhhhh");
-		}
 		v->capacity *= 2;
 		void* buff = malloc(v->capacity);
 		if (!buff)

@@ -111,11 +111,19 @@ ClassFunction(stdMountSave){
 	var.save = save;
 	return copyVariableToPtr(var);
 }
+ClassFunction(stdSetPixel) {
+	u32 color = getIntValue(args[2]);
+	gfx_set_pixel_horz(args[0]->integer.value, args[1]->integer.value, color);
+	return &emptyClass;
+}
 #else
 ClassFunction(stdMountSysmmc){
 	return newIntVariablePtr(0);
 }
 ClassFunction(stdMountSave){
+	return newIntVariablePtr(0);
+}
+ClassFunction(stdSetPixel) {
 	return newIntVariablePtr(0);
 }
 #endif
@@ -129,11 +137,13 @@ enum standardFunctionIndexes {
 	STD_EXIT,
 	STD_BREAK,
 	STD_DICT,
+	STD_SETPIXEL,
 };
 
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
 u8 doubleFunctionClass[] = { FunctionClass, FunctionClass };
 u8 oneStringArgStd[] = {StringClass};
+u8 threeIntsStd[] = { IntClass, IntClass, IntClass };
 
 ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	[STD_IF] = {"if", stdIf, 2, oneIntoneFunction},
@@ -144,6 +154,7 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	[STD_EXIT] = {"exit", stdExit, 0, 0},
 	[STD_BREAK] = {"break", stdBreak, 0, 0},
 	[STD_DICT] = {"dict", stdDict, 0, 0},
+	[STD_SETPIXEL] = {"setpixel", stdSetPixel, 3, threeIntsStd},
 };
 
 ClassFunctionTableEntry_t* searchStdLib(char* funcName) {
