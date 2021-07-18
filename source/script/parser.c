@@ -71,6 +71,8 @@ typedef enum {
 	History_Array,
 } StackHistory_t;
 
+char* end;
+
 u8 nextToken(char** inPtr, void** val) {
 	char* in = *inPtr;
 	u8 ret = Token_Err;
@@ -191,7 +193,7 @@ u8 nextToken(char** inPtr, void** val) {
 			ret = Token_String;
 			*val = storage;
 		}
-		else if (*in == '\0') {
+		else if (*in == '\0' || in > end) {
 			*inPtr = in;
 			return ret;
 		}
@@ -258,7 +260,7 @@ int isLastVarCall(Operator_t* opHolder) {
 	return (opHolder->token == CallArgs && getLastRef(&opHolder->callArgs)->action == ActionCall);
 }
 
-ParserRet_t parseScript(char* in) {
+ParserRet_t parseScript(char* in, u32 len) {
 	Vector_t functionStack; // Function_t
 	Vector_t stackHistoryHolder; // StaticHistory_t
 	Vector_t staticVariableHolder; // Variable_t
@@ -275,8 +277,9 @@ ParserRet_t parseScript(char* in) {
 	u8 notNext = 0;
 	lineNumber = 1;
 	scriptCurrentLine = 1;
+	end = in + len;
 
-	while (*in) {
+	while (*in && in <= end) {
 		Function_t* lastFunc = getStackEntry(&functionStack);
 		StackHistory_t* lastHistory = getStackEntry(&stackHistoryHolder);
 

@@ -101,7 +101,7 @@ void RunScript(char *path, FSEntry_t entry){
     gfx_printf("Init gc\n");
     initGarbageCollector();
     gfx_printf("Parsing\n");
-    ParserRet_t ret = parseScript(script);
+    ParserRet_t ret = parseScript(script, size);
     free(script);
     gfx_printf("Init vars\n");
     setStaticVars(&ret.staticVarHolder);

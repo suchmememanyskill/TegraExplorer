@@ -17,6 +17,10 @@
 #include <soc/fuse.h>
 #include "../utils/utils.h"
 #include "../config.h"
+#include "../fs/readers/folderReader.h"
+#include <string.h>
+#include <mem/heap.h>
+#include "../fs/menus/filemenu.h"
 
 extern hekate_config h_cfg;
 
@@ -36,7 +40,8 @@ enum {
     MainRebootRCM,
     MainRebootNormal,
     MainRebootHekate,
-    MainRebootAMS
+    MainRebootAMS,
+    MainScripts,
 };
 
 MenuEntry_t mainMenuEntries[] = {
@@ -55,7 +60,8 @@ MenuEntry_t mainMenuEntries[] = {
     [MainRebootRCM] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot to RCM"},
     [MainRebootNormal] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot normally"},
     [MainRebootHekate] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot to bootloader/update.bin"},
-    [MainRebootAMS] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot to atmosphere/reboot_payload.bin"}
+    [MainRebootAMS] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot to atmosphere/reboot_payload.bin"},
+    [MainScripts] = {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "\n-- Scripts --"}
 };
 
 void HandleSD(){
@@ -108,6 +114,13 @@ void ViewCredits(){
 
     if (hidRead()->r)
         gfx_printf("%k\"I'm not even sure if it works\" - meme", COLOR_ORANGE);
+
+/* Leaving this here for my debugging needs :)
+    heap_monitor_t a = {0};
+    heap_monitor(&a, false);
+    gfx_printf("\nUsed: %d\nTotal: %d\n", a.used, a.total);
+*/
+
     hidWait();
 }
 
@@ -168,13 +181,60 @@ void EnterMainMenu(){
         mainMenuEntries[MainRebootHekate].hide = (!sd_mounted || !FileExists("sd:/bootloader/update.bin"));
         mainMenuEntries[MainRebootRCM].hide = h_cfg.t210b01;
 
+        // -- Scripts --
+        mainMenuEntries[MainScripts].hide = (!sd_mounted || !FileExists("sd:/tegraexplorer/scripts"));
+
+        Vector_t ent = vecFromArray(mainMenuEntries, ARR_LEN(mainMenuEntries), sizeof(MenuEntry_t));
+        Vector_t scriptFiles = {0};
+        u8 hasScripts = 0;
+
+        if (!mainMenuEntries[MainScripts].hide){
+            int res = 0;
+            scriptFiles = ReadFolder("sd:/tegraexplorer/scripts", &res);
+            if (!res){
+                if (!scriptFiles.count){
+                    free(scriptFiles.data);
+                    mainMenuEntries[MainScripts].hide = 1;
+                }
+                else {
+                    hasScripts = 1;
+                    ent = newVec(sizeof(MenuEntry_t), ARRAY_SIZE(mainMenuEntries) + scriptFiles.count);
+                    ent.count = ARRAY_SIZE(mainMenuEntries);
+                    memcpy(ent.data, mainMenuEntries, sizeof(MenuEntry_t) * ARRAY_SIZE(mainMenuEntries));
+                    vecForEach(FSEntry_t*, scriptFile, (&scriptFiles)){
+                        if (!scriptFile->isDir && StrEndsWith(scriptFile->name, ".te")){
+                            MenuEntry_t a = MakeMenuOutFSEntry(*scriptFile);
+                            vecAdd(&ent, a);
+                        }
+                    }
+
+                    if (ent.count == ARRAY_SIZE(mainMenuEntries)){
+                        clearFileVector(&scriptFiles);
+                        free(ent.data);
+                        ent = vecFromArray(mainMenuEntries, ARR_LEN(mainMenuEntries), sizeof(MenuEntry_t));
+                        hasScripts = 0;
+                        mainMenuEntries[MainScripts].hide = 1;
+                    }
+                }
+            }
+        }
+
         gfx_clearscreen();
         gfx_putc('\n');
         
-        Vector_t ent = vecFromArray(mainMenuEntries, ARR_LEN(mainMenuEntries), sizeof(MenuEntry_t));
         res = newMenu(&ent, res, 79, 30, ALWAYSREDRAW, 0);
-        if (mainMenuPaths[res] != NULL)
+        if (res < MainScripts && mainMenuPaths[res] != NULL)
             mainMenuPaths[res]();
+        else if (hasScripts){
+            vecDefArray(FSEntry_t*, scriptFilesArray, scriptFiles);
+            RunScript("sd:/tegraexplorer/scripts", scriptFilesArray[res - ARRAY_SIZE(mainMenuEntries)]);
+            hidWait();
+        }
+
+        if (hasScripts){
+            clearFileVector(&scriptFiles);
+            free(ent.data);
+        }
     }
 }
 

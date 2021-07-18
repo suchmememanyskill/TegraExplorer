@@ -70,6 +70,12 @@ ClassFunction(stdPrint) {
 	return &emptyClass;
 }
 
+ClassFunction(stdPrintLn) {
+	stdPrint(caller, args, argsLen);
+	gfx_printf("\n");
+	return &emptyClass;
+}
+
 ClassFunction(stdExit) {
 	return NULL;
 }
@@ -128,33 +134,22 @@ ClassFunction(stdSetPixel) {
 }
 #endif
 
-enum standardFunctionIndexes {
-	STD_IF = 0,
-	STD_WHILE,
-	STD_PRINT,
-	STD_MOUNTSYSMMC,
-	STD_MOUNTSAVE,
-	STD_EXIT,
-	STD_BREAK,
-	STD_DICT,
-	STD_SETPIXEL,
-};
-
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
 u8 doubleFunctionClass[] = { FunctionClass, FunctionClass };
 u8 oneStringArgStd[] = {StringClass};
 u8 threeIntsStd[] = { IntClass, IntClass, IntClass };
 
 ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
-	[STD_IF] = {"if", stdIf, 2, oneIntoneFunction},
-	[STD_WHILE] = {"while", stdWhile, 2, doubleFunctionClass},
-	[STD_PRINT] = {"print", stdPrint, VARARGCOUNT, 0},
-	[STD_MOUNTSYSMMC] = {"mountsys", stdMountSysmmc, 1, oneStringArgStd},
-	[STD_MOUNTSAVE] = {"readsave", stdMountSave, 1, oneStringArgStd},
-	[STD_EXIT] = {"exit", stdExit, 0, 0},
-	[STD_BREAK] = {"break", stdBreak, 0, 0},
-	[STD_DICT] = {"dict", stdDict, 0, 0},
-	[STD_SETPIXEL] = {"setpixel", stdSetPixel, 3, threeIntsStd},
+	{"if", stdIf, 2, oneIntoneFunction},
+	{"while", stdWhile, 2, doubleFunctionClass},
+	{"print", stdPrint, VARARGCOUNT, 0},
+	{"println", stdPrintLn, VARARGCOUNT, 0},
+	{"mountsys", stdMountSysmmc, 1, oneStringArgStd},
+	{"readsave", stdMountSave, 1, oneStringArgStd},
+	{"exit", stdExit, 0, 0},
+	{"break", stdBreak, 0, 0},
+	{"dict", stdDict, 0, 0},
+	{"setpixel", stdSetPixel, 3, threeIntsStd},
 };
 
 ClassFunctionTableEntry_t* searchStdLib(char* funcName) {
