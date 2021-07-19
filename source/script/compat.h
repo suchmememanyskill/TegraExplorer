@@ -9,6 +9,7 @@
 	#define LP_VER_MJ 3
 	#define LP_VER_MN 0
 	#define LP_VER_BF 5
+	#define LP_VER "3.0.5"
 	#define FREE(x) if (x) free(x)
 	#define CpyStr(x) _strdup(x);
 	#include "vector.h"

@@ -222,12 +222,14 @@ void EnterMainMenu(){
         gfx_clearscreen();
         gfx_putc('\n');
         
-        res = newMenu(&ent, res, 79, 30, ALWAYSREDRAW, 0);
+        res = newMenu(&ent, res, 79, 30, (ent.count == ARRAY_SIZE(mainMenuEntries)) ? ALWAYSREDRAW : ALWAYSREDRAW | ENABLEPAGECOUNT, ent.count - ARRAY_SIZE(mainMenuEntries));
         if (res < MainScripts && mainMenuPaths[res] != NULL)
             mainMenuPaths[res]();
         else if (hasScripts){
-            vecDefArray(FSEntry_t*, scriptFilesArray, scriptFiles);
-            RunScript("sd:/tegraexplorer/scripts", scriptFilesArray[res - ARRAY_SIZE(mainMenuEntries)]);
+            vecDefArray(MenuEntry_t*, entArray, ent);
+            MenuEntry_t entry = entArray[res];
+            FSEntry_t fsEntry = {.name = entry.name, .sizeUnion = entry.sizeUnion};
+            RunScript("sd:/tegraexplorer/scripts", fsEntry);
             hidWait();
         }
 

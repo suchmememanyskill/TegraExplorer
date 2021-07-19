@@ -13,6 +13,10 @@
 #include "scriptError.h"
 #include "standardLibrary.h"
 
+#ifndef WIN32
+#include "../tegraexplorer/tconf.h"
+#endif
+
 static inline int isValidWord(char c) {
 	char r = c | 0x20;
 	return ((r >= 'a' && r <= 'z') || c == '_');
@@ -80,36 +84,42 @@ u8 nextToken(char** inPtr, void** val) {
 		if (*in == '#') {
 			if (!memcmp(in + 1, "REQUIRE ", 8)) {
 				if (!memcmp(in + 9, "VER ", 4)) {
-					u8 vers[3] = { 0 };
 					char* verStart = in + 13;
-					for (u8 i = 0; i < 3; i++) {
-						while (isValidNum(*verStart)) {
-							vers[i] = vers[i] * 10 + *verStart++ - '0';
-						}
-						verStart++;
-					}
+					char* verEnd = verStart;
 
-					u8 outdated = 0;
-					if (vers[0] > LP_VER_MJ)
-						outdated = 1;
-					else if (vers[0] == LP_VER_MJ) {
-						if (vers[1] > LP_VER_MN)
-							outdated = 1;
-						else if (vers[1] == LP_VER_MN) {
-							if (vers[2] > LP_VER_BF)
-								outdated = 1;
-						}
+					while (isValidNum(*verEnd) || *verEnd == '.')
+						verEnd++;
+
+					u8 outdated = (verEnd - verStart != strlen(LP_VER));
+
+					if (!outdated){
+						outdated = (memcmp(LP_VER, verStart, verEnd - verStart) < 0);
 					}
 
 					if (outdated) {
-						printScriptError(SCRIPT_FATAL, "Script requires TegraExplorer %d.%d.%d or up!", vers[0], vers[1], vers[2]);
+						printScriptError(SCRIPT_LEXER_FATAL, "Script requires a newer TegraExplorer version!");
 						return Token_Fatal_Err;
 					}
 				}
 				else if (!memcmp(in + 9, "MINERVA", 7)) {
-					u8 minervaEnabled = 0; // TODO: Change this to the actual value
+					#ifdef WIN32
+					u8 minervaEnabled = 0; 
+					#else
+					u8 minervaEnabled = TConf.minervaEnabled;
+					#endif
 					if (!minervaEnabled) {
-						printScriptError(SCRIPT_FATAL, "Extended memory required.\nPut the bootloader folder from hekate on your sd!");
+						printScriptError(SCRIPT_LEXER_FATAL, "Extended memory required.\nPut the bootloader folder from hekate on your sd!");
+						return Token_Fatal_Err;
+					}
+				}
+				else if (!memcmp(in + 9, "KEYS", 4)) {
+					#ifdef WIN32
+					u8 gotKeys = 0;
+					#else
+					u8 gotKeys = TConf.keysDumped;
+					#endif
+					if (!gotKeys){
+						printScriptError(SCRIPT_LEXER_FATAL, "Keys required.\nMake sure you're on the latest version of TegraExplorer!");
 						return Token_Fatal_Err;
 					}
 				}
