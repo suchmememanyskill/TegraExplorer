@@ -12,3 +12,7 @@ source/script/*.te
 source/script/.vs
 
 *.exe
+
+source/script/builtin.c
+
+source/script/builtin.h

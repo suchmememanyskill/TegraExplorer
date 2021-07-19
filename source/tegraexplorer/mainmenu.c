@@ -22,6 +22,12 @@
 #include <mem/heap.h>
 #include "../fs/menus/filemenu.h"
 
+//#define INCLUDE_BUILTIN_SCRIPTS 1
+
+#ifdef INCLUDE_BUILTIN_SCRIPTS
+#include "../script/builtin.h"
+#endif
+
 extern hekate_config h_cfg;
 
 enum {
@@ -182,25 +188,34 @@ void EnterMainMenu(){
         mainMenuEntries[MainRebootRCM].hide = h_cfg.t210b01;
 
         // -- Scripts --
+        #ifndef INCLUDE_BUILTIN_SCRIPTS
         mainMenuEntries[MainScripts].hide = (!sd_mounted || !FileExists("sd:/tegraexplorer/scripts"));
+        #else
+        mainMenuEntries[MainScripts].hide = ((!sd_mounted || !FileExists("sd:/tegraexplorer/scripts")) && !EMBEDDED_SCRIPTS_LEN);
+        #endif
 
-        Vector_t ent = vecFromArray(mainMenuEntries, ARR_LEN(mainMenuEntries), sizeof(MenuEntry_t));
+        Vector_t ent = newVec(sizeof(MenuEntry_t), ARRAY_SIZE(mainMenuEntries));
+        ent.count = ARRAY_SIZE(mainMenuEntries);
+        memcpy(ent.data, mainMenuEntries, sizeof(MenuEntry_t) * ARRAY_SIZE(mainMenuEntries));
         Vector_t scriptFiles = {0};
         u8 hasScripts = 0;
 
-        if (!mainMenuEntries[MainScripts].hide){
-            int res = 0;
+        #ifdef INCLUDE_BUILTIN_SCRIPTS
+        for (int i = 0; i < EMBEDDED_SCRIPTS_LEN; i++){
+            MenuEntry_t m = {.name = embedded_scripts_g[i].name, .optionUnion = COLORTORGB(COLOR_BLUE), .icon = 128};
+            vecAdd(&ent, m);
+        }
+        #endif
+
+        if (sd_mounted && FileExists("sd:/tegraexplorer/scripts")){
             scriptFiles = ReadFolder("sd:/tegraexplorer/scripts", &res);
             if (!res){
                 if (!scriptFiles.count){
-                    free(scriptFiles.data);
+                    FREE(scriptFiles.data);
                     mainMenuEntries[MainScripts].hide = 1;
                 }
                 else {
                     hasScripts = 1;
-                    ent = newVec(sizeof(MenuEntry_t), ARRAY_SIZE(mainMenuEntries) + scriptFiles.count);
-                    ent.count = ARRAY_SIZE(mainMenuEntries);
-                    memcpy(ent.data, mainMenuEntries, sizeof(MenuEntry_t) * ARRAY_SIZE(mainMenuEntries));
                     vecForEach(FSEntry_t*, scriptFile, (&scriptFiles)){
                         if (!scriptFile->isDir && StrEndsWith(scriptFile->name, ".te")){
                             MenuEntry_t a = MakeMenuOutFSEntry(*scriptFile);
@@ -210,14 +225,13 @@ void EnterMainMenu(){
 
                     if (ent.count == ARRAY_SIZE(mainMenuEntries)){
                         clearFileVector(&scriptFiles);
-                        free(ent.data);
-                        ent = vecFromArray(mainMenuEntries, ARR_LEN(mainMenuEntries), sizeof(MenuEntry_t));
                         hasScripts = 0;
                         mainMenuEntries[MainScripts].hide = 1;
                     }
                 }
             }
         }
+        
 
         gfx_clearscreen();
         gfx_putc('\n');
@@ -226,17 +240,28 @@ void EnterMainMenu(){
         if (res < MainScripts && mainMenuPaths[res] != NULL)
             mainMenuPaths[res]();
         else if (hasScripts){
-            vecDefArray(MenuEntry_t*, entArray, ent);
-            MenuEntry_t entry = entArray[res];
-            FSEntry_t fsEntry = {.name = entry.name, .sizeUnion = entry.sizeUnion};
-            RunScript("sd:/tegraexplorer/scripts", fsEntry);
-            hidWait();
+            #ifdef INCLUDE_BUILTIN_SCRIPTS
+            if (res - ARRAY_SIZE(mainMenuEntries) < EMBEDDED_SCRIPTS_LEN){
+                char *script = embedded_scripts_g[res - ARRAY_SIZE(mainMenuEntries)].script;
+                RunScriptString(script, strlen(script));
+            }
+            else {
+            #endif
+                vecDefArray(MenuEntry_t*, entArray, ent);
+                MenuEntry_t entry = entArray[res];
+                FSEntry_t fsEntry = {.name = entry.name, .sizeUnion = entry.sizeUnion};
+                RunScript("sd:/tegraexplorer/scripts", fsEntry);
+                hidWait();
+            #ifdef INCLUDE_BUILTIN_SCRIPTS
+            }
+            #endif
         }
 
         if (hasScripts){
             clearFileVector(&scriptFiles);
-            free(ent.data);
         }
+
+        free(ent.data);
     }
 }
 

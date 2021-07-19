@@ -1,0 +1,12 @@
+#REQUIRE VER 3.0.6
+#REQUIRE MINERVA
+#REQUIRE KEYS
+
+a="Hello world!\n"
+a.print()
+
+i=0
+while (i<10){
+	println(i)
+	i=i+1
+}

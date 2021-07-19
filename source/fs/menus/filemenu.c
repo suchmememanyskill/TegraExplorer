@@ -72,6 +72,23 @@ void DeleteFile(char *path, FSEntry_t entry){
     free(thing);
 }
 
+void RunScriptString(char *str, u32 size){
+    gfx_clearscreen();
+    ParserRet_t ret = parseScript(str, size);
+    setStaticVars(&ret.staticVarHolder);
+    initRuntimeVars();
+    Variable_t* res = eval(ret.main.operations.data, ret.main.operations.count, 1);
+
+    exitRuntimeVars();
+    exitStaticVars(&ret.staticVarHolder);
+    exitFunction(ret.main.operations.data, ret.main.operations.count);
+    vecFree(ret.staticVarHolder);
+    vecFree(ret.main.operations);
+
+    hidWait();
+    hidWait();
+}
+
 void RunScript(char *path, FSEntry_t entry){
     char *thing = CombinePaths(path, entry.name);
     u32 size;
