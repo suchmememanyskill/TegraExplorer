@@ -98,8 +98,6 @@ void RunScript(char *path, FSEntry_t entry){
     lexarVectorClear(&ctx.script);
     */
 
-    gfx_printf("Init gc\n");
-    initGarbageCollector();
     gfx_printf("Parsing\n");
     ParserRet_t ret = parseScript(script, size);
     free(script);
@@ -111,7 +109,6 @@ void RunScript(char *path, FSEntry_t entry){
     Variable_t* res = eval(ret.main.operations.data, ret.main.operations.count, 1);
 
     exitRuntimeVars();
-    exitGarbageCollector();
     exitStaticVars(&ret.staticVarHolder);
     exitFunction(ret.main.operations.data, ret.main.operations.count);
     vecFree(ret.staticVarHolder);

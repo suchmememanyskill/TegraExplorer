@@ -62,8 +62,6 @@ int main()
 
     return;
     */
-    
-    initGarbageCollector();
 
     char* script = readFile("input.te");
     if (script == NULL)
@@ -80,7 +78,6 @@ int main()
     Variable_t* res = eval(ret.main.operations.data, ret.main.operations.count, 1);
 
     exitRuntimeVars();
-    exitGarbageCollector();
     exitStaticVars(&ret.staticVarHolder);
     exitFunction(ret.main.operations.data, ret.main.operations.count);
     vecFree(ret.staticVarHolder);
