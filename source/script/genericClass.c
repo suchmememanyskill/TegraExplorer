@@ -274,7 +274,14 @@ void freeVariableInternal(Variable_t* referencedTarget) {
 			}
 			FREE(referencedTarget->dictionary.vector.data);
 			break;
-	}
+		case SaveClass:;
+			#ifndef WIN32
+			save_free_contexts(&referencedTarget->save->saveCtx);
+			f_close(&referencedTarget->save->saveFile);
+			FREE(referencedTarget->save);
+			#endif // !WIN32
+			break;
+	}	
 }
 
 void freeVariable(Variable_t** target) {

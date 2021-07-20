@@ -70,6 +70,16 @@ ClassFunction(stringIndexGet) {
 	return newStringVariablePtr(a, 0, 0);
 }
 
+ClassFunction(stringMinusInt){
+	u32 baseStrLen = strlen(caller->string.value);
+	if (baseStrLen < args[0]->integer.value){
+		SCRIPT_FATAL_ERR("Index of string out of range");
+	}
+	char* newStr = calloc(baseStrLen - args[0]->integer.value + 1, 1);
+	memcpy(newStr, caller->string.value, baseStrLen - args[0]->integer.value);
+	return newStringVariablePtr(newStr, 0, 1);
+}
+
 u8 strOneIntArg[] = { IntClass };
 u8 oneStringArg[] = { StringClass };
 
@@ -79,6 +89,7 @@ ClassFunctionTableEntry_t stringFunctions[] = {
 	{"len", getStringLength, 0, 0},
 	{"bytes", stringBytes, 0, 0},
 	{"get", stringIndexGet, 1, strOneIntArg},
+	{"-", stringMinusInt, 1, strOneIntArg},
 };
 
 Variable_t getStringMember(Variable_t* var, char* memberName) {

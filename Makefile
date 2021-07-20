@@ -104,3 +104,6 @@ $(BUILDDIR)/$(TARGET)/%.o: $(BDKDIR)/%.c
 $(BUILDDIR)/$(TARGET)/%.o: $(BDKDIR)/%.S
 	@mkdir -p "$(@D)"
 	$(CC) $(CFLAGS) -c $< -o $@
+	
+$(SOURCEDIR)/script/builtin.c: scripts/*.te
+	@py te2c.py source/script/builtin scripts

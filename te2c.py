@@ -65,3 +65,4 @@ def te2c(dest: str, path: str, suffix: str=".te"):
 
 if __name__ == "__main__":
     te2c(dest=sys.argv[1], path=sys.argv[2])
+    print("converting .te files done!")

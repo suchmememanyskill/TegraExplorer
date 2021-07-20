@@ -226,6 +226,25 @@ ClassFunction(eqArray){
 	return newIntVariablePtr(!res);
 }
 
+ClassFunction(arrayFind){
+	Variable_t *arg = (*args);
+	if (caller->solvedArray.vector.count <= arg->solvedArray.vector.count || arg->variableType != caller->variableType){
+		return newIntVariablePtr(-1);
+	}	
+
+	u8 step = (arg->variableType == ByteArrayClass) ? 1 : 8;
+	char *haystack = caller->solvedArray.vector.data;
+	void *needle = arg->solvedArray.vector.data;
+
+	for (int i = 0; i < caller->solvedArray.vector.count - arg->solvedArray.vector.count; i++){
+		if (!memcmp(haystack + (i * step), needle, step * arg->solvedArray.vector.count)){
+			return newIntVariablePtr(i);
+		}
+	}
+
+	return newIntVariablePtr(-1);
+}
+
 ClassFunctionTableEntry_t arrayFunctions[] = {
 	{"get", getArrayIdx, 1, anotherOneIntArg },
 	{"len", getArrayLen, 0, 0},
@@ -239,6 +258,8 @@ ClassFunctionTableEntry_t arrayFunctions[] = {
 	{"bytestostr", bytesToStr, 0, 0},
 	{"==", eqArray, 1, oneByteArrayClass},
 	{"==", eqArray, 1, oneIntArrayClass},
+	{"find", arrayFind, 1, oneByteArrayClass},
+	{"find", arrayFind, 1, oneIntArrayClass},
 };
 
 Variable_t getArrayMember(Variable_t* var, char* memberName) {
