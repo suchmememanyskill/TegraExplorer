@@ -255,8 +255,6 @@ Variable_t* callMemberFunctionDirect(Variable_t* var, char* memberName, Variable
 void freeVariableInternal(Variable_t* referencedTarget) {
 	switch (referencedTarget->variableType) {
 		case StringClass:
-			if (referencedTarget->string.free)
-				gfx_printf("FREE STRING GETTING FREED AAA");
 			FREE(referencedTarget->string.value);
 			break;
 		case StringArrayClass:

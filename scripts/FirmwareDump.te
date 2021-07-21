@@ -1,0 +1,77 @@
+if (mountsys("SYSTEM")){
+	print("SYSTEM MOUNT FAIL")
+	exit()
+}
+
+a = readsave("bis:/save/8000000000000120")
+b = a.readFile("/meta/imkvdb.arc")
+print(b.len(), "\n")
+
+c = ["BYTE[]", 0x09, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]
+
+i = 1
+#while (i + c.len() < b.len()){
+#	if (b.slice(i, 8).project() == c) {\
+
+fuck = b.find(c)
+if (fuck < 0) {
+	print("Not found")
+	exit()
+}
+
+i = fuck
+		
+d = b.slice(i + 8, 4).project()
+ver = (d[3] << 24) | (d[2] << 16) | (d[1] << 8) | (d[0])
+rev = (ver & ((1 << 16) - 1))
+pat = ((ver >> 16) & ((1 << 4) - 1))
+min = ((ver >> 20) & ((1 << 6) - 1))
+maj = ((ver >> 26) & ((1 << 6) - 1))
+print("")
+println(ver.str(), " ", maj.str(), ".", min.str(), ".", pat.str(), ".", rev.str())
+	
+	
+#	i = i + 1
+#}
+
+
+mkdir("sd:/tegraexplorer")
+mkdir("sd:/tegraexplorer/Firmware")
+baseSdPath = "sd:/tegraexplorer/Firmware/" + maj.str() + "." + min.str() + "." + pat.str()
+mkdir(baseSdPath)
+
+contents = readdir("bis:/Contents/registered")
+if (contents.result != 0){
+	println("Fail reading dir")
+	exit()
+}
+
+contents.files.foreach("x") {
+	fullPath = "bis:/Contents/registered/" + x
+	name = x
+	if (ncatype(fullPath) == 1){
+		name = name - 4 + ".cnmt.nca"
+	}
+	print("\r", x)
+	fullSdPath = baseSdPath + "/" + name
+	if (filecopy(fullPath, fullSdPath)){
+		println("\nErr during copy")
+		exit()
+	}
+}
+
+contents.folders.foreach("x") {
+	fullPath = "bis:/Contents/registered/" + x + "/00"
+	name = x
+	if (ncatype(fullPath) == 1){
+		name = name - 4 + ".cnmt.nca"
+	}
+	print("\r", x)
+	fullSdPath = baseSdPath + "/" + name
+	if (filecopy(fullPath, fullSdPath)){
+		println("\nErr during copy")
+		exit()
+	}
+}
+
+print("end") 

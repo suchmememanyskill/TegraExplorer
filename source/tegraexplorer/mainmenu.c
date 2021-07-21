@@ -22,7 +22,7 @@
 #include <mem/heap.h>
 #include "../fs/menus/filemenu.h"
 
-//#define INCLUDE_BUILTIN_SCRIPTS 1
+#define INCLUDE_BUILTIN_SCRIPTS 1
 
 #ifdef INCLUDE_BUILTIN_SCRIPTS
 #include "../script/builtin.h"
@@ -121,11 +121,10 @@ void ViewCredits(){
     if (hidRead()->r)
         gfx_printf("%k\"I'm not even sure if it works\" - meme", COLOR_ORANGE);
 
-/* Leaving this here for my debugging needs :)
     heap_monitor_t a = {0};
     heap_monitor(&a, false);
     gfx_printf("\nUsed: %d\nTotal: %d\n", a.used, a.total);
-*/
+
 
     hidWait();
 }
