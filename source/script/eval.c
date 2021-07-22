@@ -128,7 +128,7 @@ Variable_t* opToVar(Operator_t* op, Callback_SetVar_t *setCallback) {
 				}
 			}
 			else {
-				SCRIPT_FATAL_ERR("[FATAL] Unexpected set!");
+				SCRIPT_FATAL_ERR("Unexpected set!");
 			}
 			return NULL;
 		}
