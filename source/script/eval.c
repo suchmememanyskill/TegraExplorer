@@ -30,13 +30,14 @@ void exitRuntimeVars() {
 	}
 
 	vecFree(runtimeVars);
+	runtimeVars.count = 0;
 }
 
-Variable_t* opToVar(Operator_t* op, Callback_SetVar_t *setCallback) {
+Variable_t* opToVar(Operator_t* op, Callback_SetVar_t *setCallback, u8 possibleCallArg) {
 	Variable_t* var = NULL;
 	CallArgs_t* args = NULL;
 
-	if ((op + 1)->token == CallArgs)
+	if ((op + 1)->token == CallArgs && possibleCallArg)
 		args = &(op + 1)->callArgs;
 
 	if (op->token == BetweenBrackets) {
@@ -221,7 +222,7 @@ Variable_t* eval(Operator_t* ops, u32 len, u8 ret) {
 				SCRIPT_FATAL_ERR("First token is not a variable");
 			}
 			else {
-				curRes = opToVar(cur, &set);
+				curRes = opToVar(cur, &set, (len - i) > 1);
 				if (!curRes) {
 					if ((set.varName != NULL || set.idxVar != NULL) && set.hasBeenNoticed == 0) {
 						set.hasBeenNoticed = 1;
@@ -243,7 +244,7 @@ Variable_t* eval(Operator_t* ops, u32 len, u8 ret) {
 			continue;
 		}
 
-		Variable_t* rightSide = opToVar(cur, &set);
+		Variable_t* rightSide = opToVar(cur, &set, (len - i) > 1);
 		if (!rightSide) 
 			return NULL;
 		
