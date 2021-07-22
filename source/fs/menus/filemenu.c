@@ -77,8 +77,7 @@ void RunScriptString(char *str, u32 size){
     ParserRet_t ret = parseScript(str, size);
     setStaticVars(&ret.staticVarHolder);
     initRuntimeVars();
-    Variable_t* res = eval(ret.main.operations.data, ret.main.operations.count, 1);
-
+    eval(ret.main.operations.data, ret.main.operations.count, 0);
     exitRuntimeVars();
     exitStaticVars(&ret.staticVarHolder);
     exitFunction(ret.main.operations.data, ret.main.operations.count);

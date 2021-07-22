@@ -7,6 +7,7 @@
 #include "standardLibrary.h"
 #include "scriptError.h"
 #include <string.h>
+#include "dictionaryClass.h"
 
 #ifndef WIN32
 #include "../storage/mountmanager.h"
@@ -15,6 +16,7 @@
 #include "../fs/fscopy.h"
 #include <mem/heap.h>
 #include "../keys/nca.h"
+#include "../hid/hid.h"
 #endif
 
 ClassFunction(stdIf) {
@@ -109,6 +111,7 @@ ClassFunction(stdMountSysmmc){
 }
 
 ClassFunction(stdMountSave){
+	
 	Variable_t *arg = (*args);
 	Variable_t var = {.variableType = SaveClass};
 	SaveClass_t* save = calloc(1, sizeof(SaveClass_t));
@@ -120,6 +123,8 @@ ClassFunction(stdMountSave){
 	
 	var.save = save;
 	return copyVariableToPtr(var);
+	
+return newIntVariablePtr(0);
 }
 ClassFunction(stdSetPixel) {
 	u32 color = getIntValue(args[2]);
@@ -128,10 +133,9 @@ ClassFunction(stdSetPixel) {
 }
 
 ClassFunction(stdReadDir){
-	Vector_t dict = newVec(sizeof(Dict_t), 4);
 	Variable_t* resPtr = newIntVariablePtr(0);
-	Dict_t temp = {.name = CpyStr("result"), .var = resPtr};
-	vecAdd(&dict, temp);
+	Variable_t ret = {.variableType = DictionaryClass, .dictionary.vector = newVec(sizeof(Dict_t), 4)};
+	addVariableToDict(&ret, "result", resPtr);
 
 	Variable_t fileNamesArray = {.variableType = StringArrayClass, .solvedArray.vector = newVec(sizeof(char*), 0)};
 	Variable_t dirNamesArray = {.variableType = StringArrayClass, .solvedArray.vector = newVec(sizeof(char*), 0)};
@@ -139,7 +143,6 @@ ClassFunction(stdReadDir){
 
 	DIR dir;
 	if ((resPtr->integer.value = f_opendir(&dir, args[0]->string.value))){
-		Variable_t ret = {.variableType = DictionaryClass, .dictionary.vector = dict};
 		return copyVariableToPtr(ret);
 	}
 
@@ -158,20 +161,67 @@ ClassFunction(stdReadDir){
 
 	f_closedir(&dir);
 
-	temp.name = CpyStr("files");
-	temp.var = copyVariableToPtr(fileNamesArray);
-	vecAdd(&dict, temp);
-
-	temp.name = CpyStr("folders");
-	temp.var = copyVariableToPtr(dirNamesArray);
-	vecAdd(&dict, temp);
+	addVariableToDict(&ret, "files", copyVariableToPtr(fileNamesArray));
+	addVariableToDict(&ret, "folders", copyVariableToPtr(dirNamesArray));
+	addVariableToDict(&ret, "fileSizes", copyVariableToPtr(fileSizeArray));
 	
-	temp.name = CpyStr("fileSizes");
-	temp.var = copyVariableToPtr(fileSizeArray);
-	vecAdd(&dict, temp);
-
-	Variable_t ret = {.variableType = DictionaryClass, .dictionary.vector = dict};
 	return copyVariableToPtr(ret);
+}
+
+char *abxyNames[] = {
+	"y",
+	"x",
+	"b",
+	"a"
+};
+
+char *ulrdNames[] = {
+	"down",
+	"up",
+	"right",
+	"left",
+};
+
+char *powNames[] = {
+	"power",
+	"volplus",
+	"volminus",
+};
+
+ClassFunction(stdPauseMask){
+	Variable_t ret = {.variableType = DictionaryClass, .dictionary.vector = newVec(sizeof(Dict_t), 9)};
+	Input_t *i = hidWaitMask((u32)getIntValue(*args));
+	
+	u32 raw = i->buttons;
+
+	addIntToDict(&ret, "raw", raw);
+
+	for (int i = 0; i < ARRAY_SIZE(abxyNames); i++){
+		addIntToDict(&ret, abxyNames[i], raw & 0x1);
+		raw >>= 1;
+	}
+
+	raw >>= 12;
+
+	for (int i = 0; i < ARRAY_SIZE(ulrdNames); i++){
+		addIntToDict(&ret, ulrdNames[i], raw & 0x1);
+		raw >>= 1;
+	}
+
+	raw >>= 4;
+
+	for (int i = 0; i < ARRAY_SIZE(powNames); i++){
+		addIntToDict(&ret, powNames[i], raw & 0x1);
+		raw >>= 1;
+	}
+
+	return copyVariableToPtr(ret);
+}
+
+ClassFunction(stdPause){
+	Variable_t a = {.integer.value = 0xFFFFFFFF};
+	Variable_t *b = &a;
+	return stdPauseMask(caller, &b, 1);
 }
 
 ClassFunction(stdFileCopy){
@@ -190,9 +240,14 @@ ClassFunction(stdGetMemUsage){
 	Dict_t a = {.name = CpyStr("used"), .var = newIntVariablePtr((s64)mon.used)};
 	Dict_t b = {.name = CpyStr("total"), .var = newIntVariablePtr((s64)mon.total)};
 	Variable_t ret = {.variableType = DictionaryClass, .dictionary.vector = newVec(sizeof(Dict_t), 2)};
-	vecAdd(&ret, a);
-	vecAdd(&ret, b);
+	vecAdd(&ret.dictionary.vector, a);
+	vecAdd(&ret.dictionary.vector, b);
 	return copyVariableToPtr(ret);
+}
+
+ClassFunction(stdColor){
+	gfx_con_setcol((u32)getIntValue(*args) | 0xFF000000, gfx_con.fillbg, gfx_con.bgcol);
+	return &emptyClass;
 }
 
 ClassFunction(stdGetNcaType){
@@ -225,6 +280,10 @@ ClassFunction(stdMkdir){
 ClassFunction(stdGetMemUsage) {
 	return newIntVariablePtr(0);
 }
+
+ClassFunction(stdGetNcaType) {
+	return newIntVariablePtr(0);
+}
 #endif
 
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
@@ -232,6 +291,7 @@ u8 doubleFunctionClass[] = { FunctionClass, FunctionClass };
 u8 oneStringArgStd[] = {StringClass};
 u8 threeIntsStd[] = { IntClass, IntClass, IntClass };
 u8 twoStringArgStd[] = {StringClass, StringClass};
+u8 oneIntStd[] = {IntClass};
 
 ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	{"if", stdIf, 2, oneIntoneFunction},
@@ -249,6 +309,9 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	{"mkdir", stdMkdir, 1, oneStringArgStd},
 	{"memory", stdGetMemUsage, 0, 0},
 	{"ncatype", stdGetNcaType, 1, oneStringArgStd},
+	{"pause", stdPause, 0, 0},
+	{"pausemask", stdPauseMask, 1, oneIntStd},
+	{"color", stdColor, 1, oneIntStd},
 };
 
 ClassFunctionTableEntry_t* searchStdLib(char* funcName) {

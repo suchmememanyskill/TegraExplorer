@@ -63,7 +63,6 @@ Variable_t* genericGet(Variable_t* var, CallArgs_t* ref) {
 		
 		if (solvedIdx->variableType != IntClass) {
 			SCRIPT_FATAL_ERR("Index is not an integer");
-			return NULL;
 		}
 			
 		Variable_t* res = callMemberFunctionDirect(var, "get", &solvedIdx, 1);
@@ -71,12 +70,13 @@ Variable_t* genericGet(Variable_t* var, CallArgs_t* ref) {
 		return res;
 	}
 
-	return NULL;
+	SCRIPT_FATAL_ERR("???");
 }
 
 Variable_t* genericCallDirect(Variable_t* var, Variable_t** args, u8 len) {
-	if (var->variableType != FunctionClass)
-		return NULL;
+	if (var->variableType != FunctionClass){
+		SCRIPT_FATAL_ERR("Call on non function class");
+	}
 
 	if (var->function.builtIn) {
 		for (u32 i = 0; i < var->function.len; i++) {
@@ -109,8 +109,9 @@ Variable_t* genericCallDirect(Variable_t* var, Variable_t** args, u8 len) {
 }
 
 Variable_t* genericCall(Variable_t* var, CallArgs_t* ref) {
-	if (var->variableType != FunctionClass)
-		return NULL;
+	if (var->variableType != FunctionClass){
+		SCRIPT_FATAL_ERR("Call on non function class");
+	}
 
 	if (var->function.builtIn) {
 		// TODO: implement arg handling
@@ -228,7 +229,7 @@ Variable_t* callMemberFunction(Variable_t* var, char* memberName, CallArgs_t* ar
 		}
 	}
 
-	return NULL;
+	SCRIPT_FATAL_ERR("Could not find function table for given type");
 }
 
 Variable_t* callMemberFunctionDirect(Variable_t* var, char* memberName, Variable_t** args, u8 argsLen) {
@@ -249,7 +250,6 @@ Variable_t* callMemberFunctionDirect(Variable_t* var, char* memberName, Variable
 	}
 
 	SCRIPT_FATAL_ERR("Could not find function table for given type");
-	return NULL;
 }
 
 void freeVariableInternal(Variable_t* referencedTarget) {

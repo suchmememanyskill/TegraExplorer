@@ -3,7 +3,9 @@
 #include "compat.h"
 #include <malloc.h>
 #include <string.h>
+#ifndef WIN32
 #include <utils/sprintf.h>
+#endif
 
 IntClass_t createIntClass(s64 in) {
 	IntClass_t a = { in };
@@ -23,9 +25,13 @@ ClassFunction(printIntVariable) {
 }
 
 ClassFunction(intToStr) {
-	char buff[64] = {0};
+#ifndef WIN32
+	char buff[64] = { 0 };
 	s_printf(buff, "%d", getIntValue(caller));
 	return newStringVariablePtr(CpyStr(buff), 0, 1);
+#else
+	return newIntVariablePtr(0);
+#endif // !WIN32
 }
 
 #define IntOpFunction(name, op) ClassFunction(name) { s64 i1 = getIntValue(caller); s64 i2 = getIntValue(*args); return newIntVariablePtr((i1 op i2)); }

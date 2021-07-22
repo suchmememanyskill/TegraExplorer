@@ -1,8 +1,19 @@
 #include "dictionaryClass.h"
 #include <string.h>
 #include "garbageCollector.h"
+#include "intClass.h"
 
 u8 dictOneStrOneAll[] = { StringClass, VARARGCOUNT };
+
+void addVariableToDict(Variable_t *dict, char* name, Variable_t *add){
+	Dict_t a = {.name = CpyStr(name), .var = add};
+	vecAdd(&dict->dictionary.vector, a);
+}
+
+void addIntToDict(Variable_t *dict, char* name, s64 integer){
+	Variable_t *v = newIntVariablePtr(integer);
+	addVariableToDict(dict, name, v);
+}
 
 Dict_t* getEntry(Vector_t *v, char* name) {
 	vecForEach(Dict_t*, dict, v) {

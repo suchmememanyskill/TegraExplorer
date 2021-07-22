@@ -62,27 +62,30 @@ int main()
 
     return;
     */
-
     char* script = readFile("input.te");
     if (script == NULL)
         return;
 
     //parseScript("#REQUIRE VER 3.0.5\nmain = { two = 1 + 1 }");
     //ParserRet_t ret = parseScript("a.b.c(1){ a.b.c() }");
-    ParserRet_t ret = parseScript(script, strlen(script));
+    while (1) {
+        ParserRet_t ret = parseScript(script, strlen(script));
+
+
+        setStaticVars(&ret.staticVarHolder);
+        initRuntimeVars();
+
+        Variable_t* res = eval(ret.main.operations.data, ret.main.operations.count, 1);
+
+        exitRuntimeVars();
+        exitStaticVars(&ret.staticVarHolder);
+        exitFunction(ret.main.operations.data, ret.main.operations.count);
+        vecFree(ret.staticVarHolder);
+        vecFree(ret.main.operations);
+    }
+
+
     free(script);
-
-    setStaticVars(&ret.staticVarHolder);
-    initRuntimeVars();
-    
-    Variable_t* res = eval(ret.main.operations.data, ret.main.operations.count, 1);
-
-    exitRuntimeVars();
-    exitStaticVars(&ret.staticVarHolder);
-    exitFunction(ret.main.operations.data, ret.main.operations.count);
-    vecFree(ret.staticVarHolder);
-    vecFree(ret.main.operations);
-
     gfx_printf("done");
 }
 #endif
