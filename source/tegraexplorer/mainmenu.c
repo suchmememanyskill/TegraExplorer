@@ -234,8 +234,10 @@ void EnterMainMenu(){
         res = newMenu(&ent, res, 79, 30, (ent.count == ARRAY_SIZE(mainMenuEntries)) ? ALWAYSREDRAW : ALWAYSREDRAW | ENABLEPAGECOUNT, ent.count - ARRAY_SIZE(mainMenuEntries));
         if (res < MainScripts && mainMenuPaths[res] != NULL)
             mainMenuPaths[res]();
+        #ifndef INCLUDE_BUILTIN_SCRIPTS
         else if (hasScripts){
-            #ifdef INCLUDE_BUILTIN_SCRIPTS
+        #else
+        else {
             if (res - ARRAY_SIZE(mainMenuEntries) < EMBEDDED_SCRIPTS_LEN){
                 char *script = embedded_scripts_g[res - ARRAY_SIZE(mainMenuEntries)].script;
                 RunScriptString(script, strlen(script));
