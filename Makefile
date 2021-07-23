@@ -28,7 +28,7 @@ BIN2CDIR := ./tools/bin2c
 VPATH = $(dir ./$(SOURCEDIR)/) $(dir $(wildcard ./$(SOURCEDIR)/*/)) $(dir $(wildcard ./$(SOURCEDIR)/*/*/))
 VPATH += $(dir $(wildcard ./$(BDKDIR)/)) $(dir $(wildcard ./$(BDKDIR)/*/)) $(dir $(wildcard ./$(BDKDIR)/*/*/))
 
-OBJS =	$(patsubst $(SOURCEDIR)/%.S, $(BUILDDIR)/$(TARGET)/%.o, \
+OBJS =	$(BUILDDIR)/$(TARGET)/script/builtin.c $(patsubst $(SOURCEDIR)/%.S, $(BUILDDIR)/$(TARGET)/%.o, \
 		$(patsubst $(SOURCEDIR)/%.c, $(BUILDDIR)/$(TARGET)/%.o, \
 		$(call rwildcard, $(SOURCEDIR), *.S *.c)))
 OBJS +=	$(patsubst $(BDKDIR)/%.S, $(BUILDDIR)/$(TARGET)/%.o, \
@@ -104,6 +104,11 @@ $(BUILDDIR)/$(TARGET)/%.o: $(BDKDIR)/%.c
 $(BUILDDIR)/$(TARGET)/%.o: $(BDKDIR)/%.S
 	@mkdir -p "$(@D)"
 	$(CC) $(CFLAGS) -c $< -o $@
-	
-$(SOURCEDIR)/script/builtin.c: scripts/*.te
-	@py te2c.py source/script/builtin scripts
+
+$(BUILDDIR)/$(TARGET)/script/builtin.o: $(BUILDDIR)/$(TARGET)/script/builtin.c
+	@mkdir -p "$(@D)"
+	$(CC) $(CFLAGS) $(BDKINC) -c $< -o $@
+    
+$(BUILDDIR)/$(TARGET)/script/builtin.c: scripts/*.te
+	@mkdir -p "$(@D)"
+	@py te2c.py "$(BUILDDIR)/$(TARGET)/script/builtin" scripts
