@@ -80,6 +80,14 @@ ClassFunction(stringMinusInt){
 	return newStringVariablePtr(newStr, 0, 1);
 }
 
+ClassFunction(stringEq){
+	return newIntVariablePtr(!strcmp(caller->string.value, args[0]->string.value));
+}
+
+ClassFunction(stringInEq){
+	return newIntVariablePtr(strcmp(caller->string.value, args[0]->string.value));
+}
+
 u8 strOneIntArg[] = { IntClass };
 u8 oneStringArg[] = { StringClass };
 
@@ -90,6 +98,8 @@ ClassFunctionTableEntry_t stringFunctions[] = {
 	{"bytes", stringBytes, 0, 0},
 	{"get", stringIndexGet, 1, strOneIntArg},
 	{"-", stringMinusInt, 1, strOneIntArg},
+	{"==", stringEq, 1, oneStringArg},
+	{"!=", stringInEq, 1, oneStringArg},
 };
 
 Variable_t getStringMember(Variable_t* var, char* memberName) {

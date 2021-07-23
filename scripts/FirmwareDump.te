@@ -1,77 +1,58 @@
-if (mountsys("SYSTEM")){
-	print("SYSTEM MOUNT FAIL")
-	exit()
-}
-
-a = readsave("bis:/save/8000000000000120")
-b = a.readFile("/meta/imkvdb.arc")
-print(b.len(), "\n")
-
-c = ["BYTE[]", 0x09, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]
-
-i = 1
-#while (i + c.len() < b.len()){
-#	if (b.slice(i, 8).project() == c) {\
-
-fuck = b.find(c)
-if (fuck < 0) {
-	print("Not found")
-	exit()
-}
-
-i = fuck
-		
-d = b.slice(i + 8, 4).project()
-ver = (d[3] << 24) | (d[2] << 16) | (d[1] << 8) | (d[0])
-rev = (ver & ((1 << 16) - 1))
-pat = ((ver >> 16) & ((1 << 4) - 1))
-min = ((ver >> 20) & ((1 << 6) - 1))
-maj = ((ver >> 26) & ((1 << 6) - 1))
-print("")
-println(ver.str(), " ", maj.str(), ".", min.str(), ".", pat.str(), ".", rev.str())
-	
-	
-#	i = i + 1
-#}
-
-
+#REQUIRE KEYS
+p=println
+pe={pause() exit()}
+fwstr={fw=maj.str()+"."+min.str()+"."+pat.str()}
+fv={a=readsave("bis:/save/8000000000000120")
+	b=a.readFile("/meta/imkvdb.arc")
+	c=["BYTE[]",9,8,0,0,0,0,0,1]
+	d=b.find(c)
+	if(d>0){
+		e=b.slice(d+8,4).project()
+		ver=(e[3]<<24)|(e[2]<<16)|(e[1]<<8)|(e[0])
+		pat=((ver>>16)&((1<<4)- 1))
+		min=((ver>>20)&((1<<6)- 1))
+		maj=((ver>>26)&((1<<6)- 1))
+	}.else(){print("Fw not found")pe()}
+	a=0 fwstr()}
+if(mountsys("SYSTEM")){print("SYSTEM MOUNT FAIL")pe()}
+fv()
+sysfw=fw
+p("Sys'  fw is",fw)
+emufw=""
+if (emu()){if(!mountemu("SYSTEM")){
+	fv()
+	emufw=fw
+	p("Emu's fw is",fw)}}
+op=["Exit","Dump sysmmc"].copy()
+if (emufw!=""){op+"Dump emummc"}
+p()
+r=menu(op,0)
+if(r==0){exit()}
+if(r==1){fw=sysfw if(mountsys("SYSTEM")){print("SYSTEM MOUNT FAIL")pe()}}
+if(r==2){fw=emufw if(mountemu("SYSTEM")){print("SYSTEM MOUNT FAIL")pe()}}
+clear()
 mkdir("sd:/tegraexplorer")
 mkdir("sd:/tegraexplorer/Firmware")
-baseSdPath = "sd:/tegraexplorer/Firmware/" + maj.str() + "." + min.str() + "." + pat.str()
-mkdir(baseSdPath)
-
-contents = readdir("bis:/Contents/registered")
-if (contents.result != 0){
-	println("Fail reading dir")
-	exit()
-}
-
-contents.files.foreach("x") {
-	fullPath = "bis:/Contents/registered/" + x
-	name = x
-	if (ncatype(fullPath) == 1){
-		name = name - 4 + ".cnmt.nca"
-	}
-	print("\r", x)
-	fullSdPath = baseSdPath + "/" + name
-	if (filecopy(fullPath, fullSdPath)){
-		println("\nErr during copy")
-		exit()
+bsp = "sd:/tegraexplorer/Firmware/" + fw
+if(fsexists(bsp)){p("Dir already exists! Press power to replace, any other key to exit") a=pause() if (!a.power){exit()} deldir(bsp)}
+mkdir(bsp)
+p("Dumping to",bsp)
+con=readdir("bis:/Contents/registered")
+if(con.result!=0){println("Fail reading dir")pe()}
+c=(con.files.len()+con.folders.len()).str()
+i=1 f=0 t=timer()
+dump={
+	fi.foreach("x"){
+		if(f){fp="bis:/Contents/registered/"+x+"/00"}
+		.else(){fp="bis:/Contents/registered/"+x}
+		name=x
+		if(ncatype(fp)==1){name=name- 4+".cnmt.nca"}
+		color(0x00FF00)
+		print("\r["+i.str()+"/"+c+"]", x)
+		if(filecopy(fp,bsp+"/"+name)){println("\nErr during copy")pe()}
+		i=i+1
 	}
 }
-
-contents.folders.foreach("x") {
-	fullPath = "bis:/Contents/registered/" + x + "/00"
-	name = x
-	if (ncatype(fullPath) == 1){
-		name = name - 4 + ".cnmt.nca"
-	}
-	print("\r", x)
-	fullSdPath = baseSdPath + "/" + name
-	if (filecopy(fullPath, fullSdPath)){
-		println("\nErr during copy")
-		exit()
-	}
-}
-
-print("end") 
+fi=con.files dump()
+f=1 fi=con.folders dump()
+p("\nDone! Took",timer()-t/1000,"s")

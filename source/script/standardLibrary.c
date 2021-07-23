@@ -19,6 +19,10 @@
 #include "../hid/hid.h"
 #include "../gfx/menu.h"
 #include "../gfx/gfxutils.h"
+#include "../tegraexplorer/tconf.h"
+#include "../storage/emummc.h"
+#include <utils/util.h>
+#include "../fs/fsutils.h"
 #endif
 // Takes [int, function]. Returns elseable.
 ClassFunction(stdIf) {
@@ -74,6 +78,7 @@ ClassFunction(stdPrint) {
 		Variable_t* res = callMemberFunctionDirect(args[i], "print", NULL, 0);
 		if (res == NULL)
 			return NULL;
+		gfx_putc(' ');
 	}
 	
 
@@ -107,16 +112,29 @@ ClassFunction(stdDict) {
 }
 
 #ifndef WIN32
+
+
+int mountMmc(u8 mmc, char *part){
+	if (connectMMC(mmc))
+		return 1;
+
+	if (mountMMCPart(part).err)
+		return 1;
+
+	return 0;
+}
+
 // Takes [str]. Returns int (0=success). str=partition to mount
 ClassFunction(stdMountSysmmc){
-	if (connectMMC(MMC_CONN_EMMC))
-		return newIntVariablePtr(1);
+	return newIntVariablePtr(mountMmc(MMC_CONN_EMMC, args[0]->string.value));
+}
 
-	Variable_t *arg = (*args);
-	if (mountMMCPart(arg->string.value).err)
-		return newIntVariablePtr(1); // Maybe change for error?
+ClassFunction(stdMountEmummc){
+	if (!emu_cfg.enabled){
+		SCRIPT_FATAL_ERR("emummc is not enabled");
+	}
 
-	return newIntVariablePtr(0);
+	return newIntVariablePtr(mountMmc(MMC_CONN_EMUMMC, args[0]->string.value));
 }
 
 // Takes [str]. Returns int (0=success) str=path to save
@@ -312,6 +330,27 @@ ClassFunction(stdMenuFull){
 	return newIntVariablePtr(res);
 }
 
+ClassFunction(stdHasEmu){
+	return newIntVariablePtr(emu_cfg.enabled);
+}
+
+ClassFunction(stdClear){
+	gfx_clearscreen();
+	return &emptyClass;
+}
+
+ClassFunction(stdRmDir){
+	return newIntVariablePtr(FolderDelete(args[0]->string.value).err);
+}
+
+ClassFunction(stdGetMs){
+	return newIntVariablePtr(get_tmr_ms());
+}
+
+ClassFunction(stdFileExists){
+	return newIntVariablePtr(FileExists(args[0]->string.value));
+}
+
 #else
 #define STUBBED(name) ClassFunction(name) { return newIntVariablePtr(0); }
 
@@ -365,6 +404,7 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	{"print", stdPrint, VARARGCOUNT, 0},
 	{"println", stdPrintLn, VARARGCOUNT, 0},
 	{"mountsys", stdMountSysmmc, 1, oneStringArgStd},
+	{"mountemu", stdMountEmummc, 1, oneStringArgStd},
 	{"readsave", stdMountSave, 1, oneStringArgStd},
 	{"exit", stdExit, 0, 0},
 	{"break", stdBreak, 0, 0},
@@ -380,6 +420,11 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	{"color", stdColor, 1, oneIntStd},
 	{"menu", stdMenuFull, 3, menuArgsStd},
 	{"menu", stdMenuFull, 2, menuArgsStd},
+	{"emu", stdHasEmu, 0, 0},
+	{"clear", stdClear, 0, 0},
+	{"timer", stdGetMs, 0, 0},
+	{"deldir", stdRmDir, 1, oneStringArgStd},
+	{"fsexists", stdFileExists, 1, oneStringArgStd},
 };
 
 ClassFunctionTableEntry_t* searchStdLib(char* funcName, u8 *len) {
