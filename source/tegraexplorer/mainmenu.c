@@ -38,7 +38,6 @@ enum {
     MainBrowseEmummc,
     MainTools,
     MainPartitionSd,
-    MainDumpFw,
     MainViewKeys,
     MainViewCredits,
     MainExit,
@@ -58,7 +57,6 @@ MenuEntry_t mainMenuEntries[] = {
     [MainBrowseEmummc] = {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Browse EMUMMC"},
     [MainTools] = {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "\n-- Tools --"},
     [MainPartitionSd] = {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "Partition the sd"},
-    [MainDumpFw] = {.optionUnion = COLORTORGB(COLOR_BLUE), .name = "Dump Firmware"},
     [MainViewKeys] = {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "View dumped keys"},
     [MainViewCredits] = {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "Credits"},
     [MainExit] = {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "\n-- Exit --"},
@@ -155,7 +153,6 @@ menuPaths mainMenuPaths[] = {
     [MainBrowseEmmc] = HandleEMMC,
     [MainBrowseEmummc] = HandleEMUMMC,
     [MainPartitionSd] = FormatSD,
-    [MainDumpFw] = DumpSysFw,
     [MainViewKeys] = ViewKeys,
     [MainRebootAMS] = RebootToAMS,
     [MainRebootHekate] = RebootToHekate,
@@ -178,7 +175,6 @@ void EnterMainMenu(){
 
         // -- Tools --
         mainMenuEntries[MainPartitionSd].hide = (!is_sd_inited || sd_get_card_removed());
-        mainMenuEntries[MainDumpFw].hide = (!TConf.keysDumped || !sd_mounted);
         mainMenuEntries[MainViewKeys].hide = !TConf.keysDumped;
 
         // -- Exit --
