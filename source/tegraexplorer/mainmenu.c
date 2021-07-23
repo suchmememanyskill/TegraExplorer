@@ -25,7 +25,7 @@
 #define INCLUDE_BUILTIN_SCRIPTS 1
 
 #ifdef INCLUDE_BUILTIN_SCRIPTS
-#include "../script/builtin.h"
+#include "../../build/TegraExplorer/script/builtin.h"
 #endif
 
 extern hekate_config h_cfg;

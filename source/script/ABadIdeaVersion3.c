@@ -68,7 +68,7 @@ int main()
 
     //parseScript("#REQUIRE VER 3.0.5\nmain = { two = 1 + 1 }");
     //ParserRet_t ret = parseScript("a.b.c(1){ a.b.c() }");
-    while (1) {
+    //while (1) {
         ParserRet_t ret = parseScript(script, strlen(script));
 
 
@@ -82,7 +82,7 @@ int main()
         exitFunction(ret.main.operations.data, ret.main.operations.count);
         vecFree(ret.staticVarHolder);
         vecFree(ret.main.operations);
-    }
+    //}
 
 
     free(script);

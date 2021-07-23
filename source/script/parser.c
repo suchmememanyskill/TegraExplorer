@@ -320,15 +320,15 @@ ParserRet_t parseScript(char* in, u32 len) {
 		}
 
 		if (tokenType == Token_Variable) {
-
-			ClassFunctionTableEntry_t* cfte = searchStdLib(var);
+			u8 stdLen = 0;
+			ClassFunctionTableEntry_t* cfte = searchStdLib(var, &stdLen);
 
 			if (cfte == NULL) {
 				CreateVariableReferenceStr(var);
 				op.variable = reference;
 			}
 			else {
-				VariableReference_t reference = { .staticVariableType = 3, .staticFunction = cfte };
+				VariableReference_t reference = { .staticVariableType = 3, .staticFunction = cfte, .staticFunctionLen = stdLen };
 				op.variable = reference;
 			}
 		}

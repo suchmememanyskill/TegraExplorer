@@ -229,7 +229,10 @@ typedef struct _VariableReference_t {
 		Array_t betweenBrackets;
 		s64 integerType;
 		char* stringType;
-		ClassFunctionTableEntry_t* staticFunction;
+		struct {
+			ClassFunctionTableEntry_t* staticFunction;
+			u8 staticFunctionLen;
+		};
 	};
 } VariableReference_t;
 

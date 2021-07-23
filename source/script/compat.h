@@ -11,7 +11,7 @@
 	#define LP_VER_BF 5
 	#define LP_VER "3.0.5"
 	#define FREE(x) if (x) free(x)
-	#define CpyStr(x) _strdup(x);
+	#define CpyStr(x) _strdup(x)
 	#include "vector.h"
 	#pragma _CRT_SECURE_NO_WARNINGS
 #else

@@ -17,8 +17,10 @@
 #include <mem/heap.h>
 #include "../keys/nca.h"
 #include "../hid/hid.h"
+#include "../gfx/menu.h"
+#include "../gfx/gfxutils.h"
 #endif
-
+// Takes [int, function]. Returns elseable.
 ClassFunction(stdIf) {
 	s64 value = getIntValue(args[0]);
 
@@ -36,6 +38,7 @@ ClassFunction(stdIf) {
 	return ret;
 }
 
+// Takes [function, function]. Returns empty. Works by evaling the first function and running the 2nd if true.
 ClassFunction(stdWhile) {
 	Variable_t* result = eval(args[0]->function.function.operations.data, args[0]->function.function.operations.count, 1);
 	if (result == NULL || result->variableType != IntClass)
@@ -65,6 +68,7 @@ ClassFunction(stdWhile) {
 	return &emptyClass;
 }
 
+// Takes [???]. Returns empty. Works by calling .print on every argument
 ClassFunction(stdPrint) {
 	for (int i = 0; i < argsLen; i++) {
 		Variable_t* res = callMemberFunctionDirect(args[i], "print", NULL, 0);
@@ -76,21 +80,25 @@ ClassFunction(stdPrint) {
 	return &emptyClass;
 }
 
+// Takes [???]. Returns empty. Calls stdPrint
 ClassFunction(stdPrintLn) {
 	stdPrint(caller, args, argsLen);
 	gfx_printf("\n");
 	return &emptyClass;
 }
 
+// Takes none. Returns none. Returning NULL will cause a cascade of errors and will exit runtime
 ClassFunction(stdExit) {
 	return NULL;
 }
 
+// Takes none. Returns none. See stdExit. stdWhile and array.foreach look for SCRIPT_BREAK and break when seen.
 ClassFunction(stdBreak) {
 	scriptLastError = SCRIPT_BREAK;
 	return NULL;
 }
 
+// Takes none. Returns empty dictionary.
 ClassFunction(stdDict) {
 	Variable_t a = { 0 };
 	a.variableType = DictionaryClass;
@@ -99,6 +107,7 @@ ClassFunction(stdDict) {
 }
 
 #ifndef WIN32
+// Takes [str]. Returns int (0=success). str=partition to mount
 ClassFunction(stdMountSysmmc){
 	if (connectMMC(MMC_CONN_EMMC))
 		return newIntVariablePtr(1);
@@ -110,6 +119,7 @@ ClassFunction(stdMountSysmmc){
 	return newIntVariablePtr(0);
 }
 
+// Takes [str]. Returns int (0=success) str=path to save
 ClassFunction(stdMountSave){
 	
 	Variable_t *arg = (*args);
@@ -123,15 +133,16 @@ ClassFunction(stdMountSave){
 	
 	var.save = save;
 	return copyVariableToPtr(var);
-	
-return newIntVariablePtr(0);
 }
+
+// Takes [int, int, int]. Returns empty. 0: posX, 1: posY, 2: hexColor
 ClassFunction(stdSetPixel) {
 	u32 color = getIntValue(args[2]);
 	gfx_set_pixel_horz(args[0]->integer.value, args[1]->integer.value, color);
 	return &emptyClass;
 }
 
+// Takes [str]. Returns empty. str: path to dir
 ClassFunction(stdReadDir){
 	Variable_t* resPtr = newIntVariablePtr(0);
 	Variable_t ret = {.variableType = DictionaryClass, .dictionary.vector = newVec(sizeof(Dict_t), 4)};
@@ -188,6 +199,7 @@ char *powNames[] = {
 	"volminus",
 };
 
+// Takes [int]. Returns dict[a,b,x,y,down,up,right,left,power,volplus,volminus,raw]. int: mask for hidWaitMask 
 ClassFunction(stdPauseMask){
 	Variable_t ret = {.variableType = DictionaryClass, .dictionary.vector = newVec(sizeof(Dict_t), 9)};
 	Input_t *i = hidWaitMask((u32)getIntValue(*args));
@@ -218,12 +230,14 @@ ClassFunction(stdPauseMask){
 	return copyVariableToPtr(ret);
 }
 
+// Takes none. Returns dict (same as stdPauseMask). 
 ClassFunction(stdPause){
 	Variable_t a = {.integer.value = 0xFFFFFFFF};
 	Variable_t *b = &a;
 	return stdPauseMask(caller, &b, 1);
 }
 
+// Takes [str, str]. Returns int (0=success). 0: src path, 1: dst path
 ClassFunction(stdFileCopy){
 	ErrCode_t e = FileCopy(args[0]->string.value, args[1]->string.value, 0);
 	return newIntVariablePtr(e.err);
@@ -245,16 +259,62 @@ ClassFunction(stdGetMemUsage){
 	return copyVariableToPtr(ret);
 }
 
+// Takes [int]. Returns empty. int: hex color
 ClassFunction(stdColor){
 	gfx_con_setcol((u32)getIntValue(*args) | 0xFF000000, gfx_con.fillbg, gfx_con.bgcol);
 	return &emptyClass;
 }
 
+// Takes [str]. Returns int. str: path to nca
 ClassFunction(stdGetNcaType){
 	int type = GetNcaType(args[0]->string.value);
 	return newIntVariablePtr(type);
 }
+
+// Takes [str[], int, int[]]. Returns int (index). str[]: names of entries, int: starting index, int[]: colors & options. The 3rd argument is optional
+ClassFunction(stdMenuFull){
+	if (argsLen > 2){
+		if (args[2]->solvedArray.vector.count < args[0]->solvedArray.vector.count){
+			SCRIPT_FATAL_ERR("invalid menu args");
+		}
+	}
+
+	Vector_t v = newVec(sizeof(MenuEntry_t), args[0]->solvedArray.vector.count);
+	
+	vecDefArray(char**, menuEntryNames, args[0]->solvedArray.vector);
+	vecDefArray(s64*, menuEntryOptions, args[2]->solvedArray.vector);
+
+	for (int i = 0; i < args[0]->solvedArray.vector.count; i++){
+		MenuEntry_t a = {.name = menuEntryNames[i]};
+		if (argsLen > 2){
+			u32 options = (u32)menuEntryOptions[i];
+			if (options & BIT(26)){
+				a.icon = 128;
+			}
+			else if (options & BIT(27)){
+				a.icon = 127;
+			}
+
+			a.optionUnion = options;
+		}
+		else {
+			a.optionUnion = COLORTORGB(COLOR_WHITE);
+		}
+
+		vecAdd(&v, a);
+	}
+
+	u32 x=0,y=0;
+	gfx_con_getpos(&x,&y);
+
+	int res = newMenu(&v, getIntValue(args[1]), ScreenDefaultLenX - ((x + 1) / 16), ScreenDefaultLenY - ((y + 1) / 16) - 1, ENABLEB | ALWAYSREDRAW, 0);
+	vecFree(v);
+	return newIntVariablePtr(res);
+}
+
 #else
+#define STUBBED(name) ClassFunction(name) { return newIntVariablePtr(0); }
+
 ClassFunction(stdMountSysmmc){
 	return newIntVariablePtr(0);
 }
@@ -284,6 +344,11 @@ ClassFunction(stdGetMemUsage) {
 ClassFunction(stdGetNcaType) {
 	return newIntVariablePtr(0);
 }
+
+STUBBED(stdPause)
+STUBBED(stdPauseMask)
+STUBBED(stdColor)
+STUBBED(stdMenuFull)
 #endif
 
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
@@ -292,6 +357,7 @@ u8 oneStringArgStd[] = {StringClass};
 u8 threeIntsStd[] = { IntClass, IntClass, IntClass };
 u8 twoStringArgStd[] = {StringClass, StringClass};
 u8 oneIntStd[] = {IntClass};
+u8 menuArgsStd[] = {StringArrayClass, IntClass, IntArrayClass};
 
 ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	{"if", stdIf, 2, oneIntoneFunction},
@@ -309,16 +375,31 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	{"mkdir", stdMkdir, 1, oneStringArgStd},
 	{"memory", stdGetMemUsage, 0, 0},
 	{"ncatype", stdGetNcaType, 1, oneStringArgStd},
+	{"pause", stdPauseMask, 1, oneIntStd},
 	{"pause", stdPause, 0, 0},
-	{"pausemask", stdPauseMask, 1, oneIntStd},
 	{"color", stdColor, 1, oneIntStd},
+	{"menu", stdMenuFull, 3, menuArgsStd},
+	{"menu", stdMenuFull, 2, menuArgsStd},
 };
 
-ClassFunctionTableEntry_t* searchStdLib(char* funcName) {
+ClassFunctionTableEntry_t* searchStdLib(char* funcName, u8 *len) {
+	u8 lenInternal = 0;
+	*len = 0;
+	ClassFunctionTableEntry_t *ret = NULL;
+
 	for (int i = 0; i < ARRAY_SIZE(standardFunctionDefenitions); i++) {
-		if (!strcmp(funcName, standardFunctionDefenitions[i].name))
-			return &standardFunctionDefenitions[i];
+		if (!strcmp(funcName, standardFunctionDefenitions[i].name)) {
+			lenInternal++;
+			if (ret == NULL){
+				ret = &standardFunctionDefenitions[i];
+			}
+		}
+		else if (lenInternal != 0){
+			*len = lenInternal;
+			return ret;
+		}
 	}
 
-	return NULL;
+	*len = lenInternal;
+	return ret;
 }
