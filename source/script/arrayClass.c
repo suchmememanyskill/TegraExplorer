@@ -257,6 +257,7 @@ ClassFunctionTableEntry_t arrayFunctions[] = {
 	{"copy", arrayCopy, 0, 0},
 	{"set", arraySet, 2, oneIntOneAny},
 	{"+", arrayAdd, 1, anotherAnotherOneVarArg},
+	{"add", arrayAdd, 1, anotherAnotherOneVarArg},
 	{"-", arrayMinus, 1, anotherOneIntArg},
 	{"contains", arrayContains, 1, anotherAnotherOneVarArg},
 	{"bytestostr", bytesToStr, 0, 0},

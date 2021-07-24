@@ -399,6 +399,7 @@ STUBBED(stdGetMs)
 STUBBED(stdClear)
 STUBBED(stdRmDir)
 STUBBED(stdFileExists)
+STUBBED(stdFileDel)
 #endif
 
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
