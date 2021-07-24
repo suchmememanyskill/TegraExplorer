@@ -19,22 +19,17 @@ fv()
 sysfw=fw
 p("Sys'  fw is",fw)
 emufw=""
-if (emu()){if(!mountemu("SYSTEM")){
-	fv()
-	emufw=fw
-	p("Emu's fw is",fw)}}
+if (emu()){if(!mountemu("SYSTEM")){fv()emufw=fw p("Emu's fw is",fw)}}
 op=["Exit","Dump sysmmc"].copy()
 if (emufw!=""){op+"Dump emummc"}
-p()
-r=menu(op,0)
+p()r=menu(op,0)clear()
 if(r==0){exit()}
 if(r==1){fw=sysfw if(mountsys("SYSTEM")){print("SYSTEM MOUNT FAIL")pe()}}
 if(r==2){fw=emufw if(mountemu("SYSTEM")){print("SYSTEM MOUNT FAIL")pe()}}
-clear()
 mkdir("sd:/tegraexplorer")
 mkdir("sd:/tegraexplorer/Firmware")
-bsp = "sd:/tegraexplorer/Firmware/" + fw
-if(fsexists(bsp)){p("Dir already exists! Press power to replace, any other key to exit") a=pause() if (!a.power){exit()} deldir(bsp)}
+bsp="sd:/tegraexplorer/Firmware/"+fw
+if(fsexists(bsp)){p("Dir already exists! Press power to replace, any other key to exit") a=pause() if(!a.power){exit()} deldir(bsp)}
 mkdir(bsp)
 p("Dumping to",bsp)
 con=readdir("bis:/Contents/registered")

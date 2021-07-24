@@ -173,6 +173,10 @@ ClassFunction(arrayContains) {
 
 	for (int i = 0; i < v->count; i++) {
 		Variable_t iter = arrayClassGetIdx(caller, i);
+
+		if (iter.variableType != arg->variableType){
+			SCRIPT_FATAL_ERR("type of contains does not match");
+		}
 	
 		if (caller->variableType == StringArrayClass) {
 			if (!strcmp(arg->string.value, iter.string.value))

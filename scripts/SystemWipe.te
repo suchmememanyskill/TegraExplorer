@@ -1,0 +1,30 @@
+is=["8000000000000120","80000000000000d1","8000000000000047"]
+p=println
+pr=print
+pe={pause() exit()}
+wait={t=timer()while(timer()<(t+tw)){print("Wait for",(t+tw-timer()/1000),"seconds \r")}}
+p("System wiper\n")
+op=["Exit","Wipe sysmmc"].copy()
+if (emu()){op+"Wipe emummc"}
+r=menu(op,0)clear()
+if(r==0){exit()}
+if(r==1){p("Selected sysmmc")mount=mountsys}
+if(r==2){p("Selected emummc")mount=mountemu}
+if(mount("SYSTEM")){p("Mount failed!")pe()}
+color(0xFF0000)
+p("Are you sure you want to wipe everything?\nThis includes:\n- Saves\n- Game Data\n- All other data on the system\n\nUse this only as a last resort!")
+color(0xFFFF00)
+tw=10000
+wait()
+color(0x0000FF)
+p("Press power to wipe, any other key to exit")a=pause()if(!a.power){exit()}clear()
+color(0xFF0000)
+pr("Deleting system saves... ")
+f=readdir("bis:/save")
+if(f.folders.len()!=0){p("Folders in save dir???")pe()}
+f.files.foreach("x"){if(!is.contains(x)){if(delfile("bis:/save/"+x)){p("File deletion failed: ", x)pe()}}}
+pr("Done!\nDeleting user dirs...")ud=["Album","Contents","save","saveMeta","temp"]
+if(mount("USER")){p("Mount failed!")pe()}
+ud.foreach("x"){pr("\n"+x,"")if(deldir("bis:/"+x)){p("Dir deletion failed")pe()}mkdir("bis:/"+x)}
+mkdir("bis:/Contents/placehld")mkdir("bis:/Contents/registered")
+color(0x00FF00)p("\n\nDone!")pause()

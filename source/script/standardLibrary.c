@@ -78,7 +78,8 @@ ClassFunction(stdPrint) {
 		Variable_t* res = callMemberFunctionDirect(args[i], "print", NULL, 0);
 		if (res == NULL)
 			return NULL;
-		gfx_putc(' ');
+		if (i + 1 != argsLen)
+			gfx_putc(' ');
 	}
 	
 
@@ -351,6 +352,10 @@ ClassFunction(stdFileExists){
 	return newIntVariablePtr(FileExists(args[0]->string.value));
 }
 
+ClassFunction(stdFileDel){
+	return newIntVariablePtr(f_unlink(args[0]->string.value));
+}
+
 #else
 #define STUBBED(name) ClassFunction(name) { return newIntVariablePtr(0); }
 
@@ -388,6 +393,12 @@ STUBBED(stdPause)
 STUBBED(stdPauseMask)
 STUBBED(stdColor)
 STUBBED(stdMenuFull)
+STUBBED(stdMountEmummc)
+STUBBED(stdHasEmu)
+STUBBED(stdGetMs)
+STUBBED(stdClear)
+STUBBED(stdRmDir)
+STUBBED(stdFileExists)
 #endif
 
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
@@ -425,6 +436,7 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	{"timer", stdGetMs, 0, 0},
 	{"deldir", stdRmDir, 1, oneStringArgStd},
 	{"fsexists", stdFileExists, 1, oneStringArgStd},
+	{"delfile", stdFileDel, 1, oneStringArgStd},
 };
 
 ClassFunctionTableEntry_t* searchStdLib(char* funcName, u8 *len) {
