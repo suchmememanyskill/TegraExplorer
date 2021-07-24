@@ -50,4 +50,4 @@ dump={
 }
 fi=con.files dump()
 f=1 fi=con.folders dump()
-p("\nDone! Took",timer()-t/1000,"s")
+p("\nDone! Took",timer()-t/1000,"s")pause()

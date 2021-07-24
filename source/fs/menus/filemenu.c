@@ -83,9 +83,6 @@ void RunScriptString(char *str, u32 size){
     exitFunction(ret.main.operations.data, ret.main.operations.count);
     vecFree(ret.staticVarHolder);
     vecFree(ret.main.operations);
-
-    hidWait();
-    hidWait();
 }
 
 void RunScript(char *path, FSEntry_t entry){
@@ -114,25 +111,16 @@ void RunScript(char *path, FSEntry_t entry){
     lexarVectorClear(&ctx.script);
     */
 
-    gfx_printf("Parsing\n");
     ParserRet_t ret = parseScript(script, size);
     free(script);
-    gfx_printf("Init vars\n");
     setStaticVars(&ret.staticVarHolder);
     initRuntimeVars();
-    
-    gfx_printf("start script\n");
     Variable_t* res = eval(ret.main.operations.data, ret.main.operations.count, 1);
-
     exitRuntimeVars();
     exitStaticVars(&ret.staticVarHolder);
     exitFunction(ret.main.operations.data, ret.main.operations.count);
     vecFree(ret.staticVarHolder);
     vecFree(ret.main.operations);
-
-    hidWait();
-    hidWait();
-    hidWait();
 }
 
 void RenameFile(char *path, FSEntry_t entry){
