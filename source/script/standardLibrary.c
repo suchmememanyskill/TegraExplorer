@@ -145,7 +145,7 @@ ClassFunction(stdMountSave){
 	Variable_t *arg = (*args);
 	Variable_t var = {.variableType = SaveClass};
 	SaveClass_t* save = calloc(1, sizeof(SaveClass_t));
-	if (f_open(&save->saveFile, arg->string.value, FA_READ))
+	if (f_open(&save->saveFile, arg->string.value, FA_READ | FA_WRITE))
 		return NULL;
 	save_init(&save->saveCtx, &save->saveFile, dumpedKeys.save_mac_key, 0);
 	if (!save_process(&save->saveCtx))

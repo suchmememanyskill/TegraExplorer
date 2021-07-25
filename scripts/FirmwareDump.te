@@ -3,7 +3,7 @@ p=println
 pe={pause() exit()}
 fwstr={fw=maj.str()+"."+min.str()+"."+pat.str()}
 fv={a=readsave("bis:/save/8000000000000120")
-	b=a.readFile("/meta/imkvdb.arc")
+	b=a.read("/meta/imkvdb.arc")
 	c=["BYTE[]",9,8,0,0,0,0,0,1]
 	d=b.find(c)
 	if(d>0){

@@ -14,4 +14,5 @@ void printScriptError(u8 errLevel, char* message, ...) {
 	if (errLevel < SCRIPT_WARN)
 		gfx_printf("\nError occured on or near line %d\n", (u32)scriptCurrentLine);
 	va_end(args);
+	hidWait();
 }
