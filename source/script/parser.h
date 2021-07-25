@@ -13,3 +13,4 @@ typedef struct {
 void exitStaticVars(Vector_t* v);
 void exitFunction(Operator_t* start, u32 len);
 ParserRet_t parseScript(char* in, u32 len);
+char* utils_copyStringSize(const char* in, int size);

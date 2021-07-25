@@ -2,6 +2,7 @@
 #include "compat.h"
 #include "intClass.h"
 #include "scriptError.h"
+#include "parser.h"
 #include <string.h>
 
 char* getStringValue(Variable_t* var) {
@@ -88,6 +89,28 @@ ClassFunction(stringInEq){
 	return newIntVariablePtr(strcmp(caller->string.value, args[0]->string.value));
 }
 
+ClassFunction(stringSplit) {
+	int valLen = strlen(args[0]->string.value);
+
+	char* start = caller->string.value;
+	char* find = NULL;
+	Vector_t arr = newVec(sizeof(char**), 1);
+	char* temp;
+
+	while ((find = (strstr(start, args[0]->string.value))) != NULL) {
+		temp = utils_copyStringSize(start, find - start);
+		vecAdd(&arr, temp);
+
+		start = find + valLen;
+	}
+
+	temp = utils_copyStringSize(start, caller->string.value + strlen(caller->string.value) - start);
+	vecAdd(&arr, temp);
+
+	Variable_t a = { .variableType = StringArrayClass, .solvedArray.vector = arr };
+	return copyVariableToPtr(a);
+}
+
 u8 strOneIntArg[] = { IntClass };
 u8 oneStringArg[] = { StringClass };
 
@@ -100,6 +123,8 @@ ClassFunctionTableEntry_t stringFunctions[] = {
 	{"-", stringMinusInt, 1, strOneIntArg},
 	{"==", stringEq, 1, oneStringArg},
 	{"!=", stringInEq, 1, oneStringArg},
+	{"split", stringSplit, 1, oneStringArg},
+	{"/", stringSplit, 1, oneStringArg},
 };
 
 Variable_t getStringMember(Variable_t* var, char* memberName) {
