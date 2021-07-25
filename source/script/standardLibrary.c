@@ -23,6 +23,7 @@
 #include "../storage/emummc.h"
 #include <utils/util.h>
 #include "../fs/fsutils.h"
+#include <storage/nx_sd.h>
 #endif
 // Takes [int, function]. Returns elseable.
 ClassFunction(stdIf) {
@@ -356,6 +357,36 @@ ClassFunction(stdFileDel){
 	return newIntVariablePtr(f_unlink(args[0]->string.value));
 }
 
+ClassFunction(stdCopyDir){
+	return newIntVariablePtr(FolderCopy(args[0]->string.value, args[1]->string.value).err);
+}
+
+ClassFunction(stdFileMove){
+	return newIntVariablePtr(f_rename(args[0]->string.value, args[1]->string.value));
+}
+
+ClassFunction(stdFileRead){
+	u32 fSize = 0;
+	u8 *buff = sd_file_read(args[0]->string.value, &fSize);
+	if (buff == NULL){
+		SCRIPT_FATAL_ERR("Failed to read file");
+	}
+	
+	Vector_t vec = vecFromArray(buff, fSize, sizeof(u8));
+	Variable_t v = {.variableType = ByteArrayClass, .solvedArray.vector = vec};
+	return copyVariableToPtr(v);
+}
+
+ClassFunction(stdFileWrite){
+	return newIntVariablePtr(sd_save_to_file(args[1]->solvedArray.vector.data, args[1]->solvedArray.vector.count, args[0]->string.value));	
+}
+
+extern int launch_payload(char *path);
+
+ClassFunction(stdLaunchPayload){
+	return newIntVariablePtr(launch_payload(args[0]->string.value));
+}
+
 #else
 #define STUBBED(name) ClassFunction(name) { return newIntVariablePtr(0); }
 
@@ -400,6 +431,11 @@ STUBBED(stdClear)
 STUBBED(stdRmDir)
 STUBBED(stdFileExists)
 STUBBED(stdFileDel)
+STUBBED(stdCopyDir)
+STUBBED(stdFileMove)
+STUBBED(stdLaunchPayload)
+STUBBED(stdFileWrite)
+STUBBED(stdFileRead)
 #endif
 
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
@@ -409,35 +445,55 @@ u8 threeIntsStd[] = { IntClass, IntClass, IntClass };
 u8 twoStringArgStd[] = {StringClass, StringClass};
 u8 oneIntStd[] = {IntClass};
 u8 menuArgsStd[] = {StringArrayClass, IntClass, IntArrayClass};
+u8 oneStringOneByteArrayStd[] = {StringClass, ByteArrayClass};
 
 ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
+	// Flow control
 	{"if", stdIf, 2, oneIntoneFunction},
 	{"while", stdWhile, 2, doubleFunctionClass},
-	{"print", stdPrint, VARARGCOUNT, 0},
-	{"println", stdPrintLn, VARARGCOUNT, 0},
-	{"mountsys", stdMountSysmmc, 1, oneStringArgStd},
-	{"mountemu", stdMountEmummc, 1, oneStringArgStd},
-	{"readsave", stdMountSave, 1, oneStringArgStd},
 	{"exit", stdExit, 0, 0},
 	{"break", stdBreak, 0, 0},
+
+	// Class creation
+	{"readsave", stdMountSave, 1, oneStringArgStd},
 	{"dict", stdDict, 0, 0},
-	{"setpixel", stdSetPixel, 3, threeIntsStd},
-	{"readdir", stdReadDir, 1, oneStringArgStd},
-	{"filecopy", stdFileCopy, 2, twoStringArgStd},
-	{"mkdir", stdMkdir, 1, oneStringArgStd},
+
+	// Utils
+	{"print", stdPrint, VARARGCOUNT, 0},
+	{"println", stdPrintLn, VARARGCOUNT, 0},
+	{"setpixel", stdSetPixel, 3, threeIntsStd}, // TODO: change for setblock
+	{"emu", stdHasEmu, 0, 0},
+	{"clear", stdClear, 0, 0},
+	{"timer", stdGetMs, 0, 0},
 	{"memory", stdGetMemUsage, 0, 0},
-	{"ncatype", stdGetNcaType, 1, oneStringArgStd},
 	{"pause", stdPauseMask, 1, oneIntStd},
 	{"pause", stdPause, 0, 0},
 	{"color", stdColor, 1, oneIntStd},
 	{"menu", stdMenuFull, 3, menuArgsStd},
 	{"menu", stdMenuFull, 2, menuArgsStd},
-	{"emu", stdHasEmu, 0, 0},
-	{"clear", stdClear, 0, 0},
-	{"timer", stdGetMs, 0, 0},
+
+	// System
+	{"mountsys", stdMountSysmmc, 1, oneStringArgStd},
+	{"mountemu", stdMountEmummc, 1, oneStringArgStd},
+	{"ncatype", stdGetNcaType, 1, oneStringArgStd},
+
+	// FileSystem
+	// 	Dir
+	{"readdir", stdReadDir, 1, oneStringArgStd},
 	{"deldir", stdRmDir, 1, oneStringArgStd},
-	{"fsexists", stdFileExists, 1, oneStringArgStd},
+	{"mkdir", stdMkdir, 1, oneStringArgStd},
+	{"copydir", stdCopyDir, 2, twoStringArgStd},
+
+	// 	File
+	{"copyfile", stdFileCopy, 2, twoStringArgStd},
+	{"movefile", stdFileMove, 2, twoStringArgStd},
 	{"delfile", stdFileDel, 1, oneStringArgStd},
+	{"readfile", stdFileRead, 1, oneStringArgStd},
+	{"writefile", stdFileWrite, 2, oneStringOneByteArrayStd},
+	
+	// 	Utils
+	{"fsexists", stdFileExists, 1, oneStringArgStd},
+	{"payload", stdLaunchPayload, 1, oneStringArgStd},
 };
 
 ClassFunctionTableEntry_t* searchStdLib(char* funcName, u8 *len) {

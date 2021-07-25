@@ -44,7 +44,7 @@ dump={
 		if(ncatype(fp)==1){name=name- 4+".cnmt.nca"}
 		color(0x00FF00)
 		print("\r["+i.str()+"/"+c+"]", x)
-		if(filecopy(fp,bsp+"/"+name)){println("\nErr during copy")pe()}
+		if(copyfile(fp,bsp+"/"+name)){println("\nErr during copy")pe()}
 		i=i+1
 	}
 }

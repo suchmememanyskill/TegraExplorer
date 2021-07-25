@@ -144,4 +144,9 @@
       <Filter>Source Files\Classes\Elseable</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="input.te">
+      <Filter>Source Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>
