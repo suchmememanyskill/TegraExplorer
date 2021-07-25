@@ -111,4 +111,8 @@ $(BUILDDIR)/$(TARGET)/script/builtin.o: $(BUILDDIR)/$(TARGET)/script/builtin.c
     
 $(BUILDDIR)/$(TARGET)/script/builtin.c: scripts/*.te
 	@mkdir -p "$(@D)"
+ifeq ($(OS),Windows_NT)
 	@py te2c.py "$(BUILDDIR)/$(TARGET)/script/builtin" scripts
+else
+	@python3 te2c.py "$(BUILDDIR)/$(TARGET)/script/builtin" scripts
+endif
