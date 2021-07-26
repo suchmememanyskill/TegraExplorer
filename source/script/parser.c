@@ -127,6 +127,9 @@ u8 nextToken(char** inPtr, void** val) {
 
 			while (*in && *in != '\n')
 				in++;
+
+			lineNumber++;
+			scriptCurrentLine = lineNumber;
 		}
 		else if (isValidWord(*in)) {
 			char* startWord = in;
