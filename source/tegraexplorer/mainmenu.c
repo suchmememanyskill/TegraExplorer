@@ -23,6 +23,7 @@
 #include "../fs/menus/filemenu.h"
 
 #define INCLUDE_BUILTIN_SCRIPTS 1
+//#define SCRIPT_ONLY 1
 
 #ifdef INCLUDE_BUILTIN_SCRIPTS
 #include "../../build/TegraExplorer/script/builtin.h"
@@ -31,6 +32,7 @@
 extern hekate_config h_cfg;
 
 enum {
+    #ifndef SCRIPT_ONLY
     MainExplore = 0,
     MainBrowseSd,
     MainMountSd,
@@ -41,6 +43,9 @@ enum {
     MainViewKeys,
     MainViewCredits,
     MainExit,
+    #else 
+    MainExit = 0,
+    #endif
     MainPowerOff,
     MainRebootRCM,
     MainRebootNormal,
@@ -50,6 +55,7 @@ enum {
 };
 
 MenuEntry_t mainMenuEntries[] = {
+    #ifndef SCRIPT_ONLY
     [MainExplore] = {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "-- Explore --"},
     [MainBrowseSd] = {.optionUnion = COLORTORGB(COLOR_GREEN), .name = "Browse SD"},
     [MainMountSd] = {.optionUnion = COLORTORGB(COLOR_YELLOW)}, // To mount/unmount the SD
@@ -59,6 +65,7 @@ MenuEntry_t mainMenuEntries[] = {
     [MainPartitionSd] = {.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "Partition the sd"},
     [MainViewKeys] = {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "View dumped keys"},
     [MainViewCredits] = {.optionUnion = COLORTORGB(COLOR_YELLOW), .name = "Credits"},
+    #endif
     [MainExit] = {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "\n-- Exit --"},
     [MainPowerOff] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Power off"},
     [MainRebootRCM] = {.optionUnion = COLORTORGB(COLOR_VIOLET), .name = "Reboot to RCM"},
@@ -148,17 +155,19 @@ void MountOrUnmountSD(){
 }
 
 menuPaths mainMenuPaths[] = {
+    #ifndef SCRIPT_ONLY
     [MainBrowseSd] = HandleSD,
     [MainMountSd] = MountOrUnmountSD,
     [MainBrowseEmmc] = HandleEMMC,
     [MainBrowseEmummc] = HandleEMUMMC,
     [MainPartitionSd] = FormatSD,
     [MainViewKeys] = ViewKeys,
+    [MainViewCredits] = ViewCredits,
+    #endif
     [MainRebootAMS] = RebootToAMS,
     [MainRebootHekate] = RebootToHekate,
     [MainRebootRCM] = reboot_rcm,
     [MainPowerOff] = power_off,
-    [MainViewCredits] = ViewCredits,
     [MainRebootNormal] = reboot_normal,
 };
 
@@ -168,6 +177,7 @@ void EnterMainMenu(){
         if (sd_get_card_removed())
             sd_unmount();
 
+        #ifndef SCRIPT_ONLY
         // -- Explore --
         mainMenuEntries[MainBrowseSd].hide = !sd_mounted;
         mainMenuEntries[MainMountSd].name = (sd_mounted) ? "Unmount SD" : "Mount SD";
@@ -181,7 +191,7 @@ void EnterMainMenu(){
         mainMenuEntries[MainRebootAMS].hide = (!sd_mounted || !FileExists("sd:/atmosphere/reboot_payload.bin"));
         mainMenuEntries[MainRebootHekate].hide = (!sd_mounted || !FileExists("sd:/bootloader/update.bin"));
         mainMenuEntries[MainRebootRCM].hide = h_cfg.t210b01;
-
+        #endif
         // -- Scripts --
         #ifndef INCLUDE_BUILTIN_SCRIPTS
         mainMenuEntries[MainScripts].hide = (!sd_mounted || !FileExists("sd:/tegraexplorer/scripts"));
@@ -248,7 +258,6 @@ void EnterMainMenu(){
                 MenuEntry_t entry = entArray[res];
                 FSEntry_t fsEntry = {.name = entry.name, .sizeUnion = entry.sizeUnion};
                 RunScript("sd:/tegraexplorer/scripts", fsEntry);
-                hidWait();
             #ifdef INCLUDE_BUILTIN_SCRIPTS
             }
             #endif
