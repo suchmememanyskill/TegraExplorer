@@ -111,8 +111,11 @@ $(BUILDDIR)/$(TARGET)/script/builtin.o: $(BUILDDIR)/$(TARGET)/script/builtin.c
     
 $(BUILDDIR)/$(TARGET)/script/builtin.c: scripts/*.te
 	@mkdir -p "$(@D)"
+	@mkdir -p "$(BUILDDIR)/$(TARGET)/scripts"
 ifeq ($(OS),Windows_NT)
-	@py te2c.py "$(BUILDDIR)/$(TARGET)/script/builtin" scripts
+	@py ts-minifier.py --no-replace-functions -d "$(BUILDDIR)/$(TARGET)/scripts" $(wildcard scripts/*.te)
+	@py te2c.py "$(BUILDDIR)/$(TARGET)/script/builtin" "$(BUILDDIR)/$(TARGET)/scripts"
 else
-	@python3 te2c.py "$(BUILDDIR)/$(TARGET)/script/builtin" scripts
+	@python3 ts-minifier.py --no-replace-functions -d "$(BUILDDIR)/$(TARGET)/scripts" $(wildcard scripts/*.te)
+	@python3 te2c.py "$(BUILDDIR)/$(TARGET)/script/builtin" "$(BUILDDIR)/$(TARGET)/scripts"
 endif
