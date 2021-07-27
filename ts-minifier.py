@@ -1,6 +1,6 @@
 # Copyright (c) 2021 bleck9999
 # https://github.com/bleck9999/ts-minifier
-# Version: fc30eb39
+# Version: 4fc47b37
 
 import argparse
 import re
@@ -10,7 +10,8 @@ sub_funcs = {'while': "_h", 'print': "_p", 'println': "_l", 'mountsys': "_s", 'm
              'exit': "_q", 'break': "_b", 'dict': "_d", 'setpixel': "_y", 'readdir': "_i", 'copyfile': "_c",
              'mkdir': "_k", 'memory': "_m", 'ncatype': "_n", 'pause': "_w", 'color': "_a", 'menu': "__", 'emu': "_u",
              'clear': "_x", 'timer': "_t", 'deldir': "_g", 'fsexists': "_f", 'delfile': "_z", "copydir": "c_",
-             "movefile": "_v", "payload": "_j", "readfile": "_o", "writefile": "w_"}
+             "movefile": "_v", "payload": "_j", "readfile": "_o", "writefile": "w_", "setpixels": "y_", "printpos": "p_",
+             "emmcread": "e_", "emmcwrite": "f_", "emummcread": "r_", "emummcwrite": "s_"}
 replace_functions = False
 
 
