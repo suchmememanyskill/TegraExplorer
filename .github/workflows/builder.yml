@@ -17,6 +17,7 @@ jobs:
         
         sudo apt install software-properties-common -y
         sudo add-apt-repository ppa:deadsnakes/ppa -y
+        sudo apt update -y
         sudo apt install python3.9 -y
         sudo rm /usr/bin/python3
         sudo ln -s python3.9 /usr/bin/python3
