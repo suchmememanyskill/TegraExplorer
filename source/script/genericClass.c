@@ -112,11 +112,8 @@ Variable_t* genericCall(Variable_t* var, CallArgs_t* ref) {
 	if (var->variableType != FunctionClass){
 		SCRIPT_FATAL_ERR("Call on non function class");
 	}
-
+	Function_t* f = ref->extra;
 	if (var->function.builtIn) {
-		// TODO: implement arg handling
-
-		Function_t* f = ref->extra;
 		if (f->operations.count == 0) {
 			return genericCallDirect(var, NULL, 0);
 		}
@@ -184,10 +181,14 @@ Variable_t* genericCall(Variable_t* var, CallArgs_t* ref) {
 		}
 	}
 	else {
-		Variable_t *ret = eval(var->function.function.operations.data, var->function.function.operations.count, 1);
-		if (ret == NULL)
+		if (f->operations.count){
+			if (eval(f->operations.data, f->operations.count, 0) == NULL) 
+				return NULL;
+		}
+		
+		if (eval(var->function.function.operations.data, var->function.function.operations.count, 0) == NULL)
 			return NULL;
-		removePendingReference(ret);
+
 		return &emptyClass;
 	}
 }
