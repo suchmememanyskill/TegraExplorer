@@ -456,6 +456,11 @@ ClassFunction(stdGetCwd){
 	return newStringVariablePtr(CpyStr(TConf.scriptCWD), 0, 1);
 }
 
+ClassFunction(stdPower){
+	power_set_state(MIN(0, (getIntValue(args[0]) % POWER_OFF_REBOOT)));
+	return &emptyClass;
+}
+
 #else
 #define STUBBED(name) ClassFunction(name) { return newIntVariablePtr(0); }
 
@@ -540,6 +545,7 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	{"color", stdColor, 1, threeIntsStd},
 	{"menu", stdMenuFull, 3, menuArgsStd},
 	{"menu", stdMenuFull, 2, menuArgsStd},
+	{"power", stdPower, 1, threeIntsStd},
 
 	// System
 	{"mountsys", stdMountSysmmc, 1, twoStringArgStd},
