@@ -162,6 +162,18 @@ ClassFunction(stdSetPixel) {
 	return &emptyClass;
 }
 
+ClassFunction(stdSetPixels){
+	gfx_box(getIntValue(args[0]), getIntValue(args[1]), getIntValue(args[2]), getIntValue(args[3]), (u32)getIntValue(args[4]));
+	return &emptyClass;
+}
+
+ClassFunction(stdSetPrintPos){
+	if (getIntValue(args[0]) > 0 && getIntValue(args[1]) > 0){
+		gfx_con_setpos((getIntValue(args[0]) % 78) * 16, (getIntValue(args[1]) % 42) * 16);
+	}
+	return &emptyClass;
+}
+
 // Takes [str]. Returns empty. str: path to dir
 ClassFunction(stdReadDir){
 	Variable_t* resPtr = newIntVariablePtr(0);
@@ -441,7 +453,7 @@ STUBBED(stdFileRead)
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
 u8 doubleFunctionClass[] = { FunctionClass, FunctionClass };
 u8 oneStringArgStd[] = {StringClass};
-u8 threeIntsStd[] = { IntClass, IntClass, IntClass };
+u8 threeIntsStd[] = { IntClass, IntClass, IntClass, IntClass, IntClass };
 u8 twoStringArgStd[] = {StringClass, StringClass};
 u8 oneIntStd[] = {IntClass};
 u8 menuArgsStd[] = {StringArrayClass, IntClass, IntArrayClass};
@@ -461,7 +473,9 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	// Utils
 	{"print", stdPrint, VARARGCOUNT, 0},
 	{"println", stdPrintLn, VARARGCOUNT, 0},
-	{"setpixel", stdSetPixel, 3, threeIntsStd}, // TODO: change for setblock
+	{"printpos", stdSetPrintPos, 2, threeIntsStd},
+	{"setpixel", stdSetPixel, 3, threeIntsStd},
+	{"setpixels", stdSetPixels, 5, threeIntsStd},
 	{"emu", stdHasEmu, 0, 0},
 	{"clear", stdClear, 0, 0},
 	{"timer", stdGetMs, 0, 0},

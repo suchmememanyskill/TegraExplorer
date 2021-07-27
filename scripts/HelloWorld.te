@@ -7,13 +7,9 @@ a.print()
 
 
 
-mountsys("SYSTEM")
-s = readsave("sd:/8000000000000120")
-f = s.read("/meta/imkvdb.arc")
-println(f.len())
-println(f.slice(1,1).project()[0])
-s.write("/meta/imkvdb.arc", ["BYTE[]", 1,2]).print()
-s.commit().print()
+printpos(20, 30)
+setpixels(0, 0, 1279, 100, 0xFF0000)
+println("sup")
 
 #a = s.readdir("/")
 pause()
@@ -23,6 +19,8 @@ println(a.result)
 println(a.files.len())
 println(a.folders.len())
 println(a.fileSizes.len())
+
+
 
 a.files.foreach("b") {
 	println(b)
