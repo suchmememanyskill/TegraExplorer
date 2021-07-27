@@ -5,7 +5,9 @@
 a="Hello world!\n"
 a.print()
 
+if (emmcread("sd:/prodinfo_temp_dump.bin", "PRODINFO")){ print("fuk") pause() exit() }
 
+if (emmcwrite("sd:/prodinfo_temp_dump.bin", "PRODINFO")) { print("fuk2") pause exit() }
 
 printpos(20, 30)
 setpixels(0, 0, 1279, 100, 0xFF0000)

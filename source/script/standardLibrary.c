@@ -24,6 +24,7 @@
 #include <utils/util.h>
 #include "../fs/fsutils.h"
 #include <storage/nx_sd.h>
+#include "../storage/emmcfile.h"
 #endif
 // Takes [int, function]. Returns elseable.
 ClassFunction(stdIf) {
@@ -399,6 +400,34 @@ ClassFunction(stdLaunchPayload){
 	return newIntVariablePtr(launch_payload(args[0]->string.value));
 }
 
+int emmcFile(char *sdFile, char *sysPart, u8 mmc, u8 write){
+
+	if (!emu_cfg.enabled && mmc == MMC_CONN_EMUMMC){
+		return 1;
+	}
+
+	if (connectMMC(mmc))
+		return 1;
+
+	return DumpOrWriteEmmcPart(sdFile, sysPart, write, 1).err;
+}
+
+ClassFunction(stdEmmcFileRead){
+	return newIntVariablePtr(emmcFile(args[0]->string.value, args[1]->string.value, MMC_CONN_EMMC, 0));
+}
+
+ClassFunction(stdEmmcFileWrite){
+	return newIntVariablePtr(emmcFile(args[0]->string.value, args[1]->string.value, MMC_CONN_EMMC, 1));
+}
+
+ClassFunction(stdEmummcFileRead){
+	return newIntVariablePtr(emmcFile(args[0]->string.value, args[1]->string.value, MMC_CONN_EMUMMC, 0));
+}
+
+ClassFunction(stdEmummcFileWrite){
+	return newIntVariablePtr(emmcFile(args[0]->string.value, args[1]->string.value, MMC_CONN_EMUMMC, 1));
+}
+
 #else
 #define STUBBED(name) ClassFunction(name) { return newIntVariablePtr(0); }
 
@@ -452,10 +481,8 @@ STUBBED(stdFileRead)
 
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
 u8 doubleFunctionClass[] = { FunctionClass, FunctionClass };
-u8 oneStringArgStd[] = {StringClass};
 u8 threeIntsStd[] = { IntClass, IntClass, IntClass, IntClass, IntClass };
 u8 twoStringArgStd[] = {StringClass, StringClass};
-u8 oneIntStd[] = {IntClass};
 u8 menuArgsStd[] = {StringArrayClass, IntClass, IntArrayClass};
 u8 oneStringOneByteArrayStd[] = {StringClass, ByteArrayClass};
 
@@ -467,7 +494,7 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	{"break", stdBreak, 0, 0},
 
 	// Class creation
-	{"readsave", stdMountSave, 1, oneStringArgStd},
+	{"readsave", stdMountSave, 1, twoStringArgStd},
 	{"dict", stdDict, 0, 0},
 
 	// Utils
@@ -480,34 +507,38 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	{"clear", stdClear, 0, 0},
 	{"timer", stdGetMs, 0, 0},
 	{"memory", stdGetMemUsage, 0, 0},
-	{"pause", stdPauseMask, 1, oneIntStd},
+	{"pause", stdPauseMask, 1, threeIntsStd},
 	{"pause", stdPause, 0, 0},
-	{"color", stdColor, 1, oneIntStd},
+	{"color", stdColor, 1, threeIntsStd},
 	{"menu", stdMenuFull, 3, menuArgsStd},
 	{"menu", stdMenuFull, 2, menuArgsStd},
 
 	// System
-	{"mountsys", stdMountSysmmc, 1, oneStringArgStd},
-	{"mountemu", stdMountEmummc, 1, oneStringArgStd},
-	{"ncatype", stdGetNcaType, 1, oneStringArgStd},
+	{"mountsys", stdMountSysmmc, 1, twoStringArgStd},
+	{"mountemu", stdMountEmummc, 1, twoStringArgStd},
+	{"ncatype", stdGetNcaType, 1, twoStringArgStd},
+	{"emmcread", stdEmmcFileRead, 2, twoStringArgStd},
+	{"emmcwrite", stdEmmcFileWrite, 2, twoStringArgStd},
+	{"emummcread", stdEmummcFileRead, 2, twoStringArgStd},
+	{"emummcwrite", stdEmummcFileWrite, 2, twoStringArgStd},
 
 	// FileSystem
 	// 	Dir
-	{"readdir", stdReadDir, 1, oneStringArgStd},
-	{"deldir", stdRmDir, 1, oneStringArgStd},
-	{"mkdir", stdMkdir, 1, oneStringArgStd},
+	{"readdir", stdReadDir, 1, twoStringArgStd},
+	{"deldir", stdRmDir, 1, twoStringArgStd},
+	{"mkdir", stdMkdir, 1, twoStringArgStd},
 	{"copydir", stdCopyDir, 2, twoStringArgStd},
 
 	// 	File
 	{"copyfile", stdFileCopy, 2, twoStringArgStd},
 	{"movefile", stdFileMove, 2, twoStringArgStd},
-	{"delfile", stdFileDel, 1, oneStringArgStd},
-	{"readfile", stdFileRead, 1, oneStringArgStd},
+	{"delfile", stdFileDel, 1, twoStringArgStd},
+	{"readfile", stdFileRead, 1, twoStringArgStd},
 	{"writefile", stdFileWrite, 2, oneStringOneByteArrayStd},
 	
 	// 	Utils
-	{"fsexists", stdFileExists, 1, oneStringArgStd},
-	{"payload", stdLaunchPayload, 1, oneStringArgStd},
+	{"fsexists", stdFileExists, 1, twoStringArgStd},
+	{"payload", stdLaunchPayload, 1, twoStringArgStd},
 };
 
 ClassFunctionTableEntry_t* searchStdLib(char* funcName, u8 *len) {
