@@ -1,6 +1,6 @@
 # Copyright (c) 2021 bleck9999
 # https://github.com/bleck9999/ts-minifier
-# Version: 4fc47b37
+# Version: 360e126a
 
 import argparse
 import re
@@ -8,10 +8,11 @@ import re
 # if is not included because it's already 2 characters
 sub_funcs = {'while': "_h", 'print': "_p", 'println': "_l", 'mountsys': "_s", 'mountemu': "_e", 'readsave': "_r",
              'exit': "_q", 'break': "_b", 'dict': "_d", 'setpixel': "_y", 'readdir': "_i", 'copyfile': "_c",
-             'mkdir': "_k", 'memory': "_m", 'ncatype': "_n", 'pause': "_w", 'color': "_a", 'menu': "__", 'emu': "_u",
+             'mkdir': "_k", 'ncatype': "_n", 'pause': "_w", 'color': "_a", 'menu': "__", 'emu': "_u",
              'clear': "_x", 'timer': "_t", 'deldir': "_g", 'fsexists': "_f", 'delfile': "_z", "copydir": "c_",
              "movefile": "_v", "payload": "_j", "readfile": "_o", "writefile": "w_", "setpixels": "y_", "printpos": "p_",
-             "emmcread": "e_", "emmcwrite": "f_", "emummcread": "r_", "emummcwrite": "s_"}
+             "emmcread": "e_", "emmcwrite": "f_", "emummcread": "r_", "emummcwrite": "s_", "escapepath": "x_",
+             "combinepath": "a_", "cwd": "d_"}
 replace_functions = False
 
 
@@ -177,5 +178,8 @@ if __name__ == '__main__':
         with open(file, 'r') as f:
             r = minify(f.read())
         file = file.split(sep='.')[0].split(sep='/')[-1]
-        f = open(f"{dest}/{file}_min.te", 'w')
+        if dest != '.':
+            f = open(f"{dest}/{file}.te", 'w')
+        else:
+            f = open(f"{dest}/{file}_min.te", 'w')
         f.write(r)
