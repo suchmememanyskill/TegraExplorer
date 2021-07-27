@@ -14,7 +14,11 @@ jobs:
       run: |
         sudo apt update -y
         sudo apt install build-essential -y
-        alias py=python3
+        
+        sudo apt install python3.9 -y
+        sudo rm /usr/bin/python3
+        sudo ln -s python3.9 /usr/bin/python3
+        
         make -j$(nproc)
         
     - uses: actions/upload-artifact@master
