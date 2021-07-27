@@ -34,6 +34,7 @@ typedef struct {
     };
     const char *pkg1ID;
     u8 pkg1ver;
+    char *scriptCWD;
 } TConf_t;
 
 extern TConf_t TConf;

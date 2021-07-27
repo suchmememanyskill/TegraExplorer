@@ -73,6 +73,7 @@ void DeleteFile(char *path, FSEntry_t entry){
 }
 
 void RunScriptString(char *str, u32 size){
+    TConf.scriptCWD = "sd:/";
     gfx_clearscreen();
     ParserRet_t ret = parseScript(str, size);
     setStaticVars(&ret.staticVarHolder);
@@ -89,7 +90,8 @@ void RunScript(char *path, FSEntry_t entry){
     char *thing = CombinePaths(path, entry.name);
     u32 size;
     char *script = sd_file_read(thing, &size);
-    free(thing);
+    TConf.scriptCWD = thing;
+
     if (!script)
         return;
 
@@ -97,19 +99,6 @@ void RunScript(char *path, FSEntry_t entry){
         return;
 
     gfx_clearscreen();
-    /*
-    scriptCtx_t ctx = createScriptCtx();
-    ctx.script = runLexer(script, size);
-    free(script);
-
-    dictVectorAdd(&ctx.varDict, newDict(CpyStr("_CWD"), (newVar(StringType, 0, .stringType = path))));
-    dictVectorAdd(&ctx.varDict, newDict(CpyStr("_EMU"), (newVar(IntType, 0, emu_cfg.enabled))));
-
-    printError(mainLoop(&ctx));
-
-    freeDictVector(&ctx.varDict);
-    lexarVectorClear(&ctx.script);
-    */
 
     ParserRet_t ret = parseScript(script, size);
     free(script);
@@ -121,6 +110,7 @@ void RunScript(char *path, FSEntry_t entry){
     exitFunction(ret.main.operations.data, ret.main.operations.count);
     vecFree(ret.staticVarHolder);
     vecFree(ret.main.operations);
+    free(thing);
 }
 
 void RenameFile(char *path, FSEntry_t entry){

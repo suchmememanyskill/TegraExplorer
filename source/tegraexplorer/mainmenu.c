@@ -126,11 +126,6 @@ void ViewCredits(){
     if (hidRead()->r)
         gfx_printf("%k\"I'm not even sure if it works\" - meme", COLOR_ORANGE);
 
-    heap_monitor_t a = {0};
-    heap_monitor(&a, false);
-    gfx_printf("\nUsed: %d\nTotal: %d\n", a.used, a.total);
-
-
     hidWait();
 }
 

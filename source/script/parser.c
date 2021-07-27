@@ -15,6 +15,7 @@
 
 #ifndef WIN32
 #include "../tegraexplorer/tconf.h"
+#include <storage/nx_sd.h>
 #endif
 
 static inline int isValidWord(char c) {
@@ -120,6 +121,17 @@ u8 nextToken(char** inPtr, void** val) {
 					#endif
 					if (!gotKeys){
 						printScriptError(SCRIPT_LEXER_FATAL, "Keys required.\nMake sure you're on the latest version of TegraExplorer!");
+						return Token_Fatal_Err;
+					}
+				}
+				else if (!memcmp(in + 9, "SD", 2)) {
+					#ifdef WIN32
+					u8 gotSd = 0;
+					#else
+					u8 gotSd = sd_mount();
+					#endif
+					if (!gotSd){
+						printScriptError(SCRIPT_LEXER_FATAL, "Sd required.");
 						return Token_Fatal_Err;
 					}
 				}

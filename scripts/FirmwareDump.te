@@ -1,4 +1,5 @@
 #REQUIRE KEYS
+#REQUIRE SD
 p=println
 pe={pause() exit()}
 fwstr={fw=maj.str()+"."+min.str()+"."+pat.str()}

@@ -453,6 +453,10 @@ ClassFunction(stdEscPaths){
 	return newStringVariablePtr(EscapeFolder(args[0]->string.value), 0, 1);
 }
 
+ClassFunction(stdGetCwd){
+	return newStringVariablePtr(CpyStr(TConf.scriptCWD), 0, 1);
+}
+
 #else
 #define STUBBED(name) ClassFunction(name) { return newIntVariablePtr(0); }
 
@@ -529,9 +533,9 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	{"setpixel", stdSetPixel, 3, threeIntsStd},
 	{"setpixels", stdSetPixels, 5, threeIntsStd},
 	{"emu", stdHasEmu, 0, 0},
+	{"cwd", stdGetCwd, 0, 0},
 	{"clear", stdClear, 0, 0},
 	{"timer", stdGetMs, 0, 0},
-	{"memory", stdGetMemUsage, 0, 0},
 	{"pause", stdPauseMask, 1, threeIntsStd},
 	{"pause", stdPause, 0, 0},
 	{"color", stdColor, 1, threeIntsStd},
