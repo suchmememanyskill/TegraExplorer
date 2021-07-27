@@ -340,8 +340,7 @@ ClassFunction(stdMenuFull){
 
 	u32 x=0,y=0;
 	gfx_con_getpos(&x,&y);
-
-	int res = newMenu(&v, getIntValue(args[1]), ScreenDefaultLenX - ((x + 1) / 16), ScreenDefaultLenY - ((y + 1) / 16) - 1, ENABLEB | ALWAYSREDRAW, 0);
+	int res = newMenu(&v, getIntValue(args[1]), ScreenDefaultLenX - ((x + 1) / 16), 40 - ((y + 1) / 16) - 1, ENABLEB | ALWAYSREDRAW, 0);
 	vecFree(v);
 	return newIntVariablePtr(res);
 }
