@@ -43,8 +43,8 @@ Variable_t* genericGet(Variable_t* var, CallArgs_t* ref) {
 		for (u32 i = 0; i < ARRAY_SIZE(memberGetters); i++) {
 			if (var->variableType == memberGetters[i].classType) {
 				Variable_t member = memberGetters[i].func(var, ref->extra);
-				if (member.variableType == None)
-					return NULL;
+				if (member.variableType == None) 
+					break;
 
 				if (member.variableType == ReferenceType) {
 					return member.referenceType;

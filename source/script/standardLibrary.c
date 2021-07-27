@@ -464,36 +464,14 @@ ClassFunction(stdPower){
 #else
 #define STUBBED(name) ClassFunction(name) { return newIntVariablePtr(0); }
 
-ClassFunction(stdMountSysmmc){
-	return newIntVariablePtr(0);
-}
-ClassFunction(stdMountSave){
-	return newIntVariablePtr(0);
-}
-ClassFunction(stdSetPixel) {
-	return newIntVariablePtr(0);
-}
-
-ClassFunction(stdReadDir){
-	return newIntVariablePtr(0);
-}
-
-ClassFunction(stdFileCopy){
-	return newIntVariablePtr(0);
-}
-
-ClassFunction(stdMkdir){
-	return newIntVariablePtr(0);
-}
-
-ClassFunction(stdGetMemUsage) {
-	return newIntVariablePtr(0);
-}
-
-ClassFunction(stdGetNcaType) {
-	return newIntVariablePtr(0);
-}
-
+STUBBED(stdMountSysmmc)
+STUBBED(stdMountSave)
+STUBBED(stdSetPixel)
+STUBBED(stdReadDir)
+STUBBED(stdFileCopy)
+STUBBED(stdMkdir)
+STUBBED(stdGetMemUsage)
+STUBBED(stdGetNcaType)
 STUBBED(stdPause)
 STUBBED(stdPauseMask)
 STUBBED(stdColor)
@@ -510,6 +488,16 @@ STUBBED(stdFileMove)
 STUBBED(stdLaunchPayload)
 STUBBED(stdFileWrite)
 STUBBED(stdFileRead)
+STUBBED(stdCombinePaths)
+STUBBED(stdEmmcFileWrite)
+STUBBED(stdEmmcFileRead)
+STUBBED(stdEmummcFileRead)
+STUBBED(stdEmummcFileWrite)
+STUBBED(stdEscPaths)
+STUBBED(stdGetCwd)
+STUBBED(stdPower)
+STUBBED(stdSetPrintPos)
+STUBBED(stdSetPixels)
 #endif
 
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
