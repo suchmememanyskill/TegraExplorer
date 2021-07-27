@@ -8,6 +8,7 @@
 #include "scriptError.h"
 #include <string.h>
 #include "dictionaryClass.h"
+#include "StringClass.h"
 
 #ifndef WIN32
 #include "../storage/mountmanager.h"
@@ -428,6 +429,30 @@ ClassFunction(stdEmummcFileWrite){
 	return newIntVariablePtr(emmcFile(args[0]->string.value, args[1]->string.value, MMC_CONN_EMUMMC, 1));
 }
 
+ClassFunction(stdCombinePaths){
+	if (argsLen < 2 || args[0]->variableType != StringClass){
+		SCRIPT_FATAL_ERR("stdCombinePaths needs 2+ args");
+	}
+
+	char *res = CpyStr(args[0]->string.value);
+
+	for (int i = 1; i < argsLen; i++){
+		if (args[i]->variableType != StringClass){
+			SCRIPT_FATAL_ERR("stdCombinePaths needs 2+ args");
+		}
+
+		char *temp = CombinePaths(res, args[i]->string.value);
+		free(res);
+		res = temp;
+	}
+
+	return newStringVariablePtr(res, 0, 1);
+}
+
+ClassFunction(stdEscPaths){
+	return newStringVariablePtr(EscapeFolder(args[0]->string.value), 0, 1);
+}
+
 #else
 #define STUBBED(name) ClassFunction(name) { return newIntVariablePtr(0); }
 
@@ -539,6 +564,8 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	// 	Utils
 	{"fsexists", stdFileExists, 1, twoStringArgStd},
 	{"payload", stdLaunchPayload, 1, twoStringArgStd},
+	{"combinepath", stdCombinePaths, VARARGCOUNT, 0},
+	{"escapepath", stdEscPaths, 1, twoStringArgStd},
 };
 
 ClassFunctionTableEntry_t* searchStdLib(char* funcName, u8 *len) {
