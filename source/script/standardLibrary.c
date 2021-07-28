@@ -457,7 +457,7 @@ ClassFunction(stdGetCwd){
 }
 
 ClassFunction(stdPower){
-	power_set_state(MIN(0, (getIntValue(args[0]) % POWER_OFF_REBOOT)));
+	power_set_state(MAX(0, (getIntValue(args[0]) % POWER_OFF_REBOOT)));
 	return &emptyClass;
 }
 
