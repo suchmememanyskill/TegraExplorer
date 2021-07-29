@@ -560,9 +560,11 @@ ParserRet_t parseScript(char* in, u32 len) {
 						vecAdd(&staticVariableHolder, a);
 						CreateVariableReferenceStatic((Variable_t*)(staticVariableHolder.count - 1));
 						op.variable = reference;
+						/*
 						vecAdd(&lastFunc->operations, op);
 						op.token = EquationSeperator;
 						op.lineNumber = lineNumber;
+						*/
 					}
 				}
 				else {
