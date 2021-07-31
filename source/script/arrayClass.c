@@ -86,7 +86,7 @@ ClassFunction(arraySlice) {
 	s64 skipAmount = getIntValue(*args);
 	s64 takeAmount = getIntValue(args[1]);
 
-	if (caller->solvedArray.vector.count < (skipAmount + takeAmount)  || skipAmount <= 0 || takeAmount <= 0) {
+	if (caller->solvedArray.vector.count < (skipAmount + takeAmount)  || skipAmount < 0 || takeAmount <= 0) {
 		SCRIPT_FATAL_ERR("Slicing out of range of array with len %d", (int)caller->solvedArray.vector.count);
 	}
 		
