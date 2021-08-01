@@ -90,7 +90,8 @@ void RunScript(char *path, FSEntry_t entry){
     char *thing = CombinePaths(path, entry.name);
     u32 size;
     char *script = sd_file_read(thing, &size);
-    TConf.scriptCWD = thing;
+    free(thing);
+    TConf.scriptCWD = path;
 
     if (!script)
         return;
@@ -110,7 +111,6 @@ void RunScript(char *path, FSEntry_t entry){
     exitFunction(ret.main.operations.data, ret.main.operations.count);
     vecFree(ret.staticVarHolder);
     vecFree(ret.main.operations);
-    free(thing);
 }
 
 void RenameFile(char *path, FSEntry_t entry){
