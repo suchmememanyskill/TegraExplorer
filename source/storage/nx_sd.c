@@ -194,7 +194,8 @@ void *sd_file_read(const char *path, u32 *fsize)
 	if (fsize)
 		*fsize = size;
 
-	void *buf = malloc(size);
+	char *buf = malloc(size + 1);
+	buf[size] = '\0';
 
 	if (f_read(&fp, buf, size, NULL) != FR_OK)
 	{
