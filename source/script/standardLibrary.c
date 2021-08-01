@@ -274,7 +274,7 @@ ClassFunction(stdPause){
 
 // Takes [str, str]. Returns int (0=success). 0: src path, 1: dst path
 ClassFunction(stdFileCopy){
-	ErrCode_t e = FileCopy(args[0]->string.value, args[1]->string.value, 0);
+	ErrCode_t e = FileCopy(args[0]->string.value, args[1]->string.value, COPY_MODE_PRINT);
 	return newIntVariablePtr(e.err);
 }
 
@@ -507,6 +507,8 @@ STUBBED(stdGetCwd)
 STUBBED(stdPower)
 STUBBED(stdSetPrintPos)
 STUBBED(stdSetPixels)
+STUBBED(stdIsPatched)
+STUBBED(stdHwType)
 #endif
 
 u8 oneIntoneFunction[] = { IntClass, FunctionClass };
