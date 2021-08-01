@@ -26,6 +26,7 @@
 #include "../fs/fsutils.h"
 #include <storage/nx_sd.h>
 #include "../storage/emmcfile.h"
+#include <soc/fuse.h>
 #endif
 // Takes [int, function]. Returns elseable.
 ClassFunction(stdIf) {
@@ -461,6 +462,14 @@ ClassFunction(stdPower){
 	return &emptyClass;
 }
 
+ClassFunction(stdIsPatched){
+	return newIntVariablePtr(fuse_check_patched_rcm());
+}
+
+ClassFunction(stdHwType){
+	return newIntVariablePtr(fuse_read_hw_type());
+}
+
 #else
 #define STUBBED(name) ClassFunction(name) { return newIntVariablePtr(0); }
 
@@ -543,6 +552,8 @@ ClassFunctionTableEntry_t standardFunctionDefenitions[] = {
 	{"emmcwrite", stdEmmcFileWrite, 2, twoStringArgStd},
 	{"emummcread", stdEmummcFileRead, 2, twoStringArgStd},
 	{"emummcwrite", stdEmummcFileWrite, 2, twoStringArgStd},
+	{"fuse_patched", stdIsPatched, 0, 0},
+	{"fuse_hwtype", stdHwType, 0, 0},
 
 	// FileSystem
 	// 	Dir
