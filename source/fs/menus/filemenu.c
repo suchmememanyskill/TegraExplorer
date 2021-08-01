@@ -11,11 +11,12 @@
 #include <libs/fatfs/ff.h>
 #include "../../utils/utils.h"
 #include "../../keys/nca.h"
-#include "../../script/lexer.h"
-#include "../../script/parser.h"
-#include "../../script/variables.h"
 #include <storage/nx_sd.h>
 #include "../../storage/emummc.h"
+#include "../../script/eval.h"
+#include "../../script/parser.h"
+#include "../../script/garbageCollector.h"
+
 
 MenuEntry_t FileMenuEntries[] = {
     {.optionUnion = COLORTORGB(COLOR_WHITE) | SKIPBIT, .name = "-- File menu --"},
@@ -71,29 +72,45 @@ void DeleteFile(char *path, FSEntry_t entry){
     free(thing);
 }
 
+void RunScriptString(char *str, u32 size){
+    TConf.scriptCWD = "sd:/";
+    gfx_clearscreen();
+    ParserRet_t ret = parseScript(str, size);
+    setStaticVars(&ret.staticVarHolder);
+    initRuntimeVars();
+    eval(ret.main.operations.data, ret.main.operations.count, 0);
+    exitRuntimeVars();
+    exitStaticVars(&ret.staticVarHolder);
+    exitFunction(ret.main.operations.data, ret.main.operations.count);
+    vecFree(ret.staticVarHolder);
+    vecFree(ret.main.operations);
+}
+
 void RunScript(char *path, FSEntry_t entry){
     char *thing = CombinePaths(path, entry.name);
     u32 size;
     char *script = sd_file_read(thing, &size);
-    free(thing);
+    TConf.scriptCWD = thing;
+
     if (!script)
         return;
 
-    if (((entry.size >= 64 && entry.sizeDef == 1) || entry.sizeDef >= 2) && !TConf.minervaEnabled)
+    if (((entry.size >= 16 && entry.sizeDef == 1) || entry.sizeDef >= 2) && !TConf.minervaEnabled)
         return;
 
     gfx_clearscreen();
-    scriptCtx_t ctx = createScriptCtx();
-    ctx.script = runLexer(script, size);
+
+    ParserRet_t ret = parseScript(script, size);
     free(script);
-
-    dictVectorAdd(&ctx.varDict, newDict(CpyStr("_CWD"), (newVar(StringType, 0, .stringType = path))));
-    dictVectorAdd(&ctx.varDict, newDict(CpyStr("_EMU"), (newVar(IntType, 0, emu_cfg.enabled))));
-
-    printError(mainLoop(&ctx));
-
-    freeDictVector(&ctx.varDict);
-    lexarVectorClear(&ctx.script);
+    setStaticVars(&ret.staticVarHolder);
+    initRuntimeVars();
+    Variable_t* res = eval(ret.main.operations.data, ret.main.operations.count, 1);
+    exitRuntimeVars();
+    exitStaticVars(&ret.staticVarHolder);
+    exitFunction(ret.main.operations.data, ret.main.operations.count);
+    vecFree(ret.staticVarHolder);
+    vecFree(ret.main.operations);
+    free(thing);
 }
 
 void RenameFile(char *path, FSEntry_t entry){

@@ -1,6 +1,8 @@
 #pragma once
 #include <utils/types.h>
 
+#pragma pack(1)
+
 typedef struct {
     void* data;
     u32 capacity; 
@@ -8,6 +10,8 @@ typedef struct {
     u8 elemSz;
     // u32 typeTag;
 } Vector_t;
+
+#pragma pack()
 
 #define FREE(x) free(x); x = NULL;
 

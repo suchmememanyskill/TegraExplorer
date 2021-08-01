@@ -12,6 +12,7 @@ IPL_LOAD_ADDR := 0x40008000
 LPVERSION_MAJOR := 3
 LPVERSION_MINOR := 0
 LPVERSION_BUGFX := 6
+LPVERSION := \"$(LPVERSION_MAJOR).$(LPVERSION_MINOR).$(LPVERSION_BUGFX)\"
 
 ################################################################################
 
@@ -27,7 +28,7 @@ BIN2CDIR := ./tools/bin2c
 VPATH = $(dir ./$(SOURCEDIR)/) $(dir $(wildcard ./$(SOURCEDIR)/*/)) $(dir $(wildcard ./$(SOURCEDIR)/*/*/))
 VPATH += $(dir $(wildcard ./$(BDKDIR)/)) $(dir $(wildcard ./$(BDKDIR)/*/)) $(dir $(wildcard ./$(BDKDIR)/*/*/))
 
-OBJS =	$(patsubst $(SOURCEDIR)/%.S, $(BUILDDIR)/$(TARGET)/%.o, \
+OBJS =	$(BUILDDIR)/$(TARGET)/script/builtin.c $(patsubst $(SOURCEDIR)/%.S, $(BUILDDIR)/$(TARGET)/%.o, \
 		$(patsubst $(SOURCEDIR)/%.c, $(BUILDDIR)/$(TARGET)/%.o, \
 		$(call rwildcard, $(SOURCEDIR), *.S *.c)))
 OBJS +=	$(patsubst $(BDKDIR)/%.S, $(BUILDDIR)/$(TARGET)/%.o, \
@@ -40,7 +41,7 @@ FFCFG_INC := '"../$(SOURCEDIR)/libs/fatfs/ffconf.h"'
 ################################################################################
 
 CUSTOMDEFINES := -DIPL_LOAD_ADDR=$(IPL_LOAD_ADDR)
-CUSTOMDEFINES += -DLP_VER_MJ=$(LPVERSION_MAJOR) -DLP_VER_MN=$(LPVERSION_MINOR) -DLP_VER_BF=$(LPVERSION_BUGFX)
+CUSTOMDEFINES += -DLP_VER_MJ=$(LPVERSION_MAJOR) -DLP_VER_MN=$(LPVERSION_MINOR) -DLP_VER_BF=$(LPVERSION_BUGFX) -DLP_VER=$(LPVERSION)
 CUSTOMDEFINES += -DGFX_INC=$(GFX_INC) -DFFCFG_INC=$(FFCFG_INC)
 
 # 0: UART_A, 1: UART_B.
@@ -103,3 +104,18 @@ $(BUILDDIR)/$(TARGET)/%.o: $(BDKDIR)/%.c
 $(BUILDDIR)/$(TARGET)/%.o: $(BDKDIR)/%.S
 	@mkdir -p "$(@D)"
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILDDIR)/$(TARGET)/script/builtin.o: $(BUILDDIR)/$(TARGET)/script/builtin.c
+	@mkdir -p "$(@D)"
+	$(CC) $(CFLAGS) $(BDKINC) -c $< -o $@
+    
+$(BUILDDIR)/$(TARGET)/script/builtin.c: scripts/*.te
+	@mkdir -p "$(@D)"
+	@mkdir -p "$(BUILDDIR)/$(TARGET)/scripts"
+ifeq ($(OS),Windows_NT)
+	@py ts-minifier.py -d "$(BUILDDIR)/$(TARGET)/scripts" $(wildcard scripts/*.te)
+	@py te2c.py "$(BUILDDIR)/$(TARGET)/script/builtin" "$(BUILDDIR)/$(TARGET)/scripts"
+else
+	@python3 ts-minifier.py -d "$(BUILDDIR)/$(TARGET)/scripts" $(wildcard scripts/*.te)
+	@python3 te2c.py "$(BUILDDIR)/$(TARGET)/script/builtin" "$(BUILDDIR)/$(TARGET)/scripts"
+endif

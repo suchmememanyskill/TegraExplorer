@@ -1,0 +1,152 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\Classes">
+      <UniqueIdentifier>{c245ac36-a649-432b-a663-98ff9d02d3f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Classes\String">
+      <UniqueIdentifier>{e4d90dab-a1e0-4a27-82a1-dc2c6b81f0bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Classes\Generic">
+      <UniqueIdentifier>{1aacfe02-949c-4394-b408-28d73d702918}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Classes\Array">
+      <UniqueIdentifier>{5878f4a8-cac0-40aa-8866-6109bf6688ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Classes\Dictionary">
+      <UniqueIdentifier>{ec7391f8-d60e-46eb-965e-c2d84d48d784}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Classes\Function">
+      <UniqueIdentifier>{015ca379-a813-4d13-a929-3b0efe72bb02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Classes\Int">
+      <UniqueIdentifier>{64738969-63b9-4d0e-85b9-d9a63a7e36b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Classes\Elseable">
+      <UniqueIdentifier>{ba83a808-23f1-44c6-85e4-d0c6c77200fa}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ABadIdeaVersion3.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vector.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="parser.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="model.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="eval.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="genericClass.c">
+      <Filter>Source Files\Classes\Generic</Filter>
+    </ClCompile>
+    <ClCompile Include="garbageCollector.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="functionClass.c">
+      <Filter>Source Files\Classes\Function</Filter>
+    </ClCompile>
+    <ClCompile Include="StringClass.c">
+      <Filter>Source Files\Classes\String</Filter>
+    </ClCompile>
+    <ClCompile Include="unsolvedArrayClass.c">
+      <Filter>Source Files\Classes\Array</Filter>
+    </ClCompile>
+    <ClCompile Include="arrayClass.c">
+      <Filter>Source Files\Classes\Array</Filter>
+    </ClCompile>
+    <ClCompile Include="intClass.c">
+      <Filter>Source Files\Classes\Int</Filter>
+    </ClCompile>
+    <ClCompile Include="arrayReferenceClass.c">
+      <Filter>Source Files\Classes\Array</Filter>
+    </ClCompile>
+    <ClCompile Include="standardLibrary.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="scriptError.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="else.c">
+      <Filter>Source Files\Classes\Elseable</Filter>
+    </ClCompile>
+    <ClCompile Include="dictionaryClass.c">
+      <Filter>Source Files\Classes\Dictionary</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="compat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="model.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="eval.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="garbageCollector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dictionaryClass.h">
+      <Filter>Source Files\Classes\Dictionary</Filter>
+    </ClInclude>
+    <ClInclude Include="arrayClass.h">
+      <Filter>Source Files\Classes\Array</Filter>
+    </ClInclude>
+    <ClInclude Include="intClass.h">
+      <Filter>Source Files\Classes\Int</Filter>
+    </ClInclude>
+    <ClInclude Include="StringClass.h">
+      <Filter>Source Files\Classes\String</Filter>
+    </ClInclude>
+    <ClInclude Include="unsolvedArrayClass.h">
+      <Filter>Source Files\Classes\Array</Filter>
+    </ClInclude>
+    <ClInclude Include="functionClass.h">
+      <Filter>Source Files\Classes\Function</Filter>
+    </ClInclude>
+    <ClInclude Include="genericClass.h">
+      <Filter>Source Files\Classes\Generic</Filter>
+    </ClInclude>
+    <ClInclude Include="arrayReferenceClass.h">
+      <Filter>Source Files\Classes\Array</Filter>
+    </ClInclude>
+    <ClInclude Include="standardLibrary.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="scriptError.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="else.h">
+      <Filter>Source Files\Classes\Elseable</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="input.te">
+      <Filter>Source Files</Filter>
+    </None>
+  </ItemGroup>
+</Project>

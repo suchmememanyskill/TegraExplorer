@@ -7,4 +7,12 @@ loader/payload_00.h
 
 loader/payload_01.h
 
+source/script/Debug
+source/script/*.te
+source/script/.vs
+
 *.exe
+
+source/script/builtin.c
+
+source/script/builtin.h

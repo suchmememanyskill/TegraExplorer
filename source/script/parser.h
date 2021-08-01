@@ -1,6 +1,16 @@
+
 #pragma once
+#include "compat.h"
 
-#include "types.h"
+typedef struct {
+	Function_t main;
+	Vector_t staticVarHolder;
+	u8 valid;
+} ParserRet_t;
 
-scriptResult_t mainLoop(scriptCtx_t* ctx);
-void printError(scriptResult_t res);
+#define SCRIPT_PARSER_ERR(message, ...) printScriptError(SCRIPT_PARSER_FATAL, message, ##__VA_ARGS__); return (ParserRet_t){0}
+
+void exitStaticVars(Vector_t* v);
+void exitFunction(Operator_t* start, u32 len);
+ParserRet_t parseScript(char* in, u32 len);
+char* utils_copyStringSize(const char* in, int size);

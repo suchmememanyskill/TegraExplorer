@@ -14,7 +14,7 @@ jobs:
       run: |
         sudo apt update -y
         sudo apt install build-essential -y
-        alias py=python3
+    
         make -j$(nproc)
         
     - uses: actions/upload-artifact@master

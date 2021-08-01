@@ -99,10 +99,9 @@ bool save_data_file_write(save_data_file_ctx_t *ctx, uint64_t *out_bytes_written
     if (!save_data_file_validate_write_params(ctx, offset, count, ctx->mode, &is_resize_needed))
         return false;
 
-    if (is_resize_needed) {
-        if (!save_data_file_set_size(ctx, offset + count))
-            return false;
-    }
+    if (!save_data_file_set_size(ctx, offset + count))
+        return false;
+    
 
     *out_bytes_written = save_allocation_table_storage_write(&ctx->base_storage, buffer, offset, count);
     return true;

@@ -1,7 +1,8 @@
+#ifdef WIN32
 #include "vector.h"
-#include "../gfx/gfx.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <mem/heap.h>
 
 Vector_t newVec(u8 typesz, u32 preallocate) {
 	if (preallocate) {
@@ -38,14 +39,15 @@ Vector_t vecFromArray(void* array, u32 count, u32 typesz)
 	return res;
 }
 
-int _vecAdd(Vector_t* v, void* elem, u8 sz) {
+int vecAddElem(Vector_t* v, void* elem, u8 sz) {
 	if (!v || !elem || v->elemSz != sz)
 		return 0;
 
 	if (v->data == NULL) {
 		v->data = calloc(1, v->elemSz);
 	}
-	u32 usedbytes = v->count * (u32)v->elemSz;
+
+	u32 usedbytes = v->count * sz;
 	if (usedbytes >= v->capacity)
 	{
 		v->capacity *= 2;
@@ -56,7 +58,8 @@ int _vecAdd(Vector_t* v, void* elem, u8 sz) {
 		free(v->data);
 		v->data = buff;
 	}
-	memcpy(((u8*)v->data) + usedbytes, elem, v->elemSz);
+
+	memcpy((char*)v->data + usedbytes, elem, sz);
 	v->count++;
 	return 1;
 }
@@ -102,3 +105,4 @@ void vecRem(Vector_t *vec, int idx) {
 	memcpy((u8*)vec->data + (vec->elemSz * idx), (u8*)vec->data + (vec->elemSz * (idx + 1)), (vec->count - idx - 1) * vec->elemSz);
 	vec->count--;
 }
+#endif

@@ -74,6 +74,7 @@ void FileExplorer(char *path){
             res = 0;
 
         res = newMenu(&entries, res, 60, 42, ENABLEB | ENABLEPAGECOUNT, (int)fileVec.count);
+        vecFree(entries);
 
         char *oldPath = storedPath;
 
@@ -125,6 +126,7 @@ void FileExplorer(char *path){
         else if (res < ARR_LEN(topEntries)) {
             if (!strcmp(storedPath, path)){
                 clearFileVector(&fileVec);
+                free(storedPath);
                 return;
             }
 

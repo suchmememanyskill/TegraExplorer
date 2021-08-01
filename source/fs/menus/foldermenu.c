@@ -11,9 +11,6 @@
 #include <libs/fatfs/ff.h>
 #include "../../utils/utils.h"
 #include "../../keys/nca.h"
-#include "../../script/lexer.h"
-#include "../../script/parser.h"
-#include "../../script/variables.h"
 #include <storage/nx_sd.h>
 #include "../fscopy.h"
 
