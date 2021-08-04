@@ -1,6 +1,6 @@
 # Copyright (c) 2021 bleck9999
 # https://github.com/bleck9999/ts-minifier
-# Version: a1e97807
+# Version: 2a214f53
 
 import argparse
 import itertools
@@ -35,7 +35,6 @@ class Code:
         self.strings = strings
         self.comments = comments
         self.code = code
-        # self.string_comments = strings_comments
         self.rawcode = "".join([x[2] for x in sorted(self.code+self.strings)])
 
     def getafter(self, ch: int):
@@ -94,23 +93,9 @@ def parser(script: str):
 
     script = Code(strings, comments, script)
 
-    # guess i should do a breakdown of step 3
-    # we need to be able to read:
-    #    variable creation | a = 15, array.foreach("a")
-    #    defining a function | funcname = {function body}
-    #    calling a function | funcname(arguments) for stdlib functions, funcname(<optional> any valid ts) for user defined
-    #    member calling | object.member(possible args)
-    #        we don't need to check if it's valid syntax or not so we dont need to know the type of object that's nice
-    #        this can actually be chained which is pretty annoying
-    #    operators? i dont think it actually matters to us
-    #    *statements* | a
-    #        these can be delimited by anything that isn't a valid identifier.
-    #        fuck me clockwise
-    #
-    # other notes:
-    #   we minify the script a little before parsing, so there is no unnecessary whitespace or comments
-    #   we are assuming the input script is valid syntax
-
+    # couple notes:
+    # we minify the script a little before parsing, so there is no unnecessary whitespace or comments
+    # we are assuming the input script is valid syntax
     userobjects = {}
     usages = {}
     hexxed = False
@@ -146,10 +131,7 @@ def parser(script: str):
                     if identifier not in stdlib:
                         userobjects[identifier] = "var"
             if strscript[ch] == '.':
-                if ismember:  # we check if there's a . after a ), if there is we know that there's nothing to do here
-                    continue
                 ismember = True
-                # we don't really care about anything else
             elif strscript[ch] == '(':
                 if ismember:
                     if "foreach" == strscript[start:ch]:  # array.foreach takes a variable name as an arg (blame meme)
@@ -157,7 +139,10 @@ def parser(script: str):
                         if name in userobjects:
                             usages[name].append(start)
                         else:
-                            usages[name] = []
+                            # this is fucking disgusting
+                            usages[name] = [script.getafter(ch)[0] + 1   # start index of the quote, +1 to account for "
+                                            - (script.comments[-1][1]    # correct for strscript removing comments
+                                            if script.comments else 0)]  # (if any are present at all)
                             userobjects[name] = "var"
                     else:
                         pass
@@ -172,6 +157,7 @@ def minify(script: Code, userobjects, usages):
     # the space saved by an alias is the amount of characters currently used by calling the function (uses*len(func))
     # minus the amount of characters it would take to define an alias (len(alias)+len(func)+2), with the 2 being the
     # equals and the whitespace needed for a definition
+    #
     # obviously for a rename you're already defining it so it's just the difference between lengths multiplied by uses
     short_idents = [x for x in (ascii_letters+'_')] + [x[0]+x[1] for x in itertools.permutations(ascii_letters+'_', 2)]
     short_idents.pop(short_idents.index("if"))
@@ -200,7 +186,7 @@ def minify(script: Code, userobjects, usages):
                 continue
                 # we assume that nobody is insane enough to exhaust all *2,756* 2 character names,
                 # instead that uo is len 2 and all the 1 character names are in use (because of that we dont multiply
-                # uses by anything
+                # uses by anything as multiplying by a difference of 1 would be redundant)
             if not auto_replace:
                 print(f"{'Function' if otype == 'func' else 'Variable'} name {uo} could be shortened ({uo}->{minName}, "
                       f"would save {uses*(uolen - len(minName))} bytes")
@@ -211,10 +197,19 @@ def minify(script: Code, userobjects, usages):
                 # rather than just blindly str.replace()ing we're going to actually use the character indices that we stored
                 diff = uolen - len(minName)
                 prev = 0
+                # we're specifically looking for variables declared with the .foreach bullshit so we can ignore any functions
+                if otype == "var":
+                    for i, string in enumerate([x for x in script.strings]):
+                        if string[2] == f'"{uo}"':
+                            # you might think im forgetting to account for the shorter minName by leaving string[1]
+                            # but you are wrong this is intentional
+                            script.strings[i] = (string[0], string[1], f'"{minName}"')
                 for bound in usages[uo]:
                     tmpcode += mcode[prev:bound] + minName + ' '*diff
                     prev = bound + diff + len(minName)
-                mcode = tmpcode + mcode[bound+diff+len(minName):]  # it actually cant be referenced before assignment but ok
+                # actually shut up about "bound might be referenced before assignment" or show me what possible
+                # execution path that could lead to usages[uo] being an empty list
+                mcode = tmpcode + mcode[bound+diff+len(minName):]
     for func in usages:
         tmpcode = ""
         candidates = short_idents
@@ -256,12 +251,27 @@ def minify(script: Code, userobjects, usages):
             str_reuse[string[2]].append(string[0])
         else:
             str_reuse[string[2]] = [string[0]]
-    for string in str_reuse:
+    for string in script.strings:
         tmpcode = ""
         candidates = short_idents
-        uses = len(str_reuse[string])
         minName = ""
-        if uses > 1 and len(string) > 1:
+        uses = len(str_reuse[string[2]])
+        if string[2].replace('"', '') in userobjects:
+            # im a little worried about some corner case where you for whatever reason had a string of "varName"
+            # just vibin somewhere in the script on its own for whatever reason completely beyond sanity
+            # and then *also* used varName to declare a var with a .foreach
+            # but i've lost the ability to give a shit
+            start = string[0] - (script.comments[-1][1] if script.comments else 0)
+            end = string[1] - (script.comments[-1][1] if script.comments else 0)
+            # newend is essentially start + len(minName) + 1 (+1 because we only exclude the trailing ")
+            newend = start + len(string[2]) - 1
+            # you might be wondering why the +1 and -1 are there
+            # so am i but removing them breaks things and i spent like 30 minutes trying to get this to work
+            tmpcode = mcode[:newend] + '"' + mcode[newend+1:]
+            tmpcode = tmpcode[:end-1] + ' ' + tmpcode[end:]
+            mcode = tmpcode
+        elif uses > 1 and len(string[2]) > 1:
+            string = string[2]
             if len(string) == 2:
                 candidates = short_idents[:53]
             for i in candidates:
@@ -292,7 +302,7 @@ def minify(script: Code, userobjects, usages):
 
 
 def whitespacent(script: str):
-    # also happens to remove unneeded comments and push REQUIREs to the top of the file
+    # also removes unneeded comments and push REQUIREs to the top of the file
     requires = ""
     mcode = ""
     for line in script.split(sep='\n'):
@@ -309,7 +319,7 @@ def whitespacent(script: str):
         # the last character of the line which would lead to several issues
         # however this is desirable when there *is* a comment, since it being exclusive means there isn't a trailing #
         # and if you're wondering about the above check that uses line[start:] this doesn't matter,
-        # one character cant contain an 8 character substring
+        # one character cant contain an 8 character substring so it's not like it'll ever false positive
         if start != -1:
             line = line[:start]
         line = line.split(sep='"')
@@ -334,7 +344,7 @@ def whitespacent(script: str):
     # 1. the - operator which requires space between the right operand
     # yeah that's right only the right one
     # thanks meme
-    # 2. between 2 letters
+    # 2. between 2 characters that are either valid identifiers (aA-zZ or _) or integers
     inquote = False
     mmcode = ""
     index = 0
