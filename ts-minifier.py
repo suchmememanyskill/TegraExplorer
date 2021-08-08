@@ -1,6 +1,6 @@
 # Copyright (c) 2021 bleck9999
 # https://github.com/bleck9999/ts-minifier
-# Version: 2a214f53
+# Version: bf54a07d
 
 import argparse
 import itertools
@@ -256,15 +256,19 @@ def minify(script: Code, userobjects, usages):
         candidates = short_idents
         minName = ""
         uses = len(str_reuse[string[2]])
-        if string[2].replace('"', '') in userobjects:
-            # im a little worried about some corner case where you for whatever reason had a string of "varName"
-            # just vibin somewhere in the script on its own for whatever reason completely beyond sanity
-            # and then *also* used varName to declare a var with a .foreach
-            # but i've lost the ability to give a shit
+        if auto_replace and (string[2].replace('"', '') in userobjects) and \
+                (userobjects[string[2].replace('"', '')] == "var"):
             start = string[0] - (script.comments[-1][1] if script.comments else 0)
             end = string[1] - (script.comments[-1][1] if script.comments else 0)
             # newend is essentially start + len(minName) + 1 (+1 because we only exclude the trailing ")
             newend = start + len(string[2]) - 1
+            if end == newend+1:
+                # there are in theory two possible reasons for this
+                # 1. minName and the original name of the replaced variable are the same length
+                # 2. this string literal just happens to have the same content as a variable
+                # however option 1 shouldn't happen because it shouldn't try to replace a variable if it doesn't save
+                # any space, because of this we know it's option 2 and we should do nothing
+                continue
             # you might be wondering why the +1 and -1 are there
             # so am i but removing them breaks things and i spent like 30 minutes trying to get this to work
             tmpcode = mcode[:newend] + '"' + mcode[newend+1:]
@@ -280,7 +284,7 @@ def minify(script: Code, userobjects, usages):
                     userobjects[minName] = "TIV"
                     break
             # the quotation marks are included in string
-            savings = uses * len(string) - (len(string) + len(minName) + 2)
+            savings = uses * len(string) - (len(string) + len(minName) + 1)
             if savings <= 0 or not auto_replace:
                 print(f"Not introducing variable for string {string} reused {uses} times (would save {savings} bytes)")
             else:
@@ -293,7 +297,7 @@ def minify(script: Code, userobjects, usages):
                     tmpcode += mcode[prev:bound] + minName + ' ' * diff
                     prev = bound + diff + len(minName)
                 mcode = tmpcode + mcode[bound + diff + len(minName):]
-                aliases.append(f"{minName}={string} ")
+                aliases.append(f"{minName}={string}")
 
     print("Reintroducing REQUIREs")
     mcode = "".join([x[2] for x in script.comments]) + "".join(aliases) + mcode
