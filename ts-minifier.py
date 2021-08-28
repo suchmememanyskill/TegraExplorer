@@ -1,12 +1,13 @@
 # Copyright (c) 2021 bleck9999
 # https://github.com/bleck9999/ts-minifier
-# Version: c1b874bb
+# Version: c9aef4d4
 
 import argparse
 import itertools
 from string import ascii_letters
 
 auto_replace = False
+verbose = False
 stdlib = ['if', 'while', 'print', 'println', 'mountsys', 'mountemu', 'readsave', 'exit', 'break', 'dict', 'setpixel',
           'readdir', 'copyfile', 'mkdir', 'ncatype', 'pause', 'color', 'menu', 'emu', 'clear', 'timer', 'deldir',
           'fsexists', 'delfile', 'copydir', 'movefile', 'payload', 'readfile', 'writefile', 'setpixels', 'printpos',
@@ -35,6 +36,7 @@ class Code:
         self.strings = strings
         self.comments = comments
         self.code = code
+        self.varstrs = []
         self.rawcode = "".join([x[2] for x in sorted(self.code+self.strings)])
 
     def getafter(self, ch: int):
@@ -135,15 +137,11 @@ def parser(script: str):
             elif strscript[ch] == '(':
                 if ismember:
                     if "foreach" == strscript[start:ch]:  # array.foreach takes a variable name as an arg (blame meme)
-                        name = script.getafter(ch)[2].replace('"', '')
-                        if name in userobjects:
-                            usages[name].append(start)
-                        else:
-                            # this is fucking disgusting
-                            usages[name] = [script.getafter(ch)[0] + 1   # start index of the quote, +1 to account for "
-                                            - (script.comments[-1][1]    # correct for strscript removing comments
-                                            if script.comments else 0)]  # (if any are present at all)
-                            userobjects[name] = "var"
+                        for i, string in enumerate(script.strings):
+                            if string[0] == ch + (script.comments[-1][1] if script.comments else 0) + 1:
+                                script.varstrs.append(string)
+                                script.strings.pop(i)
+                                break
                     else:
                         pass
             elif strscript[ch] == ')':
@@ -155,8 +153,11 @@ def parser(script: str):
 
 def minify(script: Code, userobjects, usages):
     # the space saved by an alias is the amount of characters currently used by calling the function (uses*len(func))
-    # minus the amount of characters it would take to define an alias (len(alias)+len(func)+2), with the 2 being the
+    # minus the amount of characters it would take to define an alias (len(alias)+len(func)+2), with the 2 being for the
     # equals and the whitespace needed for a definition
+    # the same principle also applies to introducing a variable for string literals, though since a literal requires
+    # having "s around it then it's uses*(len(str)+2) - (len(minName)+len(str)+4)
+    #                                                                          ^ 2 for = and whitespace, 2 for ""
     #
     # obviously for a rename you're already defining it so it's just the difference between lengths multiplied by uses
     short_idents = [x for x in (ascii_letters+'_')] + [x[0]+x[1] for x in itertools.product(ascii_letters+'_', repeat=2)]
@@ -180,7 +181,7 @@ def minify(script: Code, userobjects, usages):
                     minName = i
                     userobjects[minName] = "TRN"
                     break
-            if not minName:
+            if verbose and not minName:
                 print(f"{'Function' if otype == 'func' else 'Variable'} name {uo} could be shortened but "
                       f"no available names found (would save {uses} bytes)")
                 continue
@@ -194,16 +195,22 @@ def minify(script: Code, userobjects, usages):
             else:
                 print(f"Renaming {'Function' if otype == 'func' else 'Variable'} {uo} to {minName} "
                       f"(saving {uses*(uolen - len(minName))} bytes)")
-                # rather than just blindly str.replace()ing we're going to actually use the character indices that we stored
                 diff = uolen - len(minName)
-                prev = 0
-                # we're specifically looking for variables declared with the .foreach bullshit so we can ignore any functions
+
+                # the foreach syntax is literally the worst part of ts
                 if otype == "var":
-                    for i, string in enumerate([x for x in script.strings]):
-                        if string[2] == f'"{uo}"':
-                            # you might think im forgetting to account for the shorter minName by leaving string[1]
-                            # but you are wrong this is intentional
-                            script.strings[i] = (string[0], string[1], f'"{minName}"')
+                    struo = f'"{uo}"'
+                    for varstr in script.varstrs:
+                        if varstr[2] == struo:
+                            if verbose:
+                                print(f"Replacing declaration of {varstr[2]} at {varstr[0]}-{varstr[1]}")
+                            start = varstr[0] - (script.comments[-1][1] if script.comments else 0)
+                            end = varstr[1] - (script.comments[-1][1] if script.comments else 0)
+                            newend = start + len(minName)
+                            mcode = mcode[:newend] + f'{minName}"' + (' ' * diff) + mcode[end:]
+
+                # rather than just blindly str.replace()ing we're going to actually use the character indices that we stored
+                prev = 0
                 for bound in usages[uo]:
                     tmpcode += mcode[prev:bound] + minName + ' '*diff
                     prev = bound + diff + len(minName)
@@ -227,16 +234,18 @@ def minify(script: Code, userobjects, usages):
                 userobjects[minName] = "TRP"
                 break
         # once again we assume it's only `if` that could trigger this message
-        if not minName and (uses - 4) > 0:
+        # uses - 4 is the minimum amount of uses needed to save space, 1*(uses - 4) is the space it would save
+        if verbose and (not minName and (uses - 4) > 0):
             print(f"Standard library function {func} could be aliased but no available names found "
                   f"(would save {uses-4} bytes)")
         else:
             if not savings:
                 savings = uses*len(func) - (len(func)+len(minName)+2)
-            if savings <= 0 or not auto_replace:
+            if (verbose and savings <= 0) or (not auto_replace and savings > 0):
                 print(f"Not aliasing standard library function {func} (would save {savings} bytes)")
             else:
-                print(f"Aliasing standard library function {func} to {minName} (saving {savings} bytes)")
+                if verbose:
+                    print(f"Aliasing standard library function {func} to {minName} (saving {savings} bytes)")
                 diff = len(func) - len(minName)
                 prev = 0
                 for bound in usages[func]:
@@ -251,31 +260,12 @@ def minify(script: Code, userobjects, usages):
             str_reuse[string[2]].append(string[0])
         else:
             str_reuse[string[2]] = [string[0]]
-    for string in script.strings:
+    for string in str_reuse:
         tmpcode = ""
         candidates = short_idents
         minName = ""
-        uses = len(str_reuse[string[2]])
-        if auto_replace and (string[2].replace('"', '') in userobjects) and \
-                (userobjects[string[2].replace('"', '')] == "var"):
-            start = string[0] - (script.comments[-1][1] if script.comments else 0)
-            end = string[1] - (script.comments[-1][1] if script.comments else 0)
-            # newend is essentially start + len(minName) + 1 (+1 because we only exclude the trailing ")
-            newend = start + len(string[2]) - 1
-            if end == newend+1:
-                # there are in theory two possible reasons for this
-                # 1. minName and the original name of the replaced variable are the same length
-                # 2. this string literal just happens to have the same content as a variable
-                # however option 1 shouldn't happen because it shouldn't try to replace a variable if it doesn't save
-                # any space, because of this we know it's option 2 and we should do nothing
-                continue
-            # you might be wondering why the +1 and -1 are there
-            # so am i but removing them breaks things and i spent like 30 minutes trying to get this to work
-            tmpcode = mcode[:newend] + '"' + mcode[newend+1:]
-            tmpcode = tmpcode[:end-1] + ' ' + tmpcode[end:]
-            mcode = tmpcode
-        elif uses > 1 and len(string[2]) > 1:
-            string = string[2]
+        uses = len(str_reuse[string])
+        if uses > 1:
             if len(string) == 2:
                 candidates = short_idents[:53]
             for i in candidates:
@@ -285,11 +275,12 @@ def minify(script: Code, userobjects, usages):
                     break
             # the quotation marks are included in string
             savings = uses * len(string) - (len(string) + len(minName) + 2)
-            if savings <= 0 or not auto_replace:
+            if (verbose and savings <= 0) or (not auto_replace and savings > 0):
                 print(f"Not introducing variable for string {string} reused {uses} times (would save {savings} bytes)")
             else:
                 # "duplicated code fragment" do i look like i give a shit
-                print(f"Introducing variable {minName} with value {string} (saving {savings} bytes)")
+                if verbose:
+                    print(f"Introducing variable {minName} with value {string} (saving {savings} bytes)")
                 diff = len(string) - len(minName)
                 prev = 0
                 for bound in str_reuse[string]:
@@ -298,6 +289,8 @@ def minify(script: Code, userobjects, usages):
                     prev = bound + diff + len(minName)
                 mcode = tmpcode + mcode[bound + diff + len(minName):]
                 aliases.append(f"{minName}={string}")
+        elif verbose:
+            print(f"Not introducing variable for string {string} (only used once)")
 
     print("Reintroducing REQUIREs")
     mcode = "".join([x[2] for x in script.comments]) + "".join(aliases) + mcode
@@ -344,10 +337,8 @@ def whitespacent(script: str):
             part += 1
 
     # tsv3 is still an absolute nightmare
-    # so spaces have a couple edge cases
-    # 1. the - operator which requires space between the right operand
-    # yeah that's right only the right one
-    # thanks meme
+    # so spaces are required under two situations
+    # 1. the minus operator which requires space between the right operand but only if the right operand is a literal
     # 2. between 2 characters that are either valid identifiers (aA-zZ or _) or integers
     inquote = False
     mmcode = ""
@@ -377,13 +368,16 @@ if __name__ == '__main__':
     argparser.add_argument("-d", type=str, nargs='?', help="destination folder for minified scripts"
                                                            "\ndefault: ./", default='./')
     argparser.add_argument("--auto-replace", action="store_true", default=False,
-                           help="automatically replace reused functions and variables instead of just warning\n"
+                           help="automatically replace reused functions, variables and strings instead of just warning\n"
                            "and attempt to generate shorter names for reused variables \ndefault: false")
+    argparser.add_argument("-v", action="store_true", default=False,
+                           help="prints even more information to the console than usual")
 
     args = argparser.parse_args()
     files = args.source
     dest = args.d[:-1] if args.d[-1] == '/' else args.d
-    auto_replace = args.auto_replace if args.auto_replace is not None else False
+    auto_replace = args.auto_replace
+    verbose = args.v
 
     for file in files:
         print(f"\nMinifying {file}")
