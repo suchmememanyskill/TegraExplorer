@@ -1,6 +1,6 @@
 # Copyright (c) 2021 bleck9999
 # https://github.com/bleck9999/ts-minifier
-# Version: c9aef4d4
+# Version: b201eb4d
 
 import argparse
 import itertools
@@ -243,7 +243,7 @@ def minify(script: Code, userobjects, usages):
                 savings = uses*len(func) - (len(func)+len(minName)+2)
             if (verbose and savings <= 0) or (not auto_replace and savings > 0):
                 print(f"Not aliasing standard library function {func} (would save {savings} bytes)")
-            else:
+            elif auto_replace and savings > 0:
                 if verbose:
                     print(f"Aliasing standard library function {func} to {minName} (saving {savings} bytes)")
                 diff = len(func) - len(minName)
@@ -277,7 +277,7 @@ def minify(script: Code, userobjects, usages):
             savings = uses * len(string) - (len(string) + len(minName) + 2)
             if (verbose and savings <= 0) or (not auto_replace and savings > 0):
                 print(f"Not introducing variable for string {string} reused {uses} times (would save {savings} bytes)")
-            else:
+            elif auto_replace and savings > 0:
                 # "duplicated code fragment" do i look like i give a shit
                 if verbose:
                     print(f"Introducing variable {minName} with value {string} (saving {savings} bytes)")
