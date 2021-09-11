@@ -1,10 +1,11 @@
 # Copyright (c) 2021 bleck9999
 # https://github.com/bleck9999/ts-minifier
-# Version: b201eb4d
+# Version: d7106796
 
 import argparse
 import itertools
-from string import ascii_letters
+import string
+from string import ascii_letters, digits, hexdigits
 
 auto_replace = False
 verbose = False
@@ -19,19 +20,13 @@ class Code:
     def __init__(self, strings, comments, script):
         counter = 0
         strings_comments = sorted(strings + comments)
-        bounds = [0] if strings_comments[0][0] != 0 else []
-        for val in strings_comments:
-            if counter and (bounds[counter - 1] == val[0]):
-                bounds[counter - 1] = val[1]
-            else:
-                bounds += [val[0], val[1]]
-                counter += 2
-        bounds.append(len(script))
+
+        bound = 0
         code = []
-        i = 2 if len(bounds) % 2 else 1
-        while i < len(bounds):
-            code.append((bounds[i - 1], bounds[i], script[bounds[i - 1]:bounds[i]]))
-            i += 2
+        for strcom in strings_comments:
+            code.append((bound, strcom[0], script[bound:strcom[0]]))
+            bound = strcom[1]
+        code.append((bound, len(script), script[bound:]))
         self.sections = sorted(strings_comments + code)
         self.strings = strings
         self.comments = comments
@@ -56,7 +51,14 @@ class Code:
 
 def isidentifier(s: str):
     for c in s:
-        if c not in (ascii_letters + '_'):
+        if c not in (ascii_letters + '_' + digits):
+            return False
+    return True
+
+
+def iswhitespace(s: str):
+    for c in s:
+        if c not in (' ', '\t', '\n'):
             return False
     return True
 
@@ -103,7 +105,9 @@ def parser(script: str):
     hexxed = False
     ismember = False
     quoted = False
-    strscript = script.rawcode
+    strscript = script.rawcode + ' '
+    # the space will get removed after the second pass of whitespacent, but for now it prevents not detecting the
+    # last identifier in a script (eg if script.rawcode was "a=12" the 12 wouldn't be detected without the trailing ' ')
     start = len(strscript) + 1
     for ch in range(len(strscript)):
         if (strscript[ch-1] == '0' and strscript[ch] == 'x') and not quoted:
@@ -113,20 +117,25 @@ def parser(script: str):
                 start = ch
             else:
                 pass
-        elif hexxed and strscript[ch].upper() not in "0123456789ABCDEF":
+        elif hexxed and strscript[ch] not in hexdigits:
             hexxed = False
         elif strscript[ch] == '"':
             quoted = not quoted
         elif not quoted:
-            if start != len(strscript)+1:  # if we actually had an identifier before this char
-                identifier = strscript[start:ch]
+            if start != len(strscript)+1 and not ismember:  # if we actually had an identifier before this char
+                identifier = strscript[start:ch]            # and this isnt a member of anything
                 if identifier in usages:
                     usages[identifier].append(start)
+                elif identifier.isnumeric():  # numbers are legally valid identifiers because fuckyou
+                    usages[identifier] = [start]
+                    userobjects[identifier] = "INT"
+                elif identifier == "0x":
+                    pass
                 elif strscript[ch] == '=' and strscript[ch+1] != '=':
                     isfunc = script.nextch(ch, False) == '{'
                     userobjects[identifier] = "func" if isfunc else "var"
                     usages[identifier] = [start]  # declaration is a usage because i cant be arsed
-                elif not ismember:  # not an assignment (or member) but also haven't seen this name before
+                else:  # not an assignment (or member) but also haven't seen this name before
                     usages[identifier] = [start]
                     # fuck it we are using a fucking list of fucking stdlib functions i just fucking cant im adding tsv3
                     # to the fucking esolangs wiki have a good day
@@ -143,12 +152,13 @@ def parser(script: str):
                                 script.strings.pop(i)
                                 break
                     else:
+                        ismember = False
                         pass
-            elif strscript[ch] == ')':
+            elif strscript[ch] in ')}]':
                 ismember = script.nextch(ch, False) == '.'
             start = len(strscript) + 1
 
-    return minify(script, userobjects, usages)
+    return script, userobjects, usages
 
 
 def minify(script: Code, userobjects, usages):
@@ -179,7 +189,6 @@ def minify(script: Code, userobjects, usages):
             for i in candidates:
                 if i not in userobjects:
                     minName = i
-                    userobjects[minName] = "TRN"
                     break
             if verbose and not minName:
                 print(f"{'Function' if otype == 'func' else 'Variable'} name {uo} could be shortened but "
@@ -193,8 +202,10 @@ def minify(script: Code, userobjects, usages):
                       f"would save {uses*(uolen - len(minName))} bytes)")
                 continue
             else:
-                print(f"Renaming {'Function' if otype == 'func' else 'Variable'} {uo} to {minName} "
-                      f"(saving {uses*(uolen - len(minName))} bytes)")
+                userobjects[minName] = "TRN"
+                if verbose:
+                    print(f"Renaming {'Function' if otype == 'func' else 'Variable'} {uo} to {minName} "
+                          f"(saving {uses*(uolen - len(minName))} bytes)")
                 diff = uolen - len(minName)
 
                 # the foreach syntax is literally the worst part of ts
@@ -231,19 +242,20 @@ def minify(script: Code, userobjects, usages):
         for i in candidates:
             if i not in userobjects:
                 minName = i
-                userobjects[minName] = "TRP"
                 break
         # once again we assume it's only `if` that could trigger this message
         # uses - 4 is the minimum amount of uses needed to save space, 1*(uses - 4) is the space it would save
-        if verbose and (not minName and (uses - 4) > 0):
-            print(f"Standard library function {func} could be aliased but no available names found "
-                  f"(would save {uses-4} bytes)")
+        if not minName and (uses - 4) > 0:
+            if verbose:
+                print(f"Standard library function {func} could be aliased but no available names found "
+                      f"(would save {uses-4} bytes)")
         else:
             if not savings:
                 savings = uses*len(func) - (len(func)+len(minName)+2)
             if (verbose and savings <= 0) or (not auto_replace and savings > 0):
                 print(f"Not aliasing standard library function {func} (would save {savings} bytes)")
             elif auto_replace and savings > 0:
+                userobjects[minName] = "TRP"
                 if verbose:
                     print(f"Aliasing standard library function {func} to {minName} (saving {savings} bytes)")
                 diff = len(func) - len(minName)
@@ -271,14 +283,20 @@ def minify(script: Code, userobjects, usages):
             for i in candidates:
                 if i not in userobjects:
                     minName = i
-                    userobjects[minName] = "TIV"
                     break
+            if not minName:
+                savings = len(string) * uses - (len(string) + 5)  # 5 comes from id="{string}"
+                if verbose:
+                    print(f"Could introduce variable for reused string {string} but no available names found "
+                          f"(would save {savings} bytes)")
+                continue
             # the quotation marks are included in string
             savings = uses * len(string) - (len(string) + len(minName) + 2)
             if (verbose and savings <= 0) or (not auto_replace and savings > 0):
                 print(f"Not introducing variable for string {string} reused {uses} times (would save {savings} bytes)")
             elif auto_replace and savings > 0:
                 # "duplicated code fragment" do i look like i give a shit
+                userobjects[minName] = "TIV"
                 if verbose:
                     print(f"Introducing variable {minName} with value {string} (saving {savings} bytes)")
                 diff = len(string) - len(minName)
@@ -291,6 +309,45 @@ def minify(script: Code, userobjects, usages):
                 aliases.append(f"{minName}={string}")
         elif verbose:
             print(f"Not introducing variable for string {string} (only used once)")
+
+    for uint in [x for x in userobjects]:
+        if userobjects[uint] != "INT" or len(uint) < 2:
+            continue
+        candidates = short_idents
+        uses = len(usages[uint])
+        uilen = len(uint)
+        minName = ""
+        tmpcode = ""
+        if uses > 1:
+            if uilen == 2:
+                candidates = short_idents[:53]
+            for i in candidates:
+                if i not in userobjects:
+                    minName = i
+                    break
+            if not minName:
+                # yet another case of "nobody could possibly use up all the 2 char names we hope"
+                savings = uilen * uses - (uilen + 4)  # 4 comes from id={uint}<whitespace>
+                if verbose:
+                    print(f"Could introduce variable for reused integer {uint} but no available names found "
+                          f"(would save {savings} bytes)")
+                continue
+            savings = uilen * uses - (uilen + len(minName) + 2)
+            if (verbose and savings <= 0) or (not auto_replace and savings > 0):
+                print(f"Not introducing variable for string {uint} reused {uses} times (would save {savings} bytes)")
+            elif auto_replace and savings > 0:
+                userobjects[minName] = "TIV"
+                if verbose:
+                    print(f"Introducing variable {minName} with value {uint} (saving {savings} bytes)")
+                diff = len(uint) - len(minName)
+                prev = 0
+                for bound in usages[uint]:
+                    tmpcode += mcode[prev:bound] + minName + ' ' * diff
+                    prev = bound + diff + len(minName)
+                mcode = tmpcode + mcode[bound + diff + len(minName):]
+                aliases.append(f"{minName}={uint} ")
+        elif verbose:
+            print(f"Not introducing variable for int {uint} (only used once)")
 
     print("Reintroducing REQUIREs")
     mcode = "".join([x[2] for x in script.comments]) + "".join(aliases) + mcode
@@ -327,10 +384,9 @@ def whitespacent(script: str):
         while part < len(line):
             # all the odd numbered indexes should be inside quotes
             if part % 2 == 0:
-                if not line[part]:
-                    break
-                # turn lots of whitespace into one whitespace with one easy trick!
-                mcode += ' '.join(line[part].split()) + ' '
+                if line[part] and not iswhitespace(line[part]):
+                    # turn lots of whitespace into one whitespace with one easy trick!
+                    mcode += ' '.join(line[part].split()) + ' '
             else:
                 mcode += f'"{line[part]}"'
 
@@ -383,7 +439,8 @@ if __name__ == '__main__':
         print(f"\nMinifying {file}")
         with open(file, 'r') as f:
             print("Stripping comments")
-            r = parser(whitespacent(f.read()))
+            res = parser(whitespacent(f.read()))
+            r = minify(res[0], res[1], res[2])
         file = file.split(sep='.')[0].split(sep='/')[-1]
         if dest != '.':
             f = open(f"{dest}/{file}.te", 'w')
