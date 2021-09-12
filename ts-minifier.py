@@ -1,10 +1,11 @@
 # Copyright (c) 2021 bleck9999
 # https://github.com/bleck9999/ts-minifier
-# Version: d7106796
+# Version: 9d56e91a
 
 import argparse
 import itertools
-import string
+import logging
+from os import path
 from string import ascii_letters, digits, hexdigits
 
 auto_replace = False
@@ -32,21 +33,7 @@ class Code:
         self.comments = comments
         self.code = code
         self.varstrs = []
-        self.rawcode = "".join([x[2] for x in sorted(self.code+self.strings)])
-
-    def getafter(self, ch: int):
-        ch += self.comments[-1][1] if self.comments else 0
-        for strcom in self.strings:
-            if strcom[0] >= ch:
-                return strcom
-        return None
-
-    def nextch(self, ch: int, reverse: bool):
-        rawcontent = self.rawcode
-        if ((ch+1 >= len(rawcontent)) and not reverse) or \
-                ((ch-1 < 0) and reverse):
-            return ''
-        return rawcontent[ch-1] if reverse else rawcontent[ch+1]
+        self.rawcode = "".join([x[2] for x in sorted(self.code + self.strings)])
 
 
 def isidentifier(s: str):
@@ -110,7 +97,7 @@ def parser(script: str):
     # last identifier in a script (eg if script.rawcode was "a=12" the 12 wouldn't be detected without the trailing ' ')
     start = len(strscript) + 1
     for ch in range(len(strscript)):
-        if (strscript[ch-1] == '0' and strscript[ch] == 'x') and not quoted:
+        if (strscript[ch - 1] == '0' and strscript[ch] == 'x') and not quoted:
             hexxed = True
         elif isidentifier(strscript[ch]) and not (hexxed or quoted):
             if start > ch:
@@ -122,8 +109,8 @@ def parser(script: str):
         elif strscript[ch] == '"':
             quoted = not quoted
         elif not quoted:
-            if start != len(strscript)+1 and not ismember:  # if we actually had an identifier before this char
-                identifier = strscript[start:ch]            # and this isnt a member of anything
+            if start != len(strscript) + 1 and not ismember:  # if we actually had an identifier before this char
+                identifier = strscript[start:ch]  # and this isnt a member of anything
                 if identifier in usages:
                     usages[identifier].append(start)
                 elif identifier.isnumeric():  # numbers are legally valid identifiers because fuckyou
@@ -131,8 +118,8 @@ def parser(script: str):
                     userobjects[identifier] = "INT"
                 elif identifier == "0x":
                     pass
-                elif strscript[ch] == '=' and strscript[ch+1] != '=':
-                    isfunc = script.nextch(ch, False) == '{'
+                elif strscript[ch] == '=' and strscript[ch + 1] != '=':
+                    isfunc = strscript[ch + 1] == '{'
                     userobjects[identifier] = "func" if isfunc else "var"
                     usages[identifier] = [start]  # declaration is a usage because i cant be arsed
                 else:  # not an assignment (or member) but also haven't seen this name before
@@ -155,7 +142,7 @@ def parser(script: str):
                         ismember = False
                         pass
             elif strscript[ch] in ')}]':
-                ismember = script.nextch(ch, False) == '.'
+                ismember = strscript[ch + 1] == '.'
             start = len(strscript) + 1
 
     return script, userobjects, usages
@@ -170,10 +157,13 @@ def minify(script: Code, userobjects, usages):
     #                                                                          ^ 2 for = and whitespace, 2 for ""
     #
     # obviously for a rename you're already defining it so it's just the difference between lengths multiplied by uses
-    short_idents = [x for x in (ascii_letters+'_')] + [x[0]+x[1] for x in itertools.product(ascii_letters+'_', repeat=2)]
+    short_idents = [x for x in (ascii_letters + '_')] + [x[0] + x[1] for x in
+                                                         itertools.product(ascii_letters + '_', repeat=2)]
     short_idents.pop(short_idents.index("if"))
     mcode = script.rawcode
     aliases = []
+    logging.info("Renaming user functions and variables" if auto_replace else
+                 "Checking user function and variable names")
     for uo in [x for x in userobjects]:
         if userobjects[uo] not in ["var", "func"]:
             continue
@@ -189,23 +179,23 @@ def minify(script: Code, userobjects, usages):
             for i in candidates:
                 if i not in userobjects:
                     minName = i
+                    userobjects[minName] = "TRN"
                     break
-            if verbose and not minName:
-                print(f"{'Function' if otype == 'func' else 'Variable'} name {uo} could be shortened but "
-                      f"no available names found (would save {uses} bytes)")
+            if not minName:
+                logging.info(f"{'Function' if otype == 'func' else 'Variable'} name {uo} could be shortened but "
+                             f"no available names found (would save {uses} bytes)")
                 continue
                 # we assume that nobody is insane enough to exhaust all *2,808* 2 character names,
                 # instead that uo is len 2 and all the 1 character names are in use (because of that we dont multiply
                 # uses by anything as multiplying by a difference of 1 would be redundant)
             if not auto_replace:
-                print(f"{'Function' if otype == 'func' else 'Variable'} name {uo} could be shortened ({uo}->{minName}, "
-                      f"would save {uses*(uolen - len(minName))} bytes)")
+                logging.warning(
+                    f"{'Function' if otype == 'func' else 'Variable'} name {uo} could be shortened ({uo}->{minName}, "
+                    f"would save {uses * (uolen - len(minName))} bytes)")
                 continue
             else:
-                userobjects[minName] = "TRN"
-                if verbose:
-                    print(f"Renaming {'Function' if otype == 'func' else 'Variable'} {uo} to {minName} "
-                          f"(saving {uses*(uolen - len(minName))} bytes)")
+                logging.info(f"Renaming {'Function' if otype == 'func' else 'Variable'} {uo} to {minName} "
+                             f"(saving {uses * (uolen - len(minName))} bytes)")
                 diff = uolen - len(minName)
 
                 # the foreach syntax is literally the worst part of ts
@@ -213,8 +203,7 @@ def minify(script: Code, userobjects, usages):
                     struo = f'"{uo}"'
                     for varstr in script.varstrs:
                         if varstr[2] == struo:
-                            if verbose:
-                                print(f"Replacing declaration of {varstr[2]} at {varstr[0]}-{varstr[1]}")
+                            logging.info(f"Replacing declaration of {varstr[2]} at {varstr[0]}-{varstr[1]}")
                             start = varstr[0] - (script.comments[-1][1] if script.comments else 0)
                             end = varstr[1] - (script.comments[-1][1] if script.comments else 0)
                             newend = start + len(minName)
@@ -223,11 +212,13 @@ def minify(script: Code, userobjects, usages):
                 # rather than just blindly str.replace()ing we're going to actually use the character indices that we stored
                 prev = 0
                 for bound in usages[uo]:
-                    tmpcode += mcode[prev:bound] + minName + ' '*diff
+                    tmpcode += mcode[prev:bound] + minName + ' ' * diff
                     prev = bound + diff + len(minName)
                 # actually shut up about "bound might be referenced before assignment" or show me what possible
                 # execution path that could lead to usages[uo] being an empty list
-                mcode = tmpcode + mcode[bound+diff+len(minName):]
+                mcode = tmpcode + mcode[bound + diff + len(minName):]
+    logging.info("Aliasing standard library functions" if auto_replace else
+                 "Checking for standard library aliases")
     for func in usages:
         tmpcode = ""
         candidates = short_idents
@@ -244,27 +235,28 @@ def minify(script: Code, userobjects, usages):
                 minName = i
                 break
         # once again we assume it's only `if` that could trigger this message
-        # uses - 4 is the minimum amount of uses needed to save space, 1*(uses - 4) is the space it would save
-        if not minName and (uses - 4) > 0:
-            if verbose:
-                print(f"Standard library function {func} could be aliased but no available names found "
-                      f"(would save {uses-4} bytes)")
+        # 4 is the minimum amount of uses needed to save space, 1*(uses - 4) is the space it would save
+        if not minName and uses > 4:
+            logging.info(f"Standard library function {func} could be aliased but no available names found "
+                         f"(would save {uses - 4} bytes)")
         else:
             if not savings:
-                savings = uses*len(func) - (len(func)+len(minName)+2)
-            if (verbose and savings <= 0) or (not auto_replace and savings > 0):
-                print(f"Not aliasing standard library function {func} (would save {savings} bytes)")
-            elif auto_replace and savings > 0:
+                savings = uses * len(func) - (len(func) + len(minName) + 2)
+            if savings > 0:
                 userobjects[minName] = "TRP"
-                if verbose:
-                    print(f"Aliasing standard library function {func} to {minName} (saving {savings} bytes)")
-                diff = len(func) - len(minName)
-                prev = 0
-                for bound in usages[func]:
-                    tmpcode += mcode[prev:bound] + minName + ' ' * diff
-                    prev = bound + diff + len(minName)
-                mcode = tmpcode + mcode[bound + diff + len(minName):]
-                aliases.append(f"{minName}={func} ")
+                if auto_replace:
+                    logging.info(f"Aliasing standard library function {func} to {minName} (saving {savings} bytes)")
+                    diff = len(func) - len(minName)
+                    prev = 0
+                    for bound in usages[func]:
+                        tmpcode += mcode[prev:bound] + minName + ' ' * diff
+                        prev = bound + diff + len(minName)
+                    mcode = tmpcode + mcode[bound + diff + len(minName):]
+                    aliases.append(f"{minName}={func} ")
+                else:
+                    logging.warning(f"Not aliasing standard library function {func} (would save {savings} bytes)")
+            else:
+                logging.info(f"Not aliasing standard library function {func} (would save {savings} bytes)")
 
     str_reuse = {}
     for string in script.strings:
@@ -272,6 +264,8 @@ def minify(script: Code, userobjects, usages):
             str_reuse[string[2]].append(string[0])
         else:
             str_reuse[string[2]] = [string[0]]
+    logging.info("Introducing variables for reused literals" if auto_replace else
+                 "Checking for reused literals")
     for string in str_reuse:
         tmpcode = ""
         candidates = short_idents
@@ -286,29 +280,32 @@ def minify(script: Code, userobjects, usages):
                     break
             if not minName:
                 savings = len(string) * uses - (len(string) + 5)  # 5 comes from id="{string}"
-                if verbose:
-                    print(f"Could introduce variable for reused string {string} but no available names found "
-                          f"(would save {savings} bytes)")
+                logging.info(f"Could introduce variable for reused string {string} but no available names found "
+                             f"(would save {savings} bytes)")
                 continue
             # the quotation marks are included in string
             savings = uses * len(string) - (len(string) + len(minName) + 2)
-            if (verbose and savings <= 0) or (not auto_replace and savings > 0):
-                print(f"Not introducing variable for string {string} reused {uses} times (would save {savings} bytes)")
-            elif auto_replace and savings > 0:
-                # "duplicated code fragment" do i look like i give a shit
+            if savings > 0:
                 userobjects[minName] = "TIV"
-                if verbose:
-                    print(f"Introducing variable {minName} with value {string} (saving {savings} bytes)")
-                diff = len(string) - len(minName)
-                prev = 0
-                for bound in str_reuse[string]:
-                    bound -= script.comments[-1][1] if script.comments else 0
-                    tmpcode += mcode[prev:bound] + minName + ' ' * diff
-                    prev = bound + diff + len(minName)
-                mcode = tmpcode + mcode[bound + diff + len(minName):]
-                aliases.append(f"{minName}={string}")
-        elif verbose:
-            print(f"Not introducing variable for string {string} (only used once)")
+                if auto_replace:
+                    # "duplicated code fragment" do i look like i give a shit
+                    logging.info(f"Introducing variable {minName} with value {string} (saving {savings} bytes)")
+                    diff = len(string) - len(minName)
+                    prev = 0
+                    for bound in str_reuse[string]:
+                        bound -= script.comments[-1][1] if script.comments else 0
+                        tmpcode += mcode[prev:bound] + minName + ' ' * diff
+                        prev = bound + diff + len(minName)
+                    mcode = tmpcode + mcode[bound + diff + len(minName):]
+                    aliases.append(f"{minName}={string}")
+                else:
+                    logging.warning(f"Not introducing variable for string {string} reused {uses} times "
+                                    f"(would save {savings} bytes)")
+            else:
+                logging.info(f"Not introducing variable for string {string} reused {uses} times "
+                             f"(would save {savings} bytes)")
+        else:
+            logging.info(f"Not introducing variable for string {string} (only used once)")
 
     for uint in [x for x in userobjects]:
         if userobjects[uint] != "INT" or len(uint) < 2:
@@ -328,35 +325,37 @@ def minify(script: Code, userobjects, usages):
             if not minName:
                 # yet another case of "nobody could possibly use up all the 2 char names we hope"
                 savings = uilen * uses - (uilen + 4)  # 4 comes from id={uint}<whitespace>
-                if verbose:
-                    print(f"Could introduce variable for reused integer {uint} but no available names found "
-                          f"(would save {savings} bytes)")
+                logging.info(f"Could introduce variable for reused integer {uint} but no available names found "
+                             f"(would save {savings} bytes)")
                 continue
             savings = uilen * uses - (uilen + len(minName) + 2)
-            if (verbose and savings <= 0) or (not auto_replace and savings > 0):
-                print(f"Not introducing variable for string {uint} reused {uses} times (would save {savings} bytes)")
-            elif auto_replace and savings > 0:
+            if savings > 0:
                 userobjects[minName] = "TIV"
-                if verbose:
-                    print(f"Introducing variable {minName} with value {uint} (saving {savings} bytes)")
-                diff = len(uint) - len(minName)
-                prev = 0
-                for bound in usages[uint]:
-                    tmpcode += mcode[prev:bound] + minName + ' ' * diff
-                    prev = bound + diff + len(minName)
-                mcode = tmpcode + mcode[bound + diff + len(minName):]
-                aliases.append(f"{minName}={uint} ")
-        elif verbose:
-            print(f"Not introducing variable for int {uint} (only used once)")
+                if auto_replace:
+                    logging.info(f"Introducing variable {minName} with value {uint} (saving {savings} bytes)")
+                    diff = len(uint) - len(minName)
+                    prev = 0
+                    for bound in usages[uint]:
+                        tmpcode += mcode[prev:bound] + minName + ' ' * diff
+                        prev = bound + diff + len(minName)
+                    mcode = tmpcode + mcode[bound + diff + len(minName):]
+                    aliases.append(f"{minName}={uint} ")
+                else:
+                    logging.warning(f"Not introducing variable for string {uint} reused {uses} times "
+                                    f"(would save {savings} bytes)")
+            else:
+                logging.info(f"Not introducing variable for string {uint} reused {uses} times "
+                             f"(would save {savings} bytes)")
+        else:
+            logging.info(f"Not introducing variable for int {uint} (only used once)")
 
-    print("Reintroducing REQUIREs")
+    logging.info("Reintroducing REQUIREs")
     mcode = "".join([x[2] for x in script.comments]) + "".join(aliases) + mcode
-    print("Stripping whitespace")
-    return whitespacent(mcode)
+    return mcode
 
 
 def whitespacent(script: str):
-    # also removes unneeded comments and push REQUIREs to the top of the file
+    # also removes unneeded comments and pushes REQUIREs to the top of the file
     requires = ""
     mcode = ""
     for line in script.split(sep='\n'):
@@ -393,9 +392,9 @@ def whitespacent(script: str):
             part += 1
 
     # tsv3 is still an absolute nightmare
-    # so spaces are required under two situations
-    # 1. the minus operator which requires space between the right operand but only if the right operand is a literal
-    # 2. between 2 characters that are either valid identifiers (aA-zZ or _) or integers
+    # so spaces should be preserved under two situations
+    # 1. the subtraction operator which requires space between the right operand but only if the right operand is a literal
+    # 2. between 2 characters that are valid identifiers (aA-zZ, _ or integers)
     inquote = False
     mmcode = ""
     index = 0
@@ -425,25 +424,34 @@ if __name__ == '__main__':
                                                            "\ndefault: ./", default='./')
     argparser.add_argument("--auto-replace", action="store_true", default=False,
                            help="automatically replace reused functions, variables and strings instead of just warning\n"
-                           "and attempt to generate shorter names for reused variables \ndefault: false")
+                                "and attempt to generate shorter names for reused variables \ndefault: false")
     argparser.add_argument("-v", action="store_true", default=False,
                            help="prints even more information to the console than usual")
 
     args = argparser.parse_args()
     files = args.source
-    dest = args.d[:-1] if args.d[-1] == '/' else args.d
+    dest = args.d[:-1] if args.d[-1] in '/\\' else args.d
     auto_replace = args.auto_replace
-    verbose = args.v
+    verbose = "INFO" if args.v else "WARNING"
+    logging.basicConfig(level=verbose, format="{message}", style='{')
 
+    print(f"Automatic replacement: {'ENABLED' if auto_replace else 'DISABLED'}")
     for file in files:
         print(f"\nMinifying {file}")
         with open(file, 'r') as f:
-            print("Stripping comments")
-            res = parser(whitespacent(f.read()))
-            r = minify(res[0], res[1], res[2])
+            logging.info("Stripping comments and whitespace (pass 1)")
+            r = whitespacent(f.read())
+            logging.info("Parsing file")
+            r = parser(r)
+            logging.info("Searching for optimisations")
+            r = minify(r[0], r[1], r[2])
+            logging.info("Stripping whitespace (pass 2)")
+            r = whitespacent(r)
         file = file.split(sep='.')[0].split(sep='/')[-1]
-        if dest != '.':
-            f = open(f"{dest}/{file}.te", 'w')
-        else:
+        if path.exists(f"{dest}/{file}.te"):
             f = open(f"{dest}/{file}_min.te", 'w')
+        else:
+            f = open(f"{dest}/{file}.te", 'w')
+        logging.info(f"Writing to {f.name}")
         f.write(r)
+        print("Done!")
