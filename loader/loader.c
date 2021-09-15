@@ -33,9 +33,6 @@ boot_cfg_t __attribute__((section ("._boot_cfg"))) b_cfg;
 
 void loader_main()
 {
-	// Preserve sections.
-	__asm__ ("" : : "" (b_cfg));
-
 	// Preliminary BPMP clocks init.
 	CLOCK(CLK_RST_CONTROLLER_CLK_SYSTEM_RATE) = 0x10;          // Set HCLK div to 2 and PCLK div to 1.
 	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_SYS) = 0;              // Set SCLK div to 1.
@@ -45,7 +42,8 @@ void loader_main()
 	CLOCK(CLK_RST_CONTROLLER_SCLK_BURST_POLICY) = 0x20003333;  // Set SCLK to PLLP_OUT (408MHz).
 
 	// Get Loader and Payload size.
-	u32 payload_size = sizeof(payload_00) + sizeof(payload_01);
+	u32 payload_size = sizeof(payload_00) + sizeof(payload_01);             // Actual payload size.
+	payload_size += (u32)payload_01 - (u32)payload_00 - sizeof(payload_00); // Add array alignment.
 	u32 *payload_addr = (u32 *)payload_00;
 
 	// Relocate payload to a safer place.
@@ -60,16 +58,20 @@ void loader_main()
 		bytes--;
 	}
 
-	// Uncompress payload parts.
+	// Set source address of the first part.
 	u8 *src_addr = (void *)(IPL_RELOC_TOP - ALIGN(payload_size, 4));
-	u32 pos = LZ_Uncompress((const u8 *)src_addr, (u8*)IPL_LOAD_ADDR, sizeof(payload_00));
-	src_addr += (u32)payload_01 - (u32)payload_00;
-	LZ_Uncompress((const u8 *)src_addr, (u8*)IPL_LOAD_ADDR + pos, sizeof(payload_01));
+	// Uncompress first part.
+	u32 dst_pos = LZ_Uncompress((const u8 *)src_addr, (u8*)IPL_LOAD_ADDR, sizeof(payload_00));
 
-	// Copy over boot configuration storage in case it was set.
+	// Set source address of the second part. Includes array alignment.
+	src_addr += (u32)payload_01 - (u32)payload_00;
+	// Uncompress second part.
+	LZ_Uncompress((const u8 *)src_addr, (u8*)IPL_LOAD_ADDR + dst_pos, sizeof(payload_01));
+
+	// Copy over boot configuration storage.
 	memcpy((u8 *)(IPL_LOAD_ADDR + IPL_PATCHED_RELOC_SZ), &b_cfg, sizeof(boot_cfg_t));
 
-	// Chainload.
+	// Chainload into uncompressed payload.
 	void (*ipl_ptr)() = (void *)IPL_LOAD_ADDR;
 	(*ipl_ptr)();
 
