@@ -240,9 +240,9 @@ static ALWAYS_INLINE u8 *_read_pkg1(const pkg1_id_t **pkg1_id) {
     *pkg1_id = pkg1_identify(pkg1 + pk1_offset);
     if (!*pkg1_id) {
         DPRINTF("Unknown pkg1 version.\n Make sure you have the latest Lockpick_RCM.\n If a new firmware version just came out,\n Lockpick_RCM must be updated.\n Check Github for new release.");
-        //gfx_hexdump(0, pkg1, 0x20);
+        //gfx_hexdump(0, pkg1 + pk1_offset, 0x20);
         char pkg1txt[16] = {0};
-        memcpy(pkg1txt, pkg1 + pk1_offset +  0x10, 15);
+        memcpy(pkg1txt, pkg1 + pk1_offset + 0x10, 14);
         gfx_printf("Unknown pkg1 version\nMake sure you have the latest version of TegraExplorer\n\nPKG1: '%s'\n", pkg1txt);
         return NULL;
     }
