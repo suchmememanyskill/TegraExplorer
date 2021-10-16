@@ -427,6 +427,8 @@ if __name__ == '__main__':
                                 "and attempt to generate shorter names for reused variables \ndefault: false")
     argparser.add_argument("-v", action="store_true", default=False,
                            help="prints even more information to the console than usual")
+    argparser.add_argument("--such-meme", action="store_true", default=False,
+                           help="replaces destination file if it already exists \ndefault: false")
 
     args = argparser.parse_args()
     files = args.source
@@ -448,7 +450,7 @@ if __name__ == '__main__':
             logging.info("Stripping whitespace (pass 2)")
             r = whitespacent(r)
         file = path.splitext(path.basename(file))[0]
-        if path.exists(path.join(dest, f"{file}.te")):
+        if path.exists(path.join(dest, f"{file}.te")) and not args.such_meme:
             f = open(path.join(dest, f"{file}_min.te"), 'w')
         else:
             f = open(path.join(dest, f"{file}.te"), 'w')
