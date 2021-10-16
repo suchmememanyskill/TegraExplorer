@@ -152,7 +152,12 @@ Variable_t createUnsolvedArrayVariable(Function_t* f) {
 	return var;
 }
 
+ClassFunction(retZero){
+	return newIntVariablePtr(0);
+}
+
 u8 anotherOneVarArg[] = { VARARGCOUNT };
+u8 unsolvedArrayStr[] = { StringClass };
 
 ClassFunction(createTypedArray) {
 	Vector_t v = { 0 };
@@ -180,6 +185,7 @@ ClassFunction(createTypedArray) {
 ClassFunctionTableEntry_t unsolvedArrayFunctions[] = {
 	{"+", createTypedArray, 1, anotherOneVarArg},
 	{"add", createTypedArray, 1, anotherOneVarArg},
+	{"len", retZero, 0, 0},
 };
 
 Variable_t getUnsolvedArrayMember(Variable_t* var, char* memberName) {
