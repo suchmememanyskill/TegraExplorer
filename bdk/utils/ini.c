@@ -101,6 +101,8 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 		}
 
 		lbuf = malloc(512);
+		csec = _ini_create_section(dst, csec, "Unknown", INI_CHOICE);
+		list_init(&csec->kvs);
 
 		do
 		{
