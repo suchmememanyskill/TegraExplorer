@@ -221,8 +221,13 @@ void ipl_main()
 	uart_wait_idle(DEBUG_UART_PORT, UART_TX_IDLE);
 #endif
 
-	// Set bootloader's default configuration.
-	set_default_configuration();
+	// Set hekate's default configuration
+	h_cfg.errors = 0;
+	h_cfg.rcm_patched = fuse_check_patched_rcm();
+	h_cfg.emummc_force_disable = false;
+	h_cfg.t210b01 = !!(hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01);
+
+	display_init();
 
 	// Mount SD Card.
 	h_cfg.errors |= !sd_mount() ? ERR_SD_BOOT_EN : 0;
@@ -234,8 +239,6 @@ void ipl_main()
 	if (TConf.minervaEnabled) //!TODO: Add Tegra210B01 support to minerva.
 		h_cfg.errors |= ERR_LIBSYS_MTC;
 	minerva_change_freq(FREQ_1600);
-
-	display_init();
 
 	u32 *fb = display_init_framebuffer_pitch();
 	gfx_init_ctxt(fb, 720, 1280, 720);

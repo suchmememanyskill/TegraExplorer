@@ -71,7 +71,6 @@ void DeleteFile(char *path, FSEntry_t entry){
 }
 
 void RunScriptString(char *str, u32 size){
-    return;
     TConf.scriptCWD = "sd:/";
     gfx_clearscreen();
     ParserRet_t ret = parseScript(str, size);
@@ -86,7 +85,6 @@ void RunScriptString(char *str, u32 size){
 }
 
 void RunScript(char *path, FSEntry_t entry){
-    return;
     char *thing = CombinePaths(path, entry.name);
     u32 size;
     char *script = sd_file_read(thing, &size);
