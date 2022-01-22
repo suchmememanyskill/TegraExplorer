@@ -42,7 +42,7 @@ ErrCode_t EmmcDumpToFile(const char *path, u32 lba_start, u32 lba_end, u8 force,
         
         int readRes = 0;
         if (crypt)
-            readRes = !nx_emmc_bis_read(curLba, num, buff);
+            readRes = nx_emmc_bis_read(curLba, num, buff);
         else 
             readRes = emummc_storage_read(curLba, num, buff);
 
@@ -106,7 +106,7 @@ ErrCode_t EmmcRestoreFromFile(const char *path, u32 lba_start, u32 lba_end, u8 f
 
         int writeRes = 0;
         if (crypt)
-            writeRes = !nx_emmc_bis_write(curLba, num, buff);
+            writeRes = nx_emmc_bis_write(curLba, num, buff);
         else 
             writeRes = emummc_storage_write(curLba, num, buff);
 

@@ -4,6 +4,7 @@ For future reference if updating the BDK
 
 ## /bdk/sec/SE.c&h
 - Added se_aes_cmac
+- Added se_calc_hmac_sha256
 
 ## /bdk/usb
 - Removed entirely
