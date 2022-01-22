@@ -3,7 +3,6 @@
 #include <libs/fatfs/ff.h>
 #include <bdk.h>
 #include "../config.h"
-#include "../hos/pkg1.h"
 #include "../storage/emummc.h"
 #include "../gfx/gfx.h"
 #include "../tegraexplorer/tconf.h"
@@ -17,6 +16,23 @@ extern hekate_config h_cfg;
 
 #define DPRINTF(x)
 #define TSEC_KEY_DATA_OFFSET 0x300
+#define PKG1_MAX_SIZE  0x40000
+#define PKG1_OFFSET    0x100000
+#define KEYBLOB_OFFSET 0x180000
+
+typedef struct _bl_hdr_t210b01_t
+{
+	u8  aes_mac[0x10];
+	u8  rsa_sig[0x100];
+	u8  salt[0x20];
+	u8  sha256[0x20];
+	u32 version;
+	u32 size;
+	u32 load_addr;
+	u32 entrypoint;
+	u8  rsvd[0x10];
+} bl_hdr_t210b01_t;
+
 
 static int  _key_exists(const void *data) { return memcmp(data, "\x00\x00\x00\x00\x00\x00\x00\x00", 8) != 0; };
 
@@ -155,7 +171,7 @@ static int _derive_master_keys_from_keyblobs(key_derivation_ctx_t *keys) {
     return false;
 }
 
-static bool _derive_tsec_keys(tsec_ctxt_t *tsec_ctxt, u32 kb, key_derivation_ctx_t *keys) {
+static bool _derive_tsec_keys(tsec_ctxt_t *tsec_ctxt, key_derivation_ctx_t *keys) {
     tsec_ctxt->fw = _find_tsec_fw(tsec_ctxt->pkg1);
     if (!tsec_ctxt->fw) {
         DPRINTF("Unable to locate TSEC firmware.");
@@ -194,7 +210,7 @@ static bool _derive_tsec_keys(tsec_ctxt_t *tsec_ctxt, u32 kb, key_derivation_ctx
     return true;
 }
 
-static ALWAYS_INLINE u8 *_read_pkg1(const pkg1_id_t **pkg1_id) {
+static ALWAYS_INLINE u8 *_read_pkg1() {
 
     /*
     if (emummc_storage_init_mmc(&emmc_storage, &emmc_sdmmc)) {
@@ -217,15 +233,9 @@ static ALWAYS_INLINE u8 *_read_pkg1(const pkg1_id_t **pkg1_id) {
     }
 
     u32 pk1_offset = h_cfg.t210b01 ? sizeof(bl_hdr_t210b01_t) : 0; // Skip T210B01 OEM header.
-    *pkg1_id = pkg1_identify(pkg1 + pk1_offset);
-    if (!*pkg1_id) {
-        DPRINTF("Unknown pkg1 version.\n Make sure you have the latest Lockpick_RCM.\n If a new firmware version just came out,\n Lockpick_RCM must be updated.\n Check Github for new release.");
-        //gfx_hexdump(0, pkg1 + pk1_offset, 0x20);
-        char pkg1txt[16] = {0};
-        memcpy(pkg1txt, pkg1 + pk1_offset + 0x10, 14);
-        gfx_printf("Unknown pkg1 version\nMake sure you have the latest version of TegraExplorer\n\nPKG1: '%s'\n", pkg1txt);
-        return NULL;
-    }
+    char *pkg1txt = calloc(16, 1);
+    memcpy(pkg1txt, pkg1 + pk1_offset + 0x10, 14);
+    TConf.pkg1ID = pkg1txt;
 
     return pkg1;
 }
@@ -236,20 +246,16 @@ int DumpKeys(){
     if (h_cfg.t210b01) // i'm not even attempting to dump on mariko
         return 2;
 
-    const pkg1_id_t *pkg1_id;
-    u8 *pkg1 = _read_pkg1(&pkg1_id);
+    u8 *pkg1 = _read_pkg1();
     if (!pkg1) {
         return 1;
     }
-
-    TConf.pkg1ID = pkg1_id->id;
-    TConf.pkg1ver = (u8)pkg1_id->kb;
 
     bool res = true;
 
     tsec_ctxt_t tsec_ctxt;
     tsec_ctxt.pkg1 = pkg1;
-    res =_derive_tsec_keys(&tsec_ctxt, pkg1_id->kb, &dumpedKeys);
+    res =_derive_tsec_keys(&tsec_ctxt, &dumpedKeys);
     
     free(pkg1);
     if (res == false) {

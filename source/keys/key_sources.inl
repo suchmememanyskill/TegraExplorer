@@ -16,7 +16,19 @@
 
 // Sha256 hash of the null string.
 #include <bdk.h>
-#include "../hos/hos.h"
+
+#define KB_FIRMWARE_VERSION_100_200 0
+#define KB_FIRMWARE_VERSION_300 1
+#define KB_FIRMWARE_VERSION_301 2
+#define KB_FIRMWARE_VERSION_400 3
+#define KB_FIRMWARE_VERSION_500 4
+#define KB_FIRMWARE_VERSION_600 5
+#define KB_FIRMWARE_VERSION_620 6
+#define KB_FIRMWARE_VERSION_700 7
+#define KB_FIRMWARE_VERSION_810 8
+#define KB_FIRMWARE_VERSION_900 9
+#define KB_FIRMWARE_VERSION_910 10
+#define KB_FIRMWARE_VERSION_MAX KB_FIRMWARE_VERSION_910
 
 static const u8 null_hash[0x20] __attribute__((aligned(4))) = {
     0xE3, 0xB0, 0xC4, 0x42, 0x98, 0xFC, 0x1C, 0x14, 0x9A, 0xFB, 0xF4, 0xC8, 0x99, 0x6F, 0xB9, 0x24,
