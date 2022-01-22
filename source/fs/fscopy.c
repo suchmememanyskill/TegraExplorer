@@ -1,13 +1,13 @@
 #include "fscopy.h"
 #include <libs/fatfs/ff.h>
-#include <utils/btn.h>
+#include <bdk.h>
+#include <string.h>
 #include "../tegraexplorer/tconf.h"
 #include "../gfx/gfx.h"
-#include <mem/heap.h>
-#include <string.h>
 #include "../gfx/gfxutils.h"
 #include "fsutils.h"
 #include "readers/folderReader.h"
+
 
 ErrCode_t FileCopy(const char *locin, const char *locout, u8 options){
     FIL in, out;

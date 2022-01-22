@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2021 CTCaer
+ * Copyright (c) 2018-2022 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -16,10 +16,11 @@
  */
 
 #include <string.h>
+#include <storage/emmc.h>
 #include <storage/sdmmc.h>
 #include <storage/mmc.h>
-#include <storage/nx_sd.h>
 #include <storage/sd.h>
+#include <storage/sd_def.h>
 #include <memory_map.h>
 #include <gfx_utils.h>
 #include <mem/heap.h>
@@ -139,6 +140,60 @@ static int _sdmmc_storage_check_status(sdmmc_storage_t *storage)
 	return _sdmmc_storage_get_status(storage, &tmp, 0);
 }
 
+int sdmmc_storage_execute_vendor_cmd(sdmmc_storage_t *storage, u32 arg)
+{
+	sdmmc_cmd_t cmdbuf;
+	sdmmc_init_cmd(&cmdbuf, MMC_VENDOR_62_CMD, arg, SDMMC_RSP_TYPE_1, 1);
+	if (!sdmmc_execute_cmd(storage->sdmmc, &cmdbuf, 0, 0))
+		return 0;
+
+	u32 resp;
+	sdmmc_get_rsp(storage->sdmmc, &resp, 4, SDMMC_RSP_TYPE_1);
+
+	resp = -1;
+	u32 timeout = get_tmr_ms() + 1500;
+	while (resp != (R1_READY_FOR_DATA | R1_STATE(R1_STATE_TRAN)))
+	{
+		_sdmmc_storage_get_status(storage, &resp, 0);
+
+		if (get_tmr_ms() > timeout)
+			break;
+	}
+
+	return _sdmmc_storage_check_card_status(resp);
+}
+
+int sdmmc_storage_vendor_sandisk_report(sdmmc_storage_t *storage, void *buf)
+{
+	// Request health report.
+	if (!sdmmc_storage_execute_vendor_cmd(storage, MMC_SANDISK_HEALTH_REPORT))
+		return 2;
+
+	u32 tmp = 0;
+	sdmmc_cmd_t cmdbuf;
+	sdmmc_req_t reqbuf;
+
+	sdmmc_init_cmd(&cmdbuf, MMC_VENDOR_63_CMD, 0, SDMMC_RSP_TYPE_1, 0); // similar to CMD17 with arg 0x0.
+
+	reqbuf.buf = buf;
+	reqbuf.num_sectors = 1;
+	reqbuf.blksize = 512;
+	reqbuf.is_write = 0;
+	reqbuf.is_multi_block = 0;
+	reqbuf.is_auto_stop_trn = 0;
+
+	u32 blkcnt_out;
+	if (!sdmmc_execute_cmd(storage->sdmmc, &cmdbuf, &reqbuf, &blkcnt_out))
+	{
+		sdmmc_stop_transmission(storage->sdmmc, &tmp);
+		_sdmmc_storage_get_status(storage, &tmp, 0);
+
+		return 0;
+	}
+
+	return 1;
+}
+
 static int _sdmmc_storage_readwrite_ex(sdmmc_storage_t *storage, u32 *blkcnt_out, u32 sector, u32 num_sectors, void *buf, u32 is_write)
 {
 	u32 tmp = 0;
@@ -210,20 +265,36 @@ reinit_try:
 			msleep(50);
 		} while (retries);
 
-		// Disk IO failure! Reinit SD Card to a lower speed.
-		if (storage->sdmmc->id == SDMMC_1)
+		// Disk IO failure! Reinit SD/EMMC to a lower speed.
+		if (storage->sdmmc->id == SDMMC_1 || storage->sdmmc->id == SDMMC_4)
 		{
 			int res;
 
-			sd_error_count_increment(SD_ERROR_RW_FAIL);
-
-			if (first_reinit)
-				res = sd_initialize(true);
-			else
+			if (storage->sdmmc->id == SDMMC_1)
 			{
-				res = sd_init_retry(true);
-				if (!res)
-					sd_error_count_increment(SD_ERROR_INIT_FAIL);
+				sd_error_count_increment(SD_ERROR_RW_FAIL);
+
+				if (first_reinit)
+					res = sd_initialize(true);
+				else
+				{
+					res = sd_init_retry(true);
+					if (!res)
+						sd_error_count_increment(SD_ERROR_INIT_FAIL);
+				}
+			}
+			else if (storage->sdmmc->id == SDMMC_4)
+			{
+				emmc_error_count_increment(EMMC_ERROR_RW_FAIL);
+
+				if (first_reinit)
+					res = emmc_initialize(true);
+				else
+				{
+					res = emmc_init_retry(true);
+					if (!res)
+						emmc_error_count_increment(EMMC_ERROR_INIT_FAIL);
+				}
 			}
 
 			// Reset values for a retry.
@@ -231,7 +302,7 @@ reinit_try:
 			retries = 3;
 			first_reinit = false;
 
-			// If succesful reinit, restart xfer.
+			// If successful reinit, restart xfer.
 			if (res)
 			{
 				bbuf = (u8 *)buf;
@@ -1360,8 +1431,6 @@ DPRINTF("[SD] SD does not support wide bus width\n");
 		if (!_sd_storage_enable_uhs_low_volt(storage, type, buf))
 			return 0;
 DPRINTF("[SD] enabled UHS\n");
-
-		sdmmc_card_clock_powersave(sdmmc, SDMMC_POWER_SAVE_ENABLE);
 	}
 	else if (type != SDHCI_TIMING_SD_DS12 && storage->scr.sda_vsn) // Not default speed and not SD Version 1.0.
 	{
@@ -1386,6 +1455,8 @@ DPRINTF("[SD] enabled HS\n");
 	{
 DPRINTF("[SD] got sd status\n");
 	}
+
+	sdmmc_card_clock_powersave(sdmmc, SDMMC_POWER_SAVE_ENABLE);
 
 	storage->initialized = 1;
 

@@ -1,11 +1,9 @@
 #include "mountmanager.h"
 #include "emummc.h"
 #include "../tegraexplorer/tconf.h"
-#include "nx_emmc.h"
 #include "../keys/keys.h"
-#include <sec/se.h>
 #include <libs/fatfs/ff.h>
-#include "nx_emmc_bis.h"
+#include <bdk.h>
 #include "../config.h"
 
 extern hekate_config h_cfg;
@@ -39,8 +37,8 @@ void disconnectMMC(){
 
     if (TConf.currentMMCConnected != MMC_CONN_None){
         TConf.currentMMCConnected = MMC_CONN_None;
-        emummc_storage_end(&emmc_storage);
-        nx_emmc_gpt_free(&curGpt);
+        emummc_storage_end();
+        emmc_gpt_free(&curGpt);
     }
 }
 
@@ -51,11 +49,11 @@ int connectMMC(u8 mmcType){
 
     disconnectMMC();
     h_cfg.emummc_force_disable = (mmcType == MMC_CONN_EMMC) ? 1 : 0;
-    int res = emummc_storage_init_mmc(&emmc_storage, &emmc_sdmmc);
+    int res = emummc_storage_init_mmc(&emmc_sdmmc);
     if (!res){
         TConf.currentMMCConnected = mmcType;
-        emummc_storage_set_mmc_partition(&emmc_storage, 0);
-        nx_emmc_gpt_parse(&curGpt, &emmc_storage);
+        emummc_storage_set_mmc_partition(0);
+        emmc_gpt_parse(&curGpt);
     }
         
     return res; // deal with the errors later lol
@@ -67,13 +65,13 @@ ErrCode_t mountMMCPart(const char *partition){
 
     unmountMMCPart();
 
-    emummc_storage_set_mmc_partition(&emmc_storage, 0); // why i have to do this twice beats me
+    emummc_storage_set_mmc_partition(0); // why i have to do this twice beats me
         
-    emmc_part_t *system_part = nx_emmc_part_find(&curGpt, partition);
+    emmc_part_t *system_part = emmc_part_find(&curGpt, partition);
     if (!system_part)
         return newErrCode(TE_ERR_PARTITION_NOT_FOUND);
         
-    nx_emmc_bis_init(system_part);
+    nx_emmc_bis_init(system_part, true, 0);
 
     int res = 0;
     if ((res = f_mount(&emmc_fs, "bis:", 1)))

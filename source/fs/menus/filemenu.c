@@ -3,19 +3,17 @@
 #include "../../gfx/menu.h"
 #include "../../gfx/gfxutils.h"
 #include "../fsutils.h"
-#include <mem/heap.h>
-#include <string.h>
-#include <utils/sprintf.h>
 #include "../../tegraexplorer/tconf.h"
 #include "../../hid/hid.h"
-#include <libs/fatfs/ff.h>
 #include "../../utils/utils.h"
 #include "../../keys/nca.h"
-#include <storage/nx_sd.h>
 #include "../../storage/emummc.h"
 #include "../../script/eval.h"
 #include "../../script/parser.h"
 #include "../../script/garbageCollector.h"
+#include <libs/fatfs/ff.h>
+#include <string.h>
+#include <bdk.h>
 
 
 MenuEntry_t FileMenuEntries[] = {
@@ -73,6 +71,7 @@ void DeleteFile(char *path, FSEntry_t entry){
 }
 
 void RunScriptString(char *str, u32 size){
+    return;
     TConf.scriptCWD = "sd:/";
     gfx_clearscreen();
     ParserRet_t ret = parseScript(str, size);
@@ -87,6 +86,7 @@ void RunScriptString(char *str, u32 size){
 }
 
 void RunScript(char *path, FSEntry_t entry){
+    return;
     char *thing = CombinePaths(path, entry.name);
     u32 size;
     char *script = sd_file_read(thing, &size);

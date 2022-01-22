@@ -21,10 +21,9 @@
 #include "fss.h"
 #include "hos.h"
 #include "../config.h"
-#include <libs/fatfs/ff.h>
-#include <mem/heap.h>
 #include "../storage/emummc.h"
-#include <storage/nx_sd.h>
+#include <libs/fatfs/ff.h>
+#include <bdk.h>
 
 #include <gfx_utils.h>
 #define DPRINTF(...)

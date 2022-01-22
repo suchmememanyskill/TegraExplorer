@@ -15,18 +15,15 @@
 #include "../keys/keys.h"
 #include "../fs/readers/folderReader.h"
 #include "../fs/fscopy.h"
-#include <mem/heap.h>
 #include "../keys/nca.h"
 #include "../hid/hid.h"
 #include "../gfx/menu.h"
 #include "../gfx/gfxutils.h"
 #include "../tegraexplorer/tconf.h"
 #include "../storage/emummc.h"
-#include <utils/util.h>
 #include "../fs/fsutils.h"
-#include <storage/nx_sd.h>
 #include "../storage/emmcfile.h"
-#include <soc/fuse.h>
+#include <bdk.h>
 #endif
 // Takes [int, function]. Returns elseable.
 ClassFunction(stdIf) {

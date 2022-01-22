@@ -1,7 +1,7 @@
 #include "folderReader.h"
 #include <libs/fatfs/ff.h>
 #include "../../utils/utils.h"
-#include <mem/heap.h>
+#include <bdk.h>
 
 void clearFileVector(Vector_t *v){
     vecPDefArray(FSEntry_t*, entries, v);

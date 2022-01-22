@@ -15,7 +15,7 @@
 
 #ifndef WIN32
 #include "../tegraexplorer/tconf.h"
-#include <storage/nx_sd.h>
+#include <bdk.h>
 #endif
 
 static inline int isValidWord(char c) {

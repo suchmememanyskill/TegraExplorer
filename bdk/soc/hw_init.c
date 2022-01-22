@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2021 CTCaer
+ * Copyright (c) 2018-2022 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -39,7 +39,7 @@
 #include <power/max77620.h>
 #include <power/max7762x.h>
 #include <power/regulator_5v.h>
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include <storage/sdmmc.h>
 #include <thermal/fan.h>
 #include <thermal/tmp451.h>
@@ -47,6 +47,17 @@
 
 extern boot_cfg_t b_cfg;
 extern volatile nyx_storage_t *nyx_str;
+
+u32 hw_rst_status;
+u32 hw_rst_reason;
+
+u32 hw_get_chip_id()
+{
+	if (((APB_MISC(APB_MISC_GP_HIDREV) >> 4) & 0xF) >= GP_HIDREV_MAJOR_T210B01)
+		return GP_HIDREV_MAJOR_T210B01;
+	else
+		return GP_HIDREV_MAJOR_T210;
+}
 
 /*
  * CLK_OSC - 38.4 MHz crystal.
@@ -56,14 +67,6 @@ extern volatile nyx_storage_t *nyx_str;
  * HCLK    - 204MHz init (-> 408MHz -> OC).
  * PCLK    - 68MHz  init (-> 136MHz -> OC/4).
  */
-
-u32 hw_get_chip_id()
-{
-	if (((APB_MISC(APB_MISC_GP_HIDREV) >> 4) & 0xF) >= GP_HIDREV_MAJOR_T210B01)
-		return GP_HIDREV_MAJOR_T210B01;
-	else
-		return GP_HIDREV_MAJOR_T210;
-}
 
 static void _config_oscillators()
 {
@@ -75,7 +78,7 @@ static void _config_oscillators()
 	PMC(APBDEV_PMC_OSC_EDPD_OVER) = (PMC(APBDEV_PMC_OSC_EDPD_OVER) & 0xFFFFFF81) | 0xE; // Set LP0 OSC drive strength.
 	PMC(APBDEV_PMC_OSC_EDPD_OVER) = (PMC(APBDEV_PMC_OSC_EDPD_OVER) & 0xFFBFFFFF) | PMC_OSC_EDPD_OVER_OSC_CTRL_OVER;
 	PMC(APBDEV_PMC_CNTRL2) = (PMC(APBDEV_PMC_CNTRL2) & 0xFFFFEFFF) | PMC_CNTRL2_HOLD_CKE_LOW_EN;
-	PMC(APBDEV_PMC_SCRATCH188) = (PMC(APBDEV_PMC_SCRATCH188) & 0xFCFFFFFF) | (4 << 23); // LP0 EMC2TMC_CFG_XM2COMP_PU_VREF_SEL_RANGE.
+	PMC(APB_MISC_GP_ASDBGREG) = (PMC(APB_MISC_GP_ASDBGREG) & 0xFCFFFFFF) | (2 << 24); // CFG2TMC_RAM_SVOP_PDP.
 
 	CLOCK(CLK_RST_CONTROLLER_CLK_SYSTEM_RATE) = 0x10;   // Set HCLK div to 2 and PCLK div to 1.
 	CLOCK(CLK_RST_CONTROLLER_PLLMB_BASE) &= 0xBFFFFFFF; // PLLMB disable.
@@ -135,8 +138,8 @@ static void _config_gpios(bool nx_hoag)
 	gpio_output_enable(GPIO_PORT_X, GPIO_PIN_7, GPIO_OUTPUT_DISABLE);
 
 	// Configure HOME as inputs.
-	// PINMUX_AUX(PINMUX_AUX_BUTTON_HOME) = PINMUX_INPUT_ENABLE | PINMUX_TRISTATE;
-	// gpio_config(GPIO_PORT_Y, GPIO_PIN_1, GPIO_MODE_GPIO);
+	PINMUX_AUX(PINMUX_AUX_BUTTON_HOME) = PINMUX_INPUT_ENABLE | PINMUX_TRISTATE;
+	gpio_config(GPIO_PORT_Y, GPIO_PIN_1, GPIO_MODE_GPIO);
 }
 
 static void _config_pmc_scratch()
@@ -250,36 +253,25 @@ static void _mbist_workaround()
 
 static void _config_se_brom()
 {
-	// Enable fuse clock.
+	// Enable Fuse visibility.
 	clock_enable_fuse(true);
 
-	// Skip SBK/SSK if sept was run.
-	bool sbk_skip = b_cfg.boot_cfg & BOOT_CFG_SEPT_RUN || FUSE(FUSE_PRIVATE_KEY0) == 0xFFFFFFFF;
-	if (!sbk_skip)
-	{
-		// Bootrom part we skipped.
-		u32 sbk[4] = {
-			FUSE(FUSE_PRIVATE_KEY0),
-			FUSE(FUSE_PRIVATE_KEY1),
-			FUSE(FUSE_PRIVATE_KEY2),
-			FUSE(FUSE_PRIVATE_KEY3)
-		};
-		// Set SBK to slot 14.
-		se_aes_key_set(14, sbk, SE_KEY_128_SIZE);
+	// Try to set SBK from fuses. If patched, skip.
+	fuse_set_sbk();
 
-		// Lock SBK from being read.
-		se_key_acc_ctrl(14, SE_KEY_TBL_DIS_KEYREAD_FLAG);
-
-		// Lock SSK (although it's not set and unused anyways).
-		se_key_acc_ctrl(15, SE_KEY_TBL_DIS_KEYREAD_FLAG);
-	}
+	// Lock SSK (although it's not set and unused anyways).
+	// se_key_acc_ctrl(15, SE_KEY_TBL_DIS_KEYREAD_FLAG);
 
 	// This memset needs to happen here, else TZRAM will behave weirdly later on.
-	memset((void *)TZRAM_BASE, 0, 0x10000);
+	memset((void *)TZRAM_BASE, 0, SZ_64K);
 	PMC(APBDEV_PMC_CRYPTO_OP) = PMC_CRYPTO_OP_SE_ENABLE;
 	SE(SE_INT_STATUS_REG) = 0x1F; // Clear all SE interrupts.
 
-	// Clear the boot reason to avoid problems later
+	// Save reset reason.
+	hw_rst_status = PMC(APBDEV_PMC_SCRATCH200);
+	hw_rst_reason = PMC(APBDEV_PMC_RST_STATUS) & PMC_RST_STATUS_MASK;
+
+	// Clear the boot reason to avoid problems later.
 	PMC(APBDEV_PMC_SCRATCH200) = 0x0;
 	PMC(APBDEV_PMC_RST_STATUS) = 0x0;
 	APB_MISC(APB_MISC_PP_STRAPPING_OPT_A) = (APB_MISC(APB_MISC_PP_STRAPPING_OPT_A) & 0xF0) | (7 << 10);
@@ -352,7 +344,7 @@ void hw_init()
 	// Enable Security Engine clock.
 	clock_enable_se();
 
-	// Enable Fuse clock.
+	// Enable Fuse visibility.
 	clock_enable_fuse(true);
 
 	// Disable Fuse programming.
@@ -407,12 +399,12 @@ void hw_init()
 	// Set BPMP/SCLK to PLLP_OUT (408MHz).
 	CLOCK(CLK_RST_CONTROLLER_SCLK_BURST_POLICY) = 0x20003333;
 
-	// Disable TZRAM shutdown control and lock the regs.
+	// Power on T210B01 shadow TZRAM and lock the reg.
 	if (!tegra_t210)
 	{
-		PMC(APBDEV_PMC_TZRAM_PWR_CNTRL) &= 0xFFFFFFFE;
-		PMC(APBDEV_PMC_TZRAM_NON_SEC_DISABLE) = 3;
-		PMC(APBDEV_PMC_TZRAM_SEC_DISABLE) = 3;
+		PMC(APBDEV_PMC_TZRAM_PWR_CNTRL) &= ~PMC_TZRAM_PWR_CNTRL_SD;
+		PMC(APBDEV_PMC_TZRAM_NON_SEC_DISABLE) = PMC_TZRAM_DISABLE_REG_WRITE | PMC_TZRAM_DISABLE_REG_READ;
+		PMC(APBDEV_PMC_TZRAM_SEC_DISABLE) = PMC_TZRAM_DISABLE_REG_WRITE | PMC_TZRAM_DISABLE_REG_READ;
 	}
 
 	// Initialize External memory controller and configure DRAM parameters.
@@ -426,7 +418,7 @@ void hw_reinit_workaround(bool coreboot, u32 bl_magic)
 	// Disable BPMP max clock.
 	bpmp_clk_rate_set(BPMP_CLK_NORMAL);
 
-#ifdef NYX
+#ifdef BDK_HW_EXTRA_DEINIT
 	// Disable temperature sensor, touchscreen, 5V regulators and Joy-Con.
 	tmp451_end();
 	set_fan_duty(0);

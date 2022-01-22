@@ -58,24 +58,7 @@ void ccplex_boot_cpu0(u32 entry)
 	else
 		_ccplex_enable_power_t210b01();
 
-	// Enable PLLX and set it to 300 MHz.
-	if (!(CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) & PLLX_BASE_ENABLE)) // PLLX_ENABLE.
-	{
-		CLOCK(CLK_RST_CONTROLLER_PLLX_MISC_3) &= 0xFFFFFFF7; // Disable IDDQ.
-		usleep(2);
-
-		// Bypass dividers.
-		CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) = PLLX_BASE_BYPASS | (4 << 20) | (78 << 8) | 2; // P div: 4 (5), N div: 78, M div: 2.
-		// Disable bypass
-		CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) = (4 << 20) | (78 << 8) | 2;
-		// Set PLLX_LOCK_ENABLE.
-		CLOCK(CLK_RST_CONTROLLER_PLLX_MISC) = (CLOCK(CLK_RST_CONTROLLER_PLLX_MISC) & 0xFFFBFFFF) | 0x40000;
-		// Enable PLLX.
-		CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) = PLLX_BASE_ENABLE | (4 << 20) | (78 << 8) | 2;
-	}
-	// Wait for PLL to stabilize.
-	while (!(CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) & PLLX_BASE_LOCK))
-		;
+	clock_enable_pllx();
 
 	// Configure MSELECT source and enable clock to 102MHz.
 	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_MSELECT) = (CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_MSELECT) & 0x1FFFFF00) | 6;
@@ -108,6 +91,7 @@ void ccplex_boot_cpu0(u32 entry)
 	// Set reset vector.
 	SB(SB_AA64_RESET_LOW) = entry | SB_AA64_RST_AARCH64_MODE_EN;
 	SB(SB_AA64_RESET_HIGH) = 0;
+
 	// Non-secure reset vector write disable.
 	SB(SB_CSR) = SB_CSR_NS_RST_VEC_WR_DIS;
 	(void)SB(SB_CSR);

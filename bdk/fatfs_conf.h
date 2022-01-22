@@ -38,7 +38,7 @@
 /  f_findnext(). (0:Disable, 1:Enable 2:Enable with matching altname[] too) */
 
 
-#define FF_USE_MKFS		1
+#define FF_USE_MKFS		0
 /* This option switches f_mkfs() function. (0:Disable or 1:Enable) */
 
 #if FF_USE_MKFS
@@ -179,13 +179,12 @@
 / Drive/Volume Configurations
 /---------------------------------------------------------------------------*/
 
-#define FF_VOLUMES		4
+#define FF_VOLUMES		1
 /* Number of volumes (logical drives) to be used. (1-10) */
 
 
-#define FF_STR_VOLUME_ID	1
-// Order is important. Any change to order, must also be reflected to diskio drive enum.
-#define FF_VOLUME_STRS		"sd","ram","emmc","bis"
+#define FF_STR_VOLUME_ID	0
+#define FF_VOLUME_STRS		"sd"
 /* FF_STR_VOLUME_ID switches support for volume ID in arbitrary strings.
 /  When FF_STR_VOLUME_ID is set to 1 or 2, arbitrary strings can be used as drive
 /  number in the path name. FF_VOLUME_STRS defines the volume ID strings for each
@@ -195,6 +194,7 @@
 /  not defined, a user defined volume string table needs to be defined as:
 /
 /  const char* VolumeStr[FF_VOLUMES] = {"ram","flash","sd","usb",...
+/  Order is important. Any change to order, must also be reflected to diskio drive enum.
 */
 
 

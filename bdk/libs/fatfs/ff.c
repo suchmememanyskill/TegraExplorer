@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2019 CTCaer
+ * Copyright (c) 2018-2021 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -38,8 +38,9 @@
 
 #include "ff.h"			/* Declarations of FatFs API */
 #include "diskio.h"		/* Declarations of device I/O functions */
+#include <storage/mbr_gpt.h>
 #include <gfx_utils.h>
-#include "../../storage/nx_sd.h"
+#include <storage/sdmmc.h>
 
 #define EFSPRINTF(text, ...) print_error(); gfx_printf("%k"text"%k\n", 0xFFFFFF00, 0xFFFFFFFF);
 //#define EFSPRINTF(...)
@@ -3274,7 +3275,6 @@ static FRESULT find_volume (	/* FR_OK(0): successful, !=0: an error occurred */
 		stat = disk_status(fs->pdrv);
 		if (!(stat & STA_NOINIT)) {		/* and the physical drive is kept initialized */
 			if (!FF_FS_READONLY && mode && (stat & STA_PROTECT)) {	/* Check write protection if needed */
-				EFSPRINTF("WPEN1");
 				return FR_WRITE_PROTECTED;
 			}
 			return FR_OK;				/* The filesystem object is valid */
@@ -3285,14 +3285,13 @@ static FRESULT find_volume (	/* FR_OK(0): successful, !=0: an error occurred */
 	/* Following code attempts to mount the volume. (analyze BPB and initialize the filesystem object) */
 
 	fs->fs_type = 0;					/* Clear the filesystem object */
+	fs->part_type = 0;					/* Clear the Partition object */
 	fs->pdrv = LD2PD(vol);				/* Bind the logical drive and a physical drive */
 	stat = disk_initialize(fs->pdrv);	/* Initialize the physical drive */
 	if (stat & STA_NOINIT) { 			/* Check if the initialization succeeded */
-		EFSPRINTF("MDNR");
 		return FR_NOT_READY;			/* Failed to initialize due to no medium or hard error */
 	}
 	if (!FF_FS_READONLY && mode && (stat & STA_PROTECT)) { /* Check disk write protection if needed */
-		EFSPRINTF("WPEN2");
 		return FR_WRITE_PROTECTED;
 	}
 #if FF_MAX_SS != FF_MIN_SS				/* Get sector size (multiple sector size cfg only) */
@@ -3319,6 +3318,20 @@ static FRESULT find_volume (	/* FR_OK(0): successful, !=0: an error occurred */
 		EFSPRINTF("BRNL");
 		return FR_DISK_ERR;		/* An error occured in the disk I/O layer */
 	}
+#if FF_SIMPLE_GPT
+	if (fmt >= 2) {
+		/* If GPT Check the first partition */
+		gpt_header_t *gpt_header = (gpt_header_t *)fs->win;
+		if (move_window(fs, 1) != FR_OK) return FR_DISK_ERR;
+		if (!mem_cmp(&gpt_header->signature, "EFI PART", 8)) {
+			if (move_window(fs, gpt_header->part_ent_lba) != FR_OK) return FR_DISK_ERR;
+			gpt_entry_t *gpt_entry = (gpt_entry_t *)fs->win;
+			fs->part_type = 1;
+			bsect = gpt_entry->lba_start;
+			fmt = bsect ? check_fs(fs, bsect) : 3;	/* Check the partition */
+		}
+	}
+#endif
 	if (fmt >= 2) {
 		EFSPRINTF("NOFAT");
 		return FR_NO_FILESYSTEM;	/* No FAT volume is found */
@@ -4049,8 +4062,7 @@ FRESULT f_write (
 				}
 				if (clst == 0) {
 					EFSPRINTF("DSKFULL");
-					fp->flag |= FA_MODIFIED;
-					ABORT(fs, FR_DISK_ERR); /* Could not allocate a new cluster (disk full) */
+					break;		/* Could not allocate a new cluster (disk full) */
 				}
 				if (clst == 1) {
 					EFSPRINTF("CCHK");
@@ -4698,9 +4710,9 @@ DWORD *f_expand_cltbl (
 	}
 	if (f_lseek(fp, CREATE_LINKMAP)) {	/* Create cluster link table */
 		ff_memfree(fp->cltbl);
-		fp->cltbl = NULL;
+		fp->cltbl = (void *)0;
 		EFSPRINTF("CLTBLSZ");
-		return NULL;
+		return (void *)0;
 	}
 	f_lseek(fp, 0);
 
@@ -5862,7 +5874,7 @@ FRESULT f_mkfs (
 	if (vol < 0) return FR_INVALID_DRIVE;
 	if (FatFs[vol]) FatFs[vol]->fs_type = 0;	/* Clear the volume if mounted */
 	pdrv = LD2PD(vol);	/* Physical drive */
-	part = 1;	/* Partition (0:create as new, 1-4:get from partition table) */
+	part = LD2PT(vol);	/* Partition (0:create as new, 1-4:get from partition table) */
 
 	/* Check physical drive status */
 	stat = disk_initialize(pdrv);
@@ -5893,7 +5905,7 @@ FRESULT f_mkfs (
 	if (!buf || sz_buf == 0) return FR_NOT_ENOUGH_CORE;
 
 	/* Determine where the volume to be located (b_vol, sz_vol) */
-	if (part > 0) {
+	if (FF_MULTI_PARTITION && part != 0) {
 		/* Get partition information from partition table in the MBR */
 		if (disk_read(pdrv, buf, 0, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Load MBR */
 		if (ld_word(buf + BS_55AA) != 0xAA55) LEAVE_MKFS(FR_MKFS_ABORTED);	/* Check if MBR is valid */
@@ -6172,7 +6184,9 @@ FRESULT f_mkfs (
 #endif
 		/* Create FAT VBR */
 		mem_set(buf, 0, ss);
-		mem_cpy(buf + BS_JmpBoot, "\xEB\xFE\x90" "MSDOS5.0", 11);/* Boot jump code (x86), OEM name */
+		/* Boot jump code (x86), OEM name */
+		if (!(opt & FM_PRF2)) mem_cpy(buf + BS_JmpBoot, "\xEB\xFE\x90" "NYX1.0.0", 11);
+		else mem_cpy(buf + BS_JmpBoot, "\xEB\xE9\x90\x00\x00\x00\x00\x00\x00\x00\x00", 11);
 		st_word(buf + BPB_BytsPerSec, ss);				/* Sector size [byte] */
 		buf[BPB_SecPerClus] = (BYTE)pau;				/* Cluster size [sector] */
 		st_word(buf + BPB_RsvdSecCnt, (WORD)sz_rsv);	/* Size of reserved area */
@@ -6185,23 +6199,27 @@ FRESULT f_mkfs (
 		}
 		buf[BPB_Media] = 0xF8;							/* Media descriptor byte */
 		st_word(buf + BPB_SecPerTrk, 63);				/* Number of sectors per track (for int13) */
-		st_word(buf + BPB_NumHeads, 255);				/* Number of heads (for int13) */
+		st_word(buf + BPB_NumHeads, (opt & FM_PRF2) ? 16 : 255);	/* Number of heads (for int13) */
 		st_dword(buf + BPB_HiddSec, b_vol);				/* Volume offset in the physical drive [sector] */
 		if (fmt == FS_FAT32) {
-			st_dword(buf + BS_VolID32, GET_FATTIME());	/* VSN */
+			st_dword(buf + BS_VolID32, (opt & FM_PRF2) ? 0 : GET_FATTIME());	/* VSN */
 			st_dword(buf + BPB_FATSz32, sz_fat);		/* FAT size [sector] */
 			st_dword(buf + BPB_RootClus32, 2);			/* Root directory cluster # (2) */
 			st_word(buf + BPB_FSInfo32, 1);				/* Offset of FSINFO sector (VBR + 1) */
 			st_word(buf + BPB_BkBootSec32, 6);			/* Offset of backup VBR (VBR + 6) */
 			buf[BS_DrvNum32] = 0x80;					/* Drive number (for int13) */
 			buf[BS_BootSig32] = 0x29;					/* Extended boot signature */
-			mem_cpy(buf + BS_VolLab32, "SWITCH SD  " "FAT32   ", 19);	/* Volume label, FAT signature */
+			/* Volume label, FAT signature */
+			if (!(opt & FM_PRF2)) mem_cpy(buf + BS_VolLab32, FF_MKFS_LABEL "FAT32   ", 19);
+			else mem_cpy(buf + BS_VolLab32, "NO NAME    " "FAT32   ", 19);
 		} else {
 			st_dword(buf + BS_VolID, GET_FATTIME());	/* VSN */
 			st_word(buf + BPB_FATSz16, (WORD)sz_fat);	/* FAT size [sector] */
 			buf[BS_DrvNum] = 0x80;						/* Drive number (for int13) */
 			buf[BS_BootSig] = 0x29;						/* Extended boot signature */
-			mem_cpy(buf + BS_VolLab, "SWITCH SD  " "FAT     ", 19);	/* Volume label, FAT signature */
+			/* Volume label, FAT signature */
+			if (!(opt & FM_PRF2)) mem_cpy(buf + BS_VolLab, FF_MKFS_LABEL "FAT     ", 19);
+			else mem_cpy(buf + BS_VolLab, "NO NAME    " "FAT     ", 19);
 		}
 		st_word(buf + BS_55AA, 0xAA55);					/* Signature (offset is fixed here regardless of sector size) */
 		if (disk_write(pdrv, buf, b_vol, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Write it to the VBR sector */
@@ -6217,6 +6235,16 @@ FRESULT f_mkfs (
 			st_word(buf + BS_55AA, 0xAA55);
 			disk_write(pdrv, buf, b_vol + 7, 1);		/* Write backup FSINFO (VBR + 7) */
 			disk_write(pdrv, buf, b_vol + 1, 1);		/* Write original FSINFO (VBR + 1) */
+		}
+
+		/* Create PRF2SAFE info */
+		if (fmt == FS_FAT32 && opt & FM_PRF2) {
+			mem_set(buf, 0, ss);
+			buf[16] = 0x64;							/* Record type */
+			st_dword(buf + 32, 0x03);				/* Unknown. SYSTEM: 0x3F00. USER: 0x03. Volatile. */
+			st_dword(buf + 36, 25);					/* Entries. SYSTEM: 22. USER: 25.Static? */
+			st_dword(buf + 508, 0x517BBFE0);		/* Custom CRC32. SYSTEM: 0x6B673904. USER: 0x517BBFE0. */
+			disk_write(pdrv, buf, b_vol + 3, 1);	/* Write PRF2SAFE info (VBR + 3) */
 		}
 
 		/* Initialize FAT area */
@@ -6264,7 +6292,7 @@ FRESULT f_mkfs (
 	}
 
 	/* Update partition information */
-	if (part != 0) {	/* Created in the existing partition */
+	if (FF_MULTI_PARTITION && part != 0) {	/* Created in the existing partition */
 		/* Update system ID in the partition table */
 		if (disk_read(pdrv, buf, 0, 1) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);	/* Read the MBR */
 		buf[MBR_Table + (part - 1) * SZ_PTE + PTE_System] = sys;		/* Set system ID */
@@ -6372,6 +6400,7 @@ FRESULT f_fdisk (
 
 #endif /* FF_MULTI_PARTITION */
 #endif /* FF_USE_MKFS && !FF_FS_READONLY */
+// We don't need these where we're going...
 
 extern sdmmc_storage_t sd_storage;
 
@@ -6448,7 +6477,6 @@ FRESULT f_fdisk_mod (
 	res = (disk_write(pdrv, buf, 0, 1) == RES_OK && disk_ioctl(pdrv, CTRL_SYNC, 0) == RES_OK) ? FR_OK : FR_DISK_ERR;
 	LEAVE_MKFS(res);
 }
-
 
 #if FF_USE_STRFUNC
 #if FF_USE_LFN && FF_LFN_UNICODE && (FF_STRF_ENCODE < 0 || FF_STRF_ENCODE > 3)
@@ -6782,6 +6810,8 @@ int f_puts (
 	putbuff pb;
 
 
+	if (str == (void *)0) return EOF; /* String is NULL */
+
 	putc_init(&pb, fp);
 	while (*str) putc_bfd(&pb, *str++);		/* Put the string */
 	return putc_flush(&pb);
@@ -6807,6 +6837,8 @@ int f_printf (
 	DWORD v;
 	TCHAR c, d, str[32], *p;
 
+
+	if (fmt == (void *)0) return EOF; /* String is NULL */
 
 	putc_init(&pb, fp);
 

@@ -1,11 +1,9 @@
 #include "keys.h"
 #include "keyfile.h"
-#include <utils/types.h>
 #include <libs/fatfs/ff.h>
 #include <string.h>
-#include <utils/ini.h>
+#include <bdk.h>
 #include "../tegraexplorer/tconf.h"
-#include <storage/nx_sd.h>
 #include "../gfx/gfx.h"
 
 #define GetHexFromChar(c) ((c & 0x0F) + (c >= 'A' ? 9 : 0))

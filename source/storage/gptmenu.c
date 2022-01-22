@@ -1,18 +1,15 @@
 #include "gptmenu.h"
+#include <string.h>
+#include <bdk.h>
 #include "../gfx/gfx.h"
 #include "../gfx/menu.h"
 #include "../gfx/gfxutils.h"
 #include "../utils/vector.h"
 #include "mountmanager.h"
-#include <utils/list.h>
-#include <string.h>
-#include "nx_emmc.h"
-#include <mem/heap.h>
 #include "../fs/menus/explorer.h"
 #include "../err.h"
 #include "../tegraexplorer/tconf.h"
 #include "emmcfile.h"
-#include <storage/nx_sd.h>
 #include "../fs/fsutils.h"
 #include "../utils/utils.h"
 

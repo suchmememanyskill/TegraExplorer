@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018 CTCaer
+ * Copyright (c) 2018-2022 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -42,6 +42,11 @@ u8 btn_read_vol()
 	if (!gpio_read(GPIO_PORT_X, GPIO_PIN_6))
 		res |= BTN_VOL_UP;
 	return res;
+}
+
+u8 btn_read_home()
+{
+	return (!gpio_read(GPIO_PORT_Y, GPIO_PIN_1)) ? BTN_HOME : 0;
 }
 
 u8 btn_wait()

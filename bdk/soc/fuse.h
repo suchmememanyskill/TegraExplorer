@@ -2,7 +2,7 @@
  * Copyright (c) 2018 naehrwert
  * Copyright (c) 2018 shuffle2
  * Copyright (c) 2018 balika011
- * Copyright (c) 2019-2020 CTCaer
+ * Copyright (c) 2019-2021 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -37,6 +37,8 @@
 #define FUSE_DISABLEREGPROGRAM 0x2C
 #define FUSE_WRITE_ACCESS_SW 0x30
 #define FUSE_PWR_GOOD_SW 0x34
+
+/*! Fuse Cached registers */
 #define FUSE_SKU_INFO 0x110
 #define FUSE_CPU_SPEEDO_0_CALIB 0x114
 #define FUSE_CPU_IDDQ_CALIB 0x118
@@ -64,8 +66,10 @@
 #define FUSE_OPT_WAFER_ID 0x210
 #define FUSE_OPT_X_COORDINATE 0x214
 #define FUSE_OPT_Y_COORDINATE 0x218
+#define FUSE_OPT_OPS_RESERVED 0x220
 #define FUSE_GPU_IDDQ_CALIB	0x228
 #define FUSE_USB_CALIB_EXT 0x350
+#define FUSE_RESERVED_FIELD 0x354
 
 #define FUSE_RESERVED_ODM28_T210B01 0x240
 
@@ -82,7 +86,8 @@ enum
 {
 	FUSE_NX_HW_TYPE_ICOSA,
 	FUSE_NX_HW_TYPE_IOWA,
-	FUSE_NX_HW_TYPE_HOAG
+	FUSE_NX_HW_TYPE_HOAG,
+    FUSE_NX_HW_TYPE_AULA
 };
 
 enum
@@ -97,7 +102,7 @@ u32  fuse_read_odm_keygen_rev();
 u32  fuse_read_dramid(bool raw_id);
 u32  fuse_read_hw_state();
 u32  fuse_read_hw_type();
-u8   fuse_count_burnt(u32 val);
+int  fuse_set_sbk();
 void fuse_wait_idle();
 int  fuse_read_ipatch(void (*ipatch)(u32 offset, u32 value));
 int  fuse_read_evp_thunk(u32 *iram_evp_thunks, u32 *iram_evp_thunks_len);

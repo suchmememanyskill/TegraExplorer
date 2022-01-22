@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2020 CTCaer
+ * Copyright (c) 2018-2022 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -117,6 +117,7 @@
 #define CLK_RST_CONTROLLER_LVL2_CLK_GATE_OVRD 0x3A4
 #define CLK_RST_CONTROLLER_CLK_SOURCE_MSELECT 0x3B4
 #define CLK_RST_CONTROLLER_CLK_SOURCE_I2C4 0x3C4
+#define CLK_RST_CONTROLLER_CLK_SOURCE_ACTMON 0x3E8
 #define CLK_RST_CONTROLLER_CLK_SOURCE_EXTPERIPH1 0x3EC
 #define CLK_RST_CONTROLLER_CLK_SOURCE_SYS 0x400
 #define CLK_RST_CONTROLLER_CLK_SOURCE_SOR1 0x410
@@ -167,6 +168,8 @@
 #define PLLX_BASE_REF_DIS    BIT(29)
 #define PLLX_BASE_ENABLE     BIT(30)
 #define PLLX_BASE_BYPASS     BIT(31)
+#define PLLX_MISC_LOCK_EN    BIT(18)
+#define PLLX_MISC3_IDDQ      BIT(3)
 
 #define PLLCX_BASE_LOCK      BIT(27)
 #define PLLCX_BASE_REF_DIS   BIT(29)
@@ -215,7 +218,7 @@
 #define OSC_FREQ_DET_BUSY        BIT(31)
 #define OSC_FREQ_DET_CNT         0xFFFF
 
-/*! PLLs omitted as they need PTO enabled in MISC registers. Norm div is 2. */
+/*! PTO IDs. */
 typedef enum _clock_pto_id_t
 {
 	CLK_PTO_PCLK_SYS =          0x06,
@@ -238,6 +241,9 @@ typedef enum _clock_pto_id_t
 	CLK_PTO_SDMMC3 =            0x22,
 	CLK_PTO_SDMMC4 =            0x23,
 	CLK_PTO_EMC =               0x24,
+
+	CLK_PTO_CCLK_LP =           0x2B,
+	CLK_PTO_CCLK_LP_DIV2 =      0x2C,
 
 	CLK_PTO_MSELECT =           0x2F,
 
@@ -321,6 +327,32 @@ typedef enum _clock_pto_id_t
 	CLK_PTO_XUSB_SS_HOST_DEV =  0x137,
 	CLK_PTO_XUSB_CORE_HOST =    0x138,
 	CLK_PTO_XUSB_CORE_DEV =     0x139,
+
+	/*
+	 * PLL need PTO enabled in MISC registers.
+	 * Normal div is 2 so result is multiplied with it.
+	 */
+	CLK_PTO_PLLC_DIV2 =              0x01,
+	CLK_PTO_PLLM_DIV2 =              0x02,
+	CLK_PTO_PLLP_DIV2 =              0x03,
+	CLK_PTO_PLLA_DIV2 =              0x04,
+	CLK_PTO_PLLX_DIV2 =              0x05,
+
+	CLK_PTO_PLLMB_DIV2 =             0x25,
+
+	CLK_PTO_PLLC4_DIV2 =             0x51,
+
+	CLK_PTO_PLLA1_DIV2 =             0x55,
+	CLK_PTO_PLLC2_DIV2 =             0x58,
+	CLK_PTO_PLLC3_DIV2 =             0x5A,
+
+	CLK_PTO_PLLD_DIV2 =              0xCB,
+	CLK_PTO_PLLD2_DIV2 =             0xCD,
+	CLK_PTO_PLLDP_DIV2 =             0xCF,
+
+	CLK_PTO_PLLU_DIV2 =              0x10D,
+
+	CLK_PTO_PLLREFE_DIV2 =           0x10F,
 } clock_pto_id_t;
 
 /*
@@ -628,6 +660,14 @@ void clock_enable_coresight();
 void clock_disable_coresight();
 void clock_enable_pwm();
 void clock_disable_pwm();
+void clock_enable_apbdma();
+void clock_disable_apbdma();
+void clock_enable_ahbdma();
+void clock_disable_ahbdma();
+void clock_enable_actmon();
+void clock_disable_actmon();
+
+void clock_enable_pllx();
 void clock_enable_pllc(u32 divn);
 void clock_disable_pllc();
 void clock_enable_pllu();

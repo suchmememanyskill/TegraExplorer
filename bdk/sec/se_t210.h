@@ -50,6 +50,9 @@
 #define SE_RSA1536_DIGEST_SIZE  192
 #define SE_RSA2048_DIGEST_SIZE  256
 
+#define  DECRYPT   0
+#define  ENCRYPT   1
+
 /* SE register definitions */
 #define SE_SE_SECURITY_REG 0x000
 #define  SE_HARD_SETTING   BIT(0)
@@ -301,6 +304,8 @@
 #define  SE_STATUS_STATE_WAIT_OUT 2
 #define  SE_STATUS_STATE_WAIT_IN  3
 #define  SE_STATUS_STATE_MASK     3
+#define  SE_STATUS_MEM_IF_IDLE    (0 << 2)
+#define  SE_STATUS_MEM_IF_BUSY    BIT(2)
 
 #define SE_ERR_STATUS_REG 0x804
 #define  SE_ERR_STATUS_SE_NS_ACCESS    BIT(0)

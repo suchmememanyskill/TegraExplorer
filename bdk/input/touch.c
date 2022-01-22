@@ -39,7 +39,7 @@ static touch_panel_info_t _panels[] =
 	{  1,  0, 1, 1,  "GiS GGM6 B2X"    },
 	{  2,  0, 0, 0,  "NISSHA NBF-K9A"  },
 	{  3,  1, 0, 0,  "GiS 5.5\""       },
-	{  4,  0, 0, 1,  "Unknown"         },
+	{  4,  0, 0, 1,  "Samsung BH2109"  },
 	{ -1,  1, 0, 1,  "GiS VA 6.2\""    }
 };
 
@@ -410,7 +410,7 @@ int touch_power_on()
 	gpio_output_enable(GPIO_PORT_J, GPIO_PIN_7, GPIO_OUTPUT_ENABLE);
 	gpio_write(GPIO_PORT_J, GPIO_PIN_7, GPIO_HIGH);
 
-	// IRQ and more.
+	// Touscreen IRQ.
 	// PINMUX_AUX(PINMUX_AUX_TOUCH_INT) = PINMUX_INPUT_ENABLE | PINMUX_TRISTATE | PINMUX_PULL_UP | 3;
 	// gpio_config(GPIO_PORT_X, GPIO_PIN_1, GPIO_MODE_GPIO);
 	// gpio_write(GPIO_PORT_X, GPIO_PIN_1, GPIO_LOW);

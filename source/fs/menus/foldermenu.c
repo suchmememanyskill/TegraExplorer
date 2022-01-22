@@ -3,15 +3,13 @@
 #include "../../gfx/menu.h"
 #include "../../gfx/gfxutils.h"
 #include "../fsutils.h"
-#include <mem/heap.h>
 #include <string.h>
-#include <utils/sprintf.h>
 #include "../../tegraexplorer/tconf.h"
 #include "../../hid/hid.h"
 #include <libs/fatfs/ff.h>
 #include "../../utils/utils.h"
 #include "../../keys/nca.h"
-#include <storage/nx_sd.h>
+#include <bdk.h>
 #include "../fscopy.h"
 
 MenuEntry_t FolderMenuEntries[] = {

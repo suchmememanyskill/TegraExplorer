@@ -1,8 +1,7 @@
-#include <mem/heap.h>
 #include <string.h>
 #include "fsutils.h"
 #include "../utils/utils.h"
-#include <utils/sprintf.h>
+#include <bdk.h>
 #include <libs/fatfs/ff.h>
 #include "readers/folderReader.h"
 
