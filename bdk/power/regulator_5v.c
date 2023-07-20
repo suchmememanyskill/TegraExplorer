@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2021 CTCaer
+ * Copyright (c) 2019-2023 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -27,38 +27,31 @@ static bool usb_src = false;
 
 void regulator_5v_enable(u8 dev)
 {
+	bool tegra_t210 = hw_get_chip_id() == GP_HIDREV_MAJOR_T210;
+
 	// The power supply selection from battery or USB is automatic.
 	if (!reg_5v_dev)
 	{
 		// Fan and Rail power from battery 5V regulator.
 		PINMUX_AUX(PINMUX_AUX_SATA_LED_ACTIVE) = 1;
-		gpio_config(GPIO_PORT_A, GPIO_PIN_5, GPIO_MODE_GPIO);
-		gpio_output_enable(GPIO_PORT_A, GPIO_PIN_5, GPIO_OUTPUT_ENABLE);
-		gpio_write(GPIO_PORT_A, GPIO_PIN_5, GPIO_HIGH);
+		gpio_direction_output(GPIO_PORT_A, GPIO_PIN_5, GPIO_HIGH);
 
-		// Only Icosa and Iowa have USB 5V VBUS rails. Skip on Hoag/Aula.
-		u32 hw_type = fuse_read_hw_type();
-		if (hw_type == FUSE_NX_HW_TYPE_ICOSA ||
-			hw_type == FUSE_NX_HW_TYPE_IOWA)
+		// Only Icosa has USB 5V VBUS rails.
+		if (tegra_t210)
 		{
 			// Fan and Rail power from USB 5V VBUS.
 			PINMUX_AUX(PINMUX_AUX_USB_VBUS_EN0) = PINMUX_LPDR | 1;
-			gpio_config(GPIO_PORT_CC, GPIO_PIN_4, GPIO_MODE_GPIO);
-			gpio_output_enable(GPIO_PORT_CC, GPIO_PIN_4, GPIO_OUTPUT_ENABLE);
-			gpio_write(GPIO_PORT_CC, GPIO_PIN_4, GPIO_LOW);
+			gpio_direction_output(GPIO_PORT_CC, GPIO_PIN_4, GPIO_LOW);
 		}
 
-		// Enable GPIO AO IO rail for T210.
-		if (hw_get_chip_id() == GP_HIDREV_MAJOR_T210)
-		{
-			// Make sure GPIO power is enabled.
-			PMC(APBDEV_PMC_NO_IOPOWER) &= ~PMC_NO_IOPOWER_GPIO_IO_EN;
-			(void)PMC(APBDEV_PMC_NO_IOPOWER); // Commit write.
+		// Make sure GPIO IO power is enabled.
+		PMC(APBDEV_PMC_NO_IOPOWER) &= ~PMC_NO_IOPOWER_GPIO_IO_EN;
+		(void)PMC(APBDEV_PMC_NO_IOPOWER); // Commit write.
 
-			// Override power detect for GPIO AO IO rails.
-			PMC(APBDEV_PMC_PWR_DET_VAL) &= ~PMC_PWR_DET_GPIO_IO_EN;
-			(void)PMC(APBDEV_PMC_PWR_DET_VAL); // Commit write.
-		}
+		// Override power detect for GPIO AO IO rails.
+		PMC(APBDEV_PMC_PWR_DET_VAL) &= ~PMC_PWR_DET_GPIO_IO_EN;
+		(void)PMC(APBDEV_PMC_PWR_DET_VAL); // Commit write.
+
 		usb_src = false;
 	}
 	reg_5v_dev |= dev;
@@ -66,35 +59,22 @@ void regulator_5v_enable(u8 dev)
 
 void regulator_5v_disable(u8 dev)
 {
+	bool tegra_t210 = hw_get_chip_id() == GP_HIDREV_MAJOR_T210;
+
 	reg_5v_dev &= ~dev;
 
 	if (!reg_5v_dev)
 	{
 		// Rail power from battery 5V regulator.
 		gpio_write(GPIO_PORT_A, GPIO_PIN_5, GPIO_LOW);
-		gpio_output_enable(GPIO_PORT_A, GPIO_PIN_5, GPIO_OUTPUT_DISABLE);
-		gpio_config(GPIO_PORT_A, GPIO_PIN_5, GPIO_MODE_SPIO);
-		PINMUX_AUX(PINMUX_AUX_SATA_LED_ACTIVE) = PINMUX_PARKED | PINMUX_INPUT_ENABLE;
 
-		// Only Icosa and Iowa have USB 5V VBUS rails. Skip on Hoag/Aula.
-		u32 hw_type = fuse_read_hw_type();
-		if (hw_type == FUSE_NX_HW_TYPE_ICOSA ||
-			hw_type == FUSE_NX_HW_TYPE_IOWA)
+		// Only Icosa has USB 5V VBUS rails.
+		if (tegra_t210)
 		{
 			// Rail power from USB 5V VBUS.
 			gpio_write(GPIO_PORT_CC, GPIO_PIN_4, GPIO_LOW);
-			gpio_output_enable(GPIO_PORT_CC, GPIO_PIN_4, GPIO_OUTPUT_DISABLE);
-			gpio_config(GPIO_PORT_CC, GPIO_PIN_4, GPIO_MODE_SPIO);
-			PINMUX_AUX(PINMUX_AUX_USB_VBUS_EN0) = PINMUX_IO_HV | PINMUX_LPDR | PINMUX_PARKED | PINMUX_INPUT_ENABLE;
 			usb_src = false;
 
-		}
-
-		// GPIO AO IO rails.
-		if (hw_get_chip_id() == GP_HIDREV_MAJOR_T210)
-		{
-			PMC(APBDEV_PMC_PWR_DET_VAL) |= PMC_PWR_DET_GPIO_IO_EN;
-			(void)PMC(APBDEV_PMC_PWR_DET_VAL); // Commit write.
 		}
 	}
 }
@@ -106,10 +86,8 @@ bool regulator_5v_get_dev_enabled(u8 dev)
 
 void regulator_5v_usb_src_enable(bool enable)
 {
-	// Only for Icosa/Iowa. Skip on Hoag/Aula.
-	u32 hw_type = fuse_read_hw_type();
-	if (hw_type != FUSE_NX_HW_TYPE_ICOSA &&
-		hw_type != FUSE_NX_HW_TYPE_IOWA)
+	// Only for Icosa.
+	if (hw_get_chip_id() != GP_HIDREV_MAJOR_T210)
 		return;
 
 	if (enable && !usb_src)

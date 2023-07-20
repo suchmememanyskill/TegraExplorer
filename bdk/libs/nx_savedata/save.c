@@ -34,7 +34,14 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include "save.h"
 
-#include <bdk.h>
+#include <gfx_utils.h>
+#include <mem/heap.h>
+#include <rtc/max77620-rtc.h>
+#include <sec/se.h>
+#include <storage/sd.h>
+#include <utils/ini.h>
+#include <utils/sprintf.h>
+
 #include <stdlib.h>
 #include <string.h>
 

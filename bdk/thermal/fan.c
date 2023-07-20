@@ -1,7 +1,7 @@
 /*
  * Fan driver for Nintendo Switch
  *
- * Copyright (c) 2018-2021 CTCaer
+ * Copyright (c) 2018-2023 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,11 +18,14 @@
 
 #include <thermal/fan.h>
 #include <power/regulator_5v.h>
+#include <soc/bpmp.h>
+#include <soc/clock.h>
 #include <soc/fuse.h>
 #include <soc/gpio.h>
+#include <soc/hw_init.h>
 #include <soc/pinmux.h>
+#include <soc/timer.h>
 #include <soc/t210.h>
-#include <utils/util.h>
 
 void set_fan_duty(u32 duty)
 {
@@ -37,18 +40,24 @@ void set_fan_duty(u32 duty)
 
 	curr_duty = duty;
 
-	//! TODO: Add HOAG/AULA support.
-	u32 hw_type = fuse_read_hw_type();
-	if (hw_type != FUSE_NX_HW_TYPE_ICOSA &&
-		hw_type != FUSE_NX_HW_TYPE_IOWA)
-		return;
-
 	if (!fan_init)
 	{
 		// Fan tachometer.
-		PINMUX_AUX(PINMUX_AUX_CAM1_PWDN) = PINMUX_TRISTATE | PINMUX_INPUT_ENABLE | PINMUX_PULL_UP | 1;
-		gpio_config(GPIO_PORT_S, GPIO_PIN_7, GPIO_MODE_GPIO);
-		gpio_output_enable(GPIO_PORT_S, GPIO_PIN_7, GPIO_OUTPUT_DISABLE);
+		u32 pull_resistor = hw_get_chip_id() == GP_HIDREV_MAJOR_T210 ? PINMUX_PULL_UP : 0;
+		PINMUX_AUX(PINMUX_AUX_CAM1_PWDN) = PINMUX_TRISTATE | PINMUX_INPUT_ENABLE | pull_resistor | 1;
+		gpio_direction_input(GPIO_PORT_S, GPIO_PIN_7);
+
+		// Enable PWM if disabled.
+		if (fuse_read_hw_type() == FUSE_NX_HW_TYPE_AULA)
+		{
+			// Ease the stress to APB.
+			bpmp_freq_t prev_fid = bpmp_clk_rate_set(BPMP_CLK_NORMAL);
+
+			clock_enable_pwm();
+
+			// Restore OC.
+			bpmp_clk_rate_set(prev_fid);
+		}
 
 		PWM(PWM_CONTROLLER_PWM_CSR_1) = PWM_CSR_EN | (0x100 << 16); // Max PWM to disable fan.
 
@@ -68,8 +77,8 @@ void set_fan_duty(u32 duty)
 		regulator_5v_disable(REGULATOR_5V_FAN);
 
 		// Disable fan.
-		PINMUX_AUX(PINMUX_AUX_LCD_GPIO2) =
-				PINMUX_INPUT_ENABLE | PINMUX_PARKED |  PINMUX_TRISTATE | PINMUX_PULL_DOWN; // Set source to PWM1.
+		PINMUX_AUX(PINMUX_AUX_LCD_GPIO2) = PINMUX_INPUT_ENABLE | PINMUX_PARKED    |
+										   PINMUX_TRISTATE     | PINMUX_PULL_DOWN; // Set source to PWM1.
 	}
 	else // Set PWM duty.
 	{

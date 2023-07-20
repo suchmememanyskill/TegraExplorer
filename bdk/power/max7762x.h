@@ -66,22 +66,22 @@
 #define REGULATOR_LDO6 10
 #define REGULATOR_LDO7 11
 #define REGULATOR_LDO8 12
-#define REGULATOR_CPU0 13
-#define REGULATOR_GPU0 14
-#define REGULATOR_CPU1 15
-//#define REGULATOR_GPU1 16
-//#define REGULATOR_GPU1 17
-#define REGULATOR_MAX  15
+#define REGULATOR_CPU0 13 // T210 CPU.
+#define REGULATOR_GPU0 14 // T210 CPU.
+#define REGULATOR_CPU1 15 // T210B01 CPU.
+#define REGULATOR_RAM0 16 // T210B01 RAM for PHASE211.
+//#define REGULATOR_GPU1 17 // T210B01 CPU.
+#define REGULATOR_MAX  REGULATOR_RAM0
 
 #define MAX77621_CPU_I2C_ADDR 0x1B
 #define MAX77621_GPU_I2C_ADDR 0x1C
 
-#define MAX77621_VOUT_REG     0x00
-#define MAX77621_VOUT_DVS_REG 0x01
-#define MAX77621_CONTROL1_REG 0x02
-#define MAX77621_CONTROL2_REG 0x03
-#define MAX77621_CHIPID1_REG  0x04
-#define MAX77621_CHIPID2_REG  0x05
+#define MAX77621_REG_VOUT     0x00
+#define MAX77621_REG_VOUT_DVS 0x01
+#define MAX77621_REG_CONTROL1 0x02
+#define MAX77621_REG_CONTROL2 0x03
+#define MAX77621_REG_CHIPID1  0x04
+#define MAX77621_REG_CHIPID2  0x05
 
 /* MAX77621_VOUT_DVC_DVS */
 #define MAX77621_DVC_DVS_VOLT_MASK    0x7F
@@ -114,11 +114,10 @@
 #define MAX77621_INDUCTOR_PLUS_60_PER 3
 #define MAX77621_INDUCTOR_MASK        3
 
-#define MAX77621_CKKADV_TRIP_75mV_PER_US          0x0
-#define MAX77621_CKKADV_TRIP_150mV_PER_US         BIT(2)
-#define MAX77621_CKKADV_TRIP_75mV_PER_US_HIST_DIS BIT(3)
-#define MAX77621_CKKADV_TRIP_DISABLE              (BIT(2) | BIT(3))
-#define MAX77621_CKKADV_TRIP_MASK                 (BIT(2) | BIT(3))
+#define MAX77621_CKKADV_TRIP_75mV_PER_US          (0  << 2)
+#define MAX77621_CKKADV_TRIP_150mV_PER_US         (1u << 2)
+#define MAX77621_CKKADV_TRIP_DISABLE              (3u << 2)
+#define MAX77621_CKKADV_TRIP_MASK                 (3u << 2)
 
 #define MAX77621_FT_ENABLE       BIT(4)
 #define MAX77621_DISCH_ENABLE    BIT(5)
@@ -126,18 +125,17 @@
 #define MAX77621_T_JUNCTION_120  BIT(7)
 
 #define MAX77621_CPU_CTRL1_POR_DEFAULT  (MAX77621_RAMP_50mV_PER_US)
-#define MAX77621_CPU_CTRL1_HOS_DEFAULT  (MAX77621_AD_ENABLE                        | \
-										 MAX77621_NFSR_ENABLE                      | \
-										 MAX77621_SNS_ENABLE                       | \
+#define MAX77621_CPU_CTRL1_HOS_DEFAULT  (MAX77621_AD_ENABLE               | \
+										 MAX77621_NFSR_ENABLE             | \
+										 MAX77621_SNS_ENABLE              | \
 										 MAX77621_RAMP_12mV_PER_US)
-#define MAX77621_CPU_CTRL2_POR_DEFAULT  (MAX77621_T_JUNCTION_120                   | \
-										 MAX77621_FT_ENABLE                        | \
-										 MAX77621_CKKADV_TRIP_75mV_PER_US_HIST_DIS | \
-										 MAX77621_CKKADV_TRIP_150mV_PER_US         | \
+#define MAX77621_CPU_CTRL2_POR_DEFAULT  (MAX77621_T_JUNCTION_120          | \
+										 MAX77621_FT_ENABLE               | \
+										 MAX77621_CKKADV_TRIP_DISABLE     | \
 										 MAX77621_INDUCTOR_NOMINAL)
-#define MAX77621_CPU_CTRL2_HOS_DEFAULT  (MAX77621_T_JUNCTION_120                   | \
-										 MAX77621_WDTMR_ENABLE                     | \
-										 MAX77621_CKKADV_TRIP_75mV_PER_US          | \
+#define MAX77621_CPU_CTRL2_HOS_DEFAULT  (MAX77621_T_JUNCTION_120          | \
+										 MAX77621_WDTMR_ENABLE            | \
+										 MAX77621_CKKADV_TRIP_75mV_PER_US | \
 										 MAX77621_INDUCTOR_NOMINAL)
 
 #define MAX77621_CTRL_HOS_CFG 0
@@ -145,7 +143,7 @@
 
 int  max77620_regulator_get_status(u32 id);
 int  max77620_regulator_config_fps(u32 id);
-int  max7762x_regulator_set_voltage(u32 id, u32 mv);
+int  max7762x_regulator_set_voltage(u32 id, u32 uv);
 int  max7762x_regulator_enable(u32 id, bool enable);
 void max77620_config_gpio(u32 id, bool enable);
 void max77620_config_default();

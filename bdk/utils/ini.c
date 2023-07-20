@@ -47,6 +47,9 @@ ini_sec_t *_ini_create_section(link_t *dst, ini_sec_t *csec, char *name, u8 type
 	csec->name = strcpy_ns(buf + sizeof(ini_sec_t), name);
 	csec->type = type;
 
+	// Initialize list.
+	list_init(&csec->kvs);
+
 	return csec;
 }
 
@@ -54,11 +57,11 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 {
 	FIL fp;
 	u32 lblen;
-	u32 pathlen = strlen(ini_path);
 	u32 k = 0;
+	u32 pathlen = strlen(ini_path);
 	ini_sec_t *csec = NULL;
 
-	char *lbuf = NULL;
+	char *lbuf     = NULL;
 	char *filelist = NULL;
 	char *filename = (char *)malloc(256);
 
@@ -102,7 +105,6 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 
 		lbuf = malloc(512);
 		csec = _ini_create_section(dst, csec, "Unknown", INI_CHOICE);
-		list_init(&csec->kvs);
 
 		do
 		{
@@ -120,7 +122,6 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 				_find_section_name(lbuf, lblen, ']');
 
 				csec = _ini_create_section(dst, csec, &lbuf[1], INI_CHOICE);
-				list_init(&csec->kvs);
 			}
 			else if (lblen > 1 && lbuf[0] == '{') // Create new caption. Support empty caption '{}'.
 			{
@@ -142,8 +143,8 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 				u32 i = _find_section_name(lbuf, lblen, '=');
 
 				// Calculate total allocation size.
-				u32 klen = strlen(&lbuf[0]) + 1;
-				u32 vlen = strlen(&lbuf[i + 1]) + 1;
+				u32 klen  = strlen(&lbuf[0]) + 1;
+				u32 vlen  = strlen(&lbuf[i + 1]) + 1;
 				char *buf = calloc(sizeof(ini_kv_t) + klen + vlen, 1);
 
 				ini_kv_t *kv = (ini_kv_t *)buf;
@@ -155,6 +156,8 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 			}
 		} while (!f_eof(&fp));
 
+		free(lbuf);
+
 		f_close(&fp);
 
 		if (csec)
@@ -165,23 +168,61 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 		}
 	} while (is_dir);
 
-	free(lbuf);
 	free(filename);
 	free(filelist);
 
 	return 1;
 }
 
-char *ini_check_payload_section(ini_sec_t *cfg)
+char *ini_check_special_section(ini_sec_t *cfg)
 {
 	if (cfg == NULL)
 		return NULL;
 
 	LIST_FOREACH_ENTRY(ini_kv_t, kv, &cfg->kvs, link)
 	{
-		if (!strcmp("payload", kv->key))
+		if (!strcmp("l4t",          kv->key))
+			return ((kv->val[0] == '1') ? (char *)-1 : NULL);
+		else if (!strcmp("payload", kv->key))
 			return kv->val;
 	}
 
 	return NULL;
+}
+
+void ini_free(link_t *src)
+{
+	ini_sec_t *prev_sec = NULL;
+
+	// Parse and free all ini sections.
+	LIST_FOREACH_ENTRY(ini_sec_t, ini_sec, src, link)
+	{
+		ini_kv_t *prev_kv  = NULL;
+
+		// Free all ini key allocations if they exist.
+		LIST_FOREACH_ENTRY(ini_kv_t, kv, &ini_sec->kvs, link)
+		{
+			// Free previous key.
+			if (prev_kv)
+				free(prev_kv);
+
+			// Set next key to free.
+			prev_kv = kv;
+		}
+
+		// Free last key.
+		if (prev_kv)
+			free(prev_kv);
+
+		// Free previous section.
+		if (prev_sec)
+			free(prev_sec);
+
+		// Set next section to free.
+		prev_sec = ini_sec;
+	}
+
+	// Free last section.
+	if (prev_sec)
+		free(prev_sec);
 }

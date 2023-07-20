@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2022 CTCaer
+ * Copyright (c) 2018-2023 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,6 +19,7 @@
 
 #include <soc/hw_init.h>
 #include <display/di.h>
+#include <display/vic.h>
 #include <input/joycon.h>
 #include <input/touch.h>
 #include <sec/se.h>
@@ -31,6 +32,7 @@
 #include <soc/pinmux.h>
 #include <soc/pmc.h>
 #include <soc/uart.h>
+#include <soc/timer.h>
 #include <soc/t210.h>
 #include <mem/mc.h>
 #include <mem/minerva.h>
@@ -71,24 +73,24 @@ u32 hw_get_chip_id()
 static void _config_oscillators()
 {
 	CLOCK(CLK_RST_CONTROLLER_SPARE_REG0) = (CLOCK(CLK_RST_CONTROLLER_SPARE_REG0) & 0xFFFFFFF3) | 4; // Set CLK_M_DIVISOR to 2.
-	SYSCTR0(SYSCTR0_CNTFID0) = 19200000;             // Set counter frequency.
-	TMR(TIMERUS_USEC_CFG) = 0x45F;                   // For 19.2MHz clk_m.
-	CLOCK(CLK_RST_CONTROLLER_OSC_CTRL) = 0x50000071; // Set OSC to 38.4MHz and drive strength.
+	SYSCTR0(SYSCTR0_CNTFID0)             = 19200000;   // Set counter frequency.
+	TMR(TIMERUS_USEC_CFG)                = 0x45F;      // For 19.2MHz clk_m.
+	CLOCK(CLK_RST_CONTROLLER_OSC_CTRL)   = 0x50000071; // Set OSC to 38.4MHz and drive strength.
 
 	PMC(APBDEV_PMC_OSC_EDPD_OVER) = (PMC(APBDEV_PMC_OSC_EDPD_OVER) & 0xFFFFFF81) | 0xE; // Set LP0 OSC drive strength.
 	PMC(APBDEV_PMC_OSC_EDPD_OVER) = (PMC(APBDEV_PMC_OSC_EDPD_OVER) & 0xFFBFFFFF) | PMC_OSC_EDPD_OVER_OSC_CTRL_OVER;
-	PMC(APBDEV_PMC_CNTRL2) = (PMC(APBDEV_PMC_CNTRL2) & 0xFFFFEFFF) | PMC_CNTRL2_HOLD_CKE_LOW_EN;
-	PMC(APB_MISC_GP_ASDBGREG) = (PMC(APB_MISC_GP_ASDBGREG) & 0xFCFFFFFF) | (2 << 24); // CFG2TMC_RAM_SVOP_PDP.
+	PMC(APBDEV_PMC_CNTRL2)        = (PMC(APBDEV_PMC_CNTRL2) & 0xFFFFEFFF) | PMC_CNTRL2_HOLD_CKE_LOW_EN;
+	PMC(APB_MISC_GP_ASDBGREG)     = (PMC(APB_MISC_GP_ASDBGREG) & 0xFCFFFFFF) | (2 << 24); // CFG2TMC_RAM_SVOP_PDP.
 
-	CLOCK(CLK_RST_CONTROLLER_CLK_SYSTEM_RATE) = 0x10;   // Set HCLK div to 2 and PCLK div to 1.
-	CLOCK(CLK_RST_CONTROLLER_PLLMB_BASE) &= 0xBFFFFFFF; // PLLMB disable.
+	CLOCK(CLK_RST_CONTROLLER_CLK_SYSTEM_RATE) = 0x10;       // Set HCLK div to 2 and PCLK div to 1.
+	CLOCK(CLK_RST_CONTROLLER_PLLMB_BASE)     &= 0xBFFFFFFF; // PLLMB disable.
 
-	PMC(APBDEV_PMC_TSC_MULT) = (PMC(APBDEV_PMC_TSC_MULT) & 0xFFFF0000) | 0x249F; //0x249F = 19200000 * (16 / 32.768 kHz)
+	PMC(APBDEV_PMC_TSC_MULT) = (PMC(APBDEV_PMC_TSC_MULT) & 0xFFFF0000) | 0x249F; // 0x249F = 19200000 * (16 / 32.768 kHz).
 
-	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_SYS) = 0;              // Set BPMP/SCLK div to 1.
-	CLOCK(CLK_RST_CONTROLLER_SCLK_BURST_POLICY) = 0x20004444;  // Set BPMP/SCLK source to Run and PLLP_OUT2 (204MHz).
+	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_SYS)     = 0;          // Set BPMP/SCLK div to 1.
+	CLOCK(CLK_RST_CONTROLLER_SCLK_BURST_POLICY)  = 0x20004444; // Set BPMP/SCLK source to Run and PLLP_OUT2 (204MHz).
 	CLOCK(CLK_RST_CONTROLLER_SUPER_SCLK_DIVIDER) = 0x80000000; // Enable SUPER_SDIV to 1.
-	CLOCK(CLK_RST_CONTROLLER_CLK_SYSTEM_RATE) = 2;             // Set HCLK div to 1 and PCLK div to 3.
+	CLOCK(CLK_RST_CONTROLLER_CLK_SYSTEM_RATE)    = 2;          // Set HCLK div to 1 and PCLK div to 3.
 }
 
 // The uart is skipped for Copper, Hoag and Calcio. Used in Icosa, Iowa and Aula.
@@ -99,53 +101,39 @@ static void _config_gpios(bool nx_hoag)
 
 	if (!nx_hoag)
 	{
+		// Turn Joy-Con detect on. (GPIO mode and input logic for UARTB/C TX pins.)
 		PINMUX_AUX(PINMUX_AUX_UART2_TX) = 0;
 		PINMUX_AUX(PINMUX_AUX_UART3_TX) = 0;
-
-		// Set pin mode for UARTB/C TX pins.
-#if !defined (DEBUG_UART_PORT) || DEBUG_UART_PORT != UART_B
-		gpio_config(GPIO_PORT_G, GPIO_PIN_0, GPIO_MODE_GPIO);
-#endif
-#if !defined (DEBUG_UART_PORT) || DEBUG_UART_PORT != UART_C
-		gpio_config(GPIO_PORT_D, GPIO_PIN_1, GPIO_MODE_GPIO);
-#endif
-
-		// Enable input logic for UARTB/C TX pins.
-		gpio_output_enable(GPIO_PORT_G, GPIO_PIN_0, GPIO_OUTPUT_DISABLE);
-		gpio_output_enable(GPIO_PORT_D, GPIO_PIN_1, GPIO_OUTPUT_DISABLE);
+		gpio_direction_input(GPIO_PORT_G, GPIO_PIN_0);
+		gpio_direction_input(GPIO_PORT_D, GPIO_PIN_1);
 	}
 
-	// Set Joy-Con IsAttached direction.
+	// Set Joy-Con IsAttached pinmux. Shared with UARTB/UARTC TX.
 	PINMUX_AUX(PINMUX_AUX_GPIO_PE6) = PINMUX_INPUT_ENABLE | PINMUX_TRISTATE;
 	PINMUX_AUX(PINMUX_AUX_GPIO_PH6) = PINMUX_INPUT_ENABLE | PINMUX_TRISTATE;
 
-	// Set Joy-Con IsAttached mode.
-	gpio_config(GPIO_PORT_E, GPIO_PIN_6, GPIO_MODE_GPIO);
-	gpio_config(GPIO_PORT_H, GPIO_PIN_6, GPIO_MODE_GPIO);
-
-	// Enable input logic for Joy-Con IsAttached pins.
-	gpio_output_enable(GPIO_PORT_E, GPIO_PIN_6, GPIO_OUTPUT_DISABLE);
-	gpio_output_enable(GPIO_PORT_H, GPIO_PIN_6, GPIO_OUTPUT_DISABLE);
+	// Configure Joy-Con IsAttached pins. Shared with UARTB/UARTC TX.
+	gpio_direction_input(GPIO_PORT_E, GPIO_PIN_6);
+	gpio_direction_input(GPIO_PORT_H, GPIO_PIN_6);
 
 	pinmux_config_i2c(I2C_1);
 	pinmux_config_i2c(I2C_5);
 	pinmux_config_uart(UART_A);
 
 	// Configure volume up/down as inputs.
-	gpio_config(GPIO_PORT_X, GPIO_PIN_6, GPIO_MODE_GPIO);
-	gpio_config(GPIO_PORT_X, GPIO_PIN_7, GPIO_MODE_GPIO);
-	gpio_output_enable(GPIO_PORT_X, GPIO_PIN_6, GPIO_OUTPUT_DISABLE);
-	gpio_output_enable(GPIO_PORT_X, GPIO_PIN_7, GPIO_OUTPUT_DISABLE);
+	gpio_direction_input(GPIO_PORT_X, GPIO_PIN_6 | GPIO_PIN_7);
 
-	// Configure HOME as inputs.
+	// Configure HOME as input. (Shared with UARTB RTS).
 	PINMUX_AUX(PINMUX_AUX_BUTTON_HOME) = PINMUX_INPUT_ENABLE | PINMUX_TRISTATE;
-	gpio_config(GPIO_PORT_Y, GPIO_PIN_1, GPIO_MODE_GPIO);
+	gpio_direction_input(GPIO_PORT_Y, GPIO_PIN_1);
+
+	// Power button can be configured for hoag here. Only SKU where it's connected.
 }
 
 static void _config_pmc_scratch()
 {
 	PMC(APBDEV_PMC_SCRATCH20)  &= 0xFFF3FFFF; // Unset Debug console from Customer Option.
-	PMC(APBDEV_PMC_SCRATCH190) &= 0xFFFFFFFE; // Unset DATA_DQ_E_IVREF EMC_PMACRO_DATA_PAD_TX_CTRL
+	PMC(APBDEV_PMC_SCRATCH190) &= 0xFFFFFFFE; // Unset WDT_DURING_BR.
 	PMC(APBDEV_PMC_SECURE_SCRATCH21) |= PMC_FUSE_PRIVATEKEYDISABLE_TZ_STICKY_BIT;
 }
 
@@ -178,8 +166,9 @@ static void _mbist_workaround()
 	I2S(I2S5_CTRL) |= I2S_CTRL_MASTER_EN;
 	I2S(I2S5_CG)   &= ~I2S_CG_SLCG_ENABLE;
 
+	// Set SLCG overrides.
 	DISPLAY_A(_DIREG(DC_COM_DSC_TOP_CTL)) |= 4; // DSC_SLCG_OVERRIDE.
-	VIC(0x8C) = 0xFFFFFFFF;
+	VIC(VIC_THI_SLCG_OVERRIDE_LOW_A) = 0xFFFFFFFF;
 	usleep(2);
 
 	// Set per-clock reset for APE/VIC/HOST1X/DISP1.
@@ -246,9 +235,9 @@ static void _mbist_workaround()
 	// Set child clock sources.
 	CLOCK(CLK_RST_CONTROLLER_PLLD_BASE)        &= 0x1F7FFFFF; // Disable PLLD and set reference clock and csi clock.
 	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_SOR1)  &= 0xFFFF3FFF; // Set SOR1 to automatic muxing of safe clock (24MHz) or SOR1 clk switch.
-	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_VI)     = (CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_VI) & 0x1FFFFFFF) | 0x80000000;     // Set clock source to PLLP_OUT.
+	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_VI)     = (CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_VI) & 0x1FFFFFFF)     | 0x80000000; // Set clock source to PLLP_OUT.
 	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_HOST1X) = (CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_HOST1X) & 0x1FFFFFFF) | 0x80000000; // Set clock source to PLLP_OUT.
-	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_NVENC)  = (CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_NVENC) & 0x1FFFFFFF) | 0x80000000;  // Set clock source to PLLP_OUT.
+	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_NVENC)  = (CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_NVENC) & 0x1FFFFFFF)  | 0x80000000; // Set clock source to PLLP_OUT.
 }
 
 static void _config_se_brom()
@@ -263,17 +252,19 @@ static void _config_se_brom()
 	// se_key_acc_ctrl(15, SE_KEY_TBL_DIS_KEYREAD_FLAG);
 
 	// This memset needs to happen here, else TZRAM will behave weirdly later on.
-	memset((void *)TZRAM_BASE, 0, SZ_64K);
+	memset((void *)TZRAM_BASE, 0, TZRAM_SIZE);
 	PMC(APBDEV_PMC_CRYPTO_OP) = PMC_CRYPTO_OP_SE_ENABLE;
-	SE(SE_INT_STATUS_REG) = 0x1F; // Clear all SE interrupts.
+
+	// Clear SE interrupts.
+	SE(SE_INT_STATUS_REG) = SE_INT_OP_DONE | SE_INT_OUT_DONE | SE_INT_OUT_LL_BUF_WR | SE_INT_IN_DONE | SE_INT_IN_LL_BUF_RD;
 
 	// Save reset reason.
 	hw_rst_status = PMC(APBDEV_PMC_SCRATCH200);
 	hw_rst_reason = PMC(APBDEV_PMC_RST_STATUS) & PMC_RST_STATUS_MASK;
 
 	// Clear the boot reason to avoid problems later.
-	PMC(APBDEV_PMC_SCRATCH200) = 0x0;
-	PMC(APBDEV_PMC_RST_STATUS) = 0x0;
+	PMC(APBDEV_PMC_SCRATCH200) = 0;
+	PMC(APBDEV_PMC_RST_STATUS) = PMC_RST_STATUS_POR;
 	APB_MISC(APB_MISC_PP_STRAPPING_OPT_A) = (APB_MISC(APB_MISC_PP_STRAPPING_OPT_A) & 0xF0) | (7 << 10);
 }
 
@@ -290,6 +281,9 @@ static void _config_regulators(bool tegra_t210)
 	gpio_write(GPIO_PORT_E, GPIO_PIN_4, GPIO_LOW);
 	max7762x_regulator_enable(REGULATOR_LDO2, false);
 	sd_power_cycle_time_start = get_tmr_ms();
+
+	// Disable LCD DVDD.
+	max7762x_regulator_enable(REGULATOR_LDO0, false);
 
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_CNFGBBC, MAX77620_CNFGBBC_RESISTOR_1K);
 	i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_ONOFFCNFG1,
@@ -327,15 +321,17 @@ static void _config_regulators(bool tegra_t210)
 
 void hw_init()
 {
-	// Get Chip ID.
+	// Get Chip ID and SKU.
 	bool tegra_t210 = hw_get_chip_id() == GP_HIDREV_MAJOR_T210;
 	bool nx_hoag = fuse_read_hw_type() == FUSE_NX_HW_TYPE_HOAG;
 
 	// Bootrom stuff we skipped by going through rcm.
 	_config_se_brom();
 	//FUSE(FUSE_PRIVATEKEYDISABLE) = 0x11;
-	SYSREG(AHB_AHB_SPARE_REG) &= 0xFFFFFF9F; // Unset APB2JTAG_OVERRIDE_EN and OBS_OVERRIDE_EN.
-	PMC(APBDEV_PMC_SCRATCH49) = PMC(APBDEV_PMC_SCRATCH49) & 0xFFFFFFFC;
+
+	// Unset APB2JTAG_OVERRIDE_EN and OBS_OVERRIDE_EN.
+	SYSREG(AHB_AHB_SPARE_REG) &= 0xFFFFFF9F;
+	PMC(APBDEV_PMC_SCRATCH49) &= 0xFFFFFFFC;
 
 	// Perform Memory Built-In Self Test WAR if T210.
 	if (tegra_t210)
@@ -360,8 +356,14 @@ void hw_init()
 	_config_gpios(nx_hoag);
 
 #ifdef DEBUG_UART_PORT
+	#if   (DEBUG_UART_PORT == UART_B)
+		gpio_config(GPIO_PORT_G, GPIO_PIN_0, GPIO_MODE_SPIO);
+	#elif (DEBUG_UART_PORT == UART_C)
+		gpio_config(GPIO_PORT_D, GPIO_PIN_1, GPIO_MODE_SPIO);
+	#endif
+	pinmux_config_uart(DEBUG_UART_PORT);
 	clock_enable_uart(DEBUG_UART_PORT);
-	uart_init(DEBUG_UART_PORT, DEBUG_UART_BAUDRATE);
+	uart_init(DEBUG_UART_PORT, DEBUG_UART_BAUDRATE, UART_AO_TX_AO_RX);
 	uart_invert(DEBUG_UART_PORT, DEBUG_UART_INVERT, UART_INVERT_TXD);
 #endif
 
@@ -378,7 +380,7 @@ void hw_init()
 	// Initialize I2C5, mandatory for PMIC.
 	i2c_init(I2C_5);
 
-	//! TODO: Why? Device is NFC MCU on Lite.
+	// Enable LDO8 on HOAG as it also powers I2C1 IO pads.
 	if (nx_hoag)
 	{
 		max7762x_regulator_set_voltage(REGULATOR_LDO8, 2800000);
@@ -391,9 +393,6 @@ void hw_init()
 	// Initialize various regulators based on Erista/Mariko platform.
 	_config_regulators(tegra_t210);
 
-	// Enable charger in case it's disabled.
-	bq24193_enable_charger();
-
 	_config_pmc_scratch(); // Missing from 4.x+
 
 	// Set BPMP/SCLK to PLLP_OUT (408MHz).
@@ -402,24 +401,30 @@ void hw_init()
 	// Power on T210B01 shadow TZRAM and lock the reg.
 	if (!tegra_t210)
 	{
-		PMC(APBDEV_PMC_TZRAM_PWR_CNTRL) &= ~PMC_TZRAM_PWR_CNTRL_SD;
+		PMC(APBDEV_PMC_TZRAM_PWR_CNTRL)      &= ~PMC_TZRAM_PWR_CNTRL_SD;
 		PMC(APBDEV_PMC_TZRAM_NON_SEC_DISABLE) = PMC_TZRAM_DISABLE_REG_WRITE | PMC_TZRAM_DISABLE_REG_READ;
-		PMC(APBDEV_PMC_TZRAM_SEC_DISABLE) = PMC_TZRAM_DISABLE_REG_WRITE | PMC_TZRAM_DISABLE_REG_READ;
+		PMC(APBDEV_PMC_TZRAM_SEC_DISABLE)     = PMC_TZRAM_DISABLE_REG_WRITE | PMC_TZRAM_DISABLE_REG_READ;
 	}
 
 	// Initialize External memory controller and configure DRAM parameters.
 	sdram_init();
 
 	bpmp_mmu_enable();
+
+	// Enable HOST1X used by every display module (DC, VIC, NVDEC, NVENC, TSEC, etc).
+	clock_enable_host1x();
 }
 
 void hw_reinit_workaround(bool coreboot, u32 bl_magic)
 {
-	// Disable BPMP max clock.
+	bool tegra_t210 = hw_get_chip_id() == GP_HIDREV_MAJOR_T210;
+
+	// Scale down BPMP clock.
 	bpmp_clk_rate_set(BPMP_CLK_NORMAL);
 
 #ifdef BDK_HW_EXTRA_DEINIT
-	// Disable temperature sensor, touchscreen, 5V regulators and Joy-Con.
+	// Disable temperature sensor, touchscreen, 5V regulators, Joy-Con and VIC.
+	vic_end();
 	tmp451_end();
 	set_fan_duty(0);
 	touch_power_off();
@@ -427,14 +432,19 @@ void hw_reinit_workaround(bool coreboot, u32 bl_magic)
 	regulator_5v_disable(REGULATOR_5V_ALL);
 #endif
 
-	// Flush/disable MMU cache and set DRAM clock to 204MHz.
-	bpmp_mmu_disable();
+	// set DRAM clock to 204MHz.
 	minerva_change_freq(FREQ_204);
 	nyx_str->mtc_cfg.init_done = 0;
 
+	// Flush/disable MMU cache.
+	bpmp_mmu_disable();
+
 	// Re-enable clocks to Audio Processing Engine as a workaround to hanging.
-	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= BIT(CLK_V_AHUB);
-	CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= BIT(CLK_Y_APE);
+	if (tegra_t210)
+	{
+		CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_V) |= BIT(CLK_V_AHUB);
+		CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_Y) |= BIT(CLK_Y_APE);
+	}
 
 	// Do coreboot mitigations.
 	if (coreboot)
@@ -443,11 +453,9 @@ void hw_reinit_workaround(bool coreboot, u32 bl_magic)
 
 		clock_disable_cl_dvfs();
 
-		// Disable Joy-con GPIOs.
+		// Disable Joy-con detect in order to restore UART TX.
 		gpio_config(GPIO_PORT_G, GPIO_PIN_0, GPIO_MODE_SPIO);
 		gpio_config(GPIO_PORT_D, GPIO_PIN_1, GPIO_MODE_SPIO);
-		gpio_config(GPIO_PORT_E, GPIO_PIN_6, GPIO_MODE_SPIO);
-		gpio_config(GPIO_PORT_H, GPIO_PIN_6, GPIO_MODE_SPIO);
 
 		// Reinstate SD controller power.
 		PMC(APBDEV_PMC_NO_IOPOWER) &= ~(PMC_NO_IOPOWER_SDMMC1_IO_EN);
@@ -463,17 +471,11 @@ void hw_reinit_workaround(bool coreboot, u32 bl_magic)
 		gpio_config(GPIO_PORT_V, GPIO_PIN_0, GPIO_MODE_GPIO);
 		display_backlight_brightness(brightness, 0);
 		break;
+	case BL_MAGIC_L4TLDR_SLD:
+		// Do not disable display or backlight at all.
+		break;
 	default:
 		display_end();
-	}
-
-	// Enable clock to USBD and init SDMMC1 to avoid hangs with bad hw inits.
-	if (bl_magic == BL_MAGIC_BROKEN_HWI)
-	{
-		CLOCK(CLK_RST_CONTROLLER_CLK_ENB_L_SET) = BIT(CLK_L_USBD);
-		sdmmc_init(&sd_sdmmc, SDMMC_1, SDMMC_POWER_3_3, SDMMC_BUS_WIDTH_1, SDHCI_TIMING_SD_ID, 0);
-		clock_disable_cl_dvfs();
-
-		msleep(200);
+		clock_disable_host1x();
 	}
 }

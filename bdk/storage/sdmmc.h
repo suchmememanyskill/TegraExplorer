@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2021 CTCaer
+ * Copyright (c) 2018-2022 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -129,10 +129,7 @@ typedef struct _mmc_csd
 	u16 cmdclass;
 	u32 c_size;
 	u32 r2w_factor;
-	u32 max_dtr;
-	u32 erase_size;		/* In sectors */
 	u32 read_blkbits;
-	u32 write_blkbits;
 	u32 capacity;
 	u8  write_protect;
 	u16 busspeed;
@@ -186,6 +183,7 @@ typedef struct _sdmmc_storage_t
 	int is_low_voltage;
 	u32 partition;
 	int initialized;
+	u32 card_power_limit;
 	u8  raw_cid[0x10];
 	u8  raw_csd[0x10];
 	u8  raw_scr[8];
@@ -209,6 +207,9 @@ int  sdmmc_storage_init_gc(sdmmc_storage_t *storage, sdmmc_t *sdmmc);
 int  sdmmc_storage_execute_vendor_cmd(sdmmc_storage_t *storage, u32 arg);
 int  sdmmc_storage_vendor_sandisk_report(sdmmc_storage_t *storage, void *buf);
 
+int  mmc_storage_get_ext_csd(sdmmc_storage_t *storage, void *buf);
+
+int  sd_storage_get_scr(sdmmc_storage_t *storage, u8 *buf);
 int  sd_storage_get_ssr(sdmmc_storage_t *storage, u8 *buf);
 u32  sd_storage_get_ssr_au(sdmmc_storage_t *storage);
 

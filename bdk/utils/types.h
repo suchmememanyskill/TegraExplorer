@@ -1,6 +1,6 @@
 /*
 * Copyright (c) 2018 naehrwert
-* Copyright (c) 2018-2021 CTCaer
+* Copyright (c) 2018-2022 CTCaer
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -19,16 +19,6 @@
 #define _TYPES_H_
 
 #include <assert.h>
-
-#define ALWAYS_INLINE inline __attribute__((always_inline))
-
-
-#define COLOR_RED    0xFFE70000
-#define COLOR_ORANGE 0xFFFF8C00
-#define COLOR_YELLOW 0xFFFFFF40
-#define COLOR_GREEN  0xFF40FF00
-#define COLOR_BLUE   0xFF00DDFF
-#define COLOR_VIOLET 0xFF8040FF
 
 /* Types */
 typedef signed char s8;
@@ -60,6 +50,15 @@ typedef unsigned long long uptr;
 #else /* __arm__ or __thumb__ */
 typedef unsigned long uptr;
 #endif
+
+#define ALWAYS_INLINE inline __attribute__((always_inline))
+
+#define COLOR_RED    0xFFE70000
+#define COLOR_ORANGE 0xFFFF8C00
+#define COLOR_YELLOW 0xFFFFFF40
+#define COLOR_GREEN  0xFF40FF00
+#define COLOR_BLUE   0xFF00DDFF
+#define COLOR_VIOLET 0xFF8040FF
 
 /* Important */
 #define false 0
@@ -112,7 +111,7 @@ typedef unsigned long uptr;
 
 #define byte_swap_16(num) ((((num) >> 8) & 0xff) | (((num) << 8) & 0xff00))
 #define byte_swap_32(num) ((((num) >> 24) & 0xff) | (((num) << 8) & 0xff0000) | \
-						(((num) >> 8 )& 0xff00) | (((num) << 24) & 0xff000000))
+						(((num) >> 8 ) & 0xff00) | (((num) << 24) & 0xff000000))
 
 
 /* Bootloader/Nyx */

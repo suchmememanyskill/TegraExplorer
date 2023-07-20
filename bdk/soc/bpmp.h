@@ -1,7 +1,7 @@
 /*
  * BPMP-Lite Cache/MMU and Frequency driver for Tegra X1
  *
- * Copyright (c) 2019-2021 CTCaer
+ * Copyright (c) 2019-2023 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -47,12 +47,14 @@ typedef enum
 {
 	BPMP_CLK_NORMAL,      // 408MHz  0% - 136MHz APB.
 	BPMP_CLK_HIGH_BOOST,  // 544MHz 33% - 136MHz APB.
+	BPMP_CLK_HIGH2_BOOST, // 563MHz 38% - 141MHz APB.
 	BPMP_CLK_SUPER_BOOST, // 576MHz 41% - 144MHz APB.
 	BPMP_CLK_HYPER_BOOST, // 589MHz 44% - 147MHz APB.
 	//BPMP_CLK_DEV_BOOST, // 608MHz 49% - 152MHz APB.
 	BPMP_CLK_MAX
 } bpmp_freq_t;
 
+#define BPMP_CLK_LOWEST_BOOST  BPMP_CLK_HIGH2_BOOST
 #define BPMP_CLK_LOWER_BOOST   BPMP_CLK_SUPER_BOOST
 #define BPMP_CLK_DEFAULT_BOOST BPMP_CLK_HYPER_BOOST
 

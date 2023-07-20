@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2020 CTCaer
+ * Copyright (c) 2018-2022 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include <soc/i2c.h>
-#include <utils/util.h>
+#include <soc/timer.h>
 
 #define I2C_PACKET_PROT_I2C  BIT(4)
 #define I2C_HEADER_CONT_XFER BIT(15)
@@ -95,9 +95,9 @@ static void _i2c_load_cfg_wait(vu32 *base)
 	base[I2C_CONFIG_LOAD] = BIT(5) | TIMEOUT_CONFIG_LOAD | MSTR_CONFIG_LOAD;
 	for (u32 i = 0; i < 20; i++)
 	{
-		usleep(1);
 		if (!(base[I2C_CONFIG_LOAD] & MSTR_CONFIG_LOAD))
 			break;
+		usleep(1);
 	}
 }
 
@@ -205,8 +205,8 @@ static int _i2c_send_pkt(u32 i2c_idx, u8 *buf, u32 size, u32 dev_addr)
 		ARB_LOST | TX_FIFO_OVER | RX_FIFO_UNDER | TX_FIFO_DATA_REQ;
 	base[I2C_INT_STATUS] = base[I2C_INT_STATUS];
 
-	// Set device address and recv mode.
-	base[I2C_CMD_ADDR0] = (dev_addr << 1) | ADDR0_READ;
+	// Set device address and send mode.
+	base[I2C_CMD_ADDR0] = (dev_addr << 1) | ADDR0_WRITE;
 
 	// Set recv mode.
 	base[I2C_CNFG] = DEBOUNCE_CNT_4T | NEW_MASTER_FSM | CMD1_WRITE;
@@ -362,9 +362,9 @@ void i2c_init(u32 i2c_idx)
 
 	for (u32 i = 0; i < 10; i++)
 	{
-		usleep(20000);
 		if (base[I2C_INT_STATUS] & BUS_CLEAR_DONE)
 			break;
+		usleep(25);
 	}
 
 	(vu32)base[I2C_BUS_CLEAR_STATUS];

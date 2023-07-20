@@ -2,7 +2,7 @@
  * Copyright (c) 2018 naehrwert
  * Copyright (c) 2018 shuffle2
  * Copyright (c) 2018 balika011
- * Copyright (c) 2019-2021 CTCaer
+ * Copyright (c) 2019-2022 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -82,12 +82,15 @@
 /*! Fuse cache registers. */
 #define FUSE_RESERVED_ODMX(x) (0x1C8 + 4 * (x))
 
+#define FUSE_ARRAY_WORDS_NUM         192
+#define FUSE_ARRAY_WORDS_NUM_T210B01 256
+
 enum
 {
 	FUSE_NX_HW_TYPE_ICOSA,
 	FUSE_NX_HW_TYPE_IOWA,
 	FUSE_NX_HW_TYPE_HOAG,
-    FUSE_NX_HW_TYPE_AULA
+	FUSE_NX_HW_TYPE_AULA
 };
 
 enum

@@ -1,7 +1,7 @@
 /*
  * BPMP-Lite Cache/MMU and Frequency driver for Tegra X1
  *
- * Copyright (c) 2019-2021 CTCaer
+ * Copyright (c) 2019-2023 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,9 +18,9 @@
 
 #include <soc/bpmp.h>
 #include <soc/clock.h>
+#include <soc/timer.h>
 #include <soc/t210.h>
 #include <memory_map.h>
-#include <utils/util.h>
 
 #define BPMP_MMU_CACHE_LINE_SIZE        0x20
 
@@ -134,7 +134,7 @@ void bpmp_mmu_maintenance(u32 op, bool force)
 	// This is a blocking operation.
 	BPMP_CACHE_CTRL(BPMP_CACHE_MAINT_REQ) = MAINT_REQ_WAY_BITMAP(0xF) | op;
 
-	while(!(BPMP_CACHE_CTRL(BPMP_CACHE_INT_RAW_EVENT) & INT_MAINT_DONE))
+	while (!(BPMP_CACHE_CTRL(BPMP_CACHE_INT_RAW_EVENT) & INT_MAINT_DONE))
 		;
 
 	BPMP_CACHE_CTRL(BPMP_CACHE_INT_CLEAR) = BPMP_CACHE_CTRL(BPMP_CACHE_INT_RAW_EVENT);
@@ -150,8 +150,8 @@ void bpmp_mmu_set_entry(int idx, bpmp_mmu_entry_t *entry, bool apply)
 	if (entry->enable)
 	{
 		mmu_entry->start_addr = ALIGN(entry->start_addr, BPMP_MMU_CACHE_LINE_SIZE);
-		mmu_entry->end_addr = ALIGN_DOWN(entry->end_addr, BPMP_MMU_CACHE_LINE_SIZE);
-		mmu_entry->attr = entry->attr;
+		mmu_entry->end_addr   = ALIGN_DOWN(entry->end_addr, BPMP_MMU_CACHE_LINE_SIZE);
+		mmu_entry->attr       = entry->attr;
 
 		BPMP_CACHE_CTRL(BPMP_CACHE_MMU_SHADOW_COPY_MASK) |= BIT(idx);
 
@@ -166,9 +166,9 @@ void bpmp_mmu_enable()
 		return;
 
 	// Init BPMP MMU.
-	BPMP_CACHE_CTRL(BPMP_CACHE_MMU_CMD) = MMU_CMD_INIT;
+	BPMP_CACHE_CTRL(BPMP_CACHE_MMU_CMD)            = MMU_CMD_INIT;
 	BPMP_CACHE_CTRL(BPMP_CACHE_MMU_FALLBACK_ENTRY) = MMU_EN_READ | MMU_EN_WRITE | MMU_EN_EXEC; // RWX for non-defined regions.
-	BPMP_CACHE_CTRL(BPMP_CACHE_MMU_CFG) = MMU_CFG_SEQ_EN | MMU_CFG_TLB_EN | MMU_CFG_ABORT_STORE_LAST;
+	BPMP_CACHE_CTRL(BPMP_CACHE_MMU_CFG)            = MMU_CFG_SEQ_EN | MMU_CFG_TLB_EN | MMU_CFG_ABORT_STORE_LAST;
 
 	// Init BPMP MMU entries.
 	BPMP_CACHE_CTRL(BPMP_CACHE_MMU_SHADOW_COPY_MASK) = 0;
@@ -206,6 +206,7 @@ void bpmp_mmu_disable()
 const u8 pll_divn[] = {
 	0,   // BPMP_CLK_NORMAL:      408MHz  0% - 136MHz APB.
 	85,  // BPMP_CLK_HIGH_BOOST:  544MHz 33% - 136MHz APB.
+	88,  // BPMP_CLK_HIGH2_BOOST: 563MHz 38% - 141MHz APB.
 	90,  // BPMP_CLK_SUPER_BOOST: 576MHz 41% - 144MHz APB.
 	92   // BPMP_CLK_HYPER_BOOST: 589MHz 44% - 147MHz APB.
 	// Do not use for public releases!

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2022 CTCaer
+ * Copyright (c) 2018-2023 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -22,10 +22,18 @@
 #include <libs/fatfs/ff.h>
 #include <mem/heap.h>
 
+#ifndef BDK_SDMMC_UHS_DDR200_SUPPORT
+#define SD_DEFAULT_SPEED SD_UHS_SDR104
+#else
+#define SD_DEFAULT_SPEED SD_UHS_DDR208
+#endif
+
 static bool sd_mounted = false;
 static bool sd_init_done = false;
+static bool insertion_event = false;
 static u16  sd_errors[3] = { 0 }; // Init and Read/Write errors.
-static u32  sd_mode = SD_UHS_SDR104;
+static u32  sd_mode = SD_DEFAULT_SPEED;
+
 
 sdmmc_t sd_sdmmc;
 sdmmc_storage_t sd_storage;
@@ -54,7 +62,7 @@ u16 *sd_get_error_count()
 
 bool sd_get_card_removed()
 {
-	if (sd_init_done && !sdmmc_get_sd_inserted())
+	if (insertion_event && !sdmmc_get_sd_inserted())
 		return true;
 
 	return false;
@@ -78,7 +86,11 @@ u32 sd_get_mode()
 int sd_init_retry(bool power_cycle)
 {
 	u32 bus_width = SDMMC_BUS_WIDTH_4;
+#ifndef BDK_SDMMC_UHS_DDR200_SUPPORT
 	u32 type = SDHCI_TIMING_UHS_SDR104;
+#else
+	u32 type = SDHCI_TIMING_UHS_DDR200;
+#endif
 
 	// Power cycle SD card.
 	if (power_cycle)
@@ -92,24 +104,45 @@ int sd_init_retry(bool power_cycle)
 	{
 	case SD_INIT_FAIL: // Reset to max.
 		return 0;
+
 	case SD_1BIT_HS25:
 		bus_width = SDMMC_BUS_WIDTH_1;
 		type = SDHCI_TIMING_SD_HS25;
 		break;
+
 	case SD_4BIT_HS25:
 		type = SDHCI_TIMING_SD_HS25;
 		break;
+
 	case SD_UHS_SDR82:
 		type = SDHCI_TIMING_UHS_SDR82;
 		break;
+
 	case SD_UHS_SDR104:
 		type = SDHCI_TIMING_UHS_SDR104;
 		break;
+
+#ifdef BDK_SDMMC_UHS_DDR200_SUPPORT
+	case SD_UHS_DDR208:
+		type = SDHCI_TIMING_UHS_DDR200;
+		break;
+#endif
+
 	default:
-		sd_mode = SD_UHS_SDR104;
+		sd_mode = SD_DEFAULT_SPEED;
+		break;
 	}
 
-	return sdmmc_storage_init_sd(&sd_storage, &sd_sdmmc, bus_width, type);
+	int res = sdmmc_storage_init_sd(&sd_storage, &sd_sdmmc, bus_width, type);
+	if (res)
+	{
+		sd_init_done    = true;
+		insertion_event = true;
+	}
+	else
+		sd_init_done = false;
+
+	return res;
 }
 
 bool sd_initialize(bool power_cycle)
@@ -125,7 +158,7 @@ bool sd_initialize(bool power_cycle)
 			return true;
 		else if (!sdmmc_get_sd_inserted()) // SD Card is not inserted.
 		{
-			sd_mode = SD_UHS_SDR104;
+			sd_mode = SD_DEFAULT_SPEED;
 			break;
 		}
 		else
@@ -146,7 +179,7 @@ bool sd_initialize(bool power_cycle)
 
 bool sd_mount()
 {
-	if (sd_mounted)
+	if (sd_init_done && sd_mounted)
 		return true;
 
 	int res = 0;
@@ -165,8 +198,8 @@ bool sd_mount()
 	}
 	else
 	{
-		sd_init_done = true;
-		res = f_mount(&sd_fs, "0:", 1); // Volume 0 is SD.
+		if (!sd_mounted)
+			res = f_mount(&sd_fs, "0:", 1); // Volume 0 is SD.
 		if (res == FR_OK)
 		{
 			sd_mounted = true;
@@ -184,19 +217,25 @@ bool sd_mount()
 
 static void _sd_deinit(bool deinit)
 {
-	if (deinit && sd_mode == SD_INIT_FAIL)
-		sd_mode = SD_UHS_SDR104;
+	if (deinit)
+	{
+		insertion_event = false;
+		if (sd_mode == SD_INIT_FAIL)
+			sd_mode = SD_DEFAULT_SPEED;
+	}
 
-	if (sd_init_done && sd_mounted)
+	if (sd_init_done)
 	{
-		f_mount(NULL, "0:", 1); // Volume 0 is SD.
-		sd_mounted = false;
+		if (sd_mounted)
+			f_mount(NULL, "0:", 1); // Volume 0 is SD.
+
+		if (deinit)
+		{
+			sdmmc_storage_end(&sd_storage);
+			sd_init_done = false;
+		}
 	}
-	if (sd_init_done && deinit)
-	{
-		sdmmc_storage_end(&sd_storage);
-		sd_init_done = false;
-	}
+	sd_mounted = false;
 }
 
 void sd_unmount() { _sd_deinit(false); }
@@ -210,6 +249,9 @@ bool sd_is_gpt()
 void *sd_file_read(const char *path, u32 *fsize)
 {
 	FIL fp;
+	if (!sd_get_card_mounted())
+		return NULL;
+
 	if (f_open(&fp, path, FA_READ) != FR_OK)
 		return NULL;
 
@@ -237,6 +279,9 @@ int sd_save_to_file(void *buf, u32 size, const char *filename)
 {
 	FIL fp;
 	u32 res = 0;
+	if (!sd_get_card_mounted())
+		return FR_DISK_ERR;
+
 	res = f_open(&fp, filename, FA_CREATE_ALWAYS | FA_WRITE);
 	if (res)
 	{

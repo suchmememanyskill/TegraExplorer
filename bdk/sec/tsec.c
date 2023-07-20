@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2021 CTCaer
+ * Copyright (c) 2018-2023 CTCaer
  * Copyright (c) 2018 balika011
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -20,16 +20,17 @@
 
 #include "tsec.h"
 #include "tsec_t210.h"
+#include <memory_map.h>
+#include <mem/heap.h>
+#include <mem/mc.h>
+#include <mem/smmu.h>
 #include <sec/se_t210.h>
 #include <soc/bpmp.h>
 #include <soc/clock.h>
 #include <soc/kfuse.h>
 #include <soc/pmc.h>
 #include <soc/t210.h>
-#include <mem/heap.h>
-#include <mem/mc.h>
-#include <mem/smmu.h>
-#include <utils/util.h>
+#include <soc/timer.h>
 
 // #include <gfx_utils.h>
 
@@ -57,9 +58,9 @@ static int _tsec_dma_pa_to_internal_100(int not_imem, int i_offset, int pa_offse
 	else
 		cmd = TSEC_DMATRFCMD_IMEM;      // DMA IMEM (Instruction memmory)
 
-	TSEC(TSEC_DMATRFMOFFS) = i_offset;
+	TSEC(TSEC_DMATRFMOFFS)  = i_offset;
 	TSEC(TSEC_DMATRFFBOFFS) = pa_offset;
-	TSEC(TSEC_DMATRFCMD) = cmd;
+	TSEC(TSEC_DMATRFCMD)    = cmd;
 
 	return _tsec_dma_wait_idle();
 }
@@ -76,15 +77,15 @@ int tsec_query(void *tsec_keys, tsec_ctxt_t *tsec_ctxt)
 	bpmp_freq_t prev_fid = bpmp_clk_rate_set(BPMP_CLK_NORMAL);
 
 	// Enable clocks.
-	clock_enable_host1x();
-	usleep(2);
 	clock_enable_tsec();
 	clock_enable_sor_safe();
 	clock_enable_sor0();
 	clock_enable_sor1();
 	clock_enable_kfuse();
-
 	kfuse_wait_ready();
+
+	// Disable AHB aperture.
+	mc_disable_ahb_redirect();
 
 	if (type == TSEC_FW_TYPE_NEW)
 	{
@@ -95,23 +96,23 @@ int tsec_query(void *tsec_keys, tsec_ctxt_t *tsec_ctxt)
 		pmc_enable_partition(POWER_RAIL_CE3, DISABLE);
 
 		// Enable AHB aperture and set it to full mmio.
-		mc_enable_ahb_redirect(true);
+		mc_enable_ahb_redirect();
 	}
 
 	// Configure Falcon.
 	TSEC(TSEC_DMACTL) = 0;
 	TSEC(TSEC_IRQMSET) =
 		TSEC_IRQMSET_EXT(0xFF) |
-		TSEC_IRQMSET_WDTMR |
-		TSEC_IRQMSET_HALT |
-		TSEC_IRQMSET_EXTERR |
-		TSEC_IRQMSET_SWGEN0 |
+		TSEC_IRQMSET_WDTMR     |
+		TSEC_IRQMSET_HALT      |
+		TSEC_IRQMSET_EXTERR    |
+		TSEC_IRQMSET_SWGEN0    |
 		TSEC_IRQMSET_SWGEN1;
 	TSEC(TSEC_IRQDEST) =
 		TSEC_IRQDEST_EXT(0xFF) |
-		TSEC_IRQDEST_HALT |
-		TSEC_IRQDEST_EXTERR |
-		TSEC_IRQDEST_SWGEN0 |
+		TSEC_IRQDEST_HALT      |
+		TSEC_IRQDEST_EXTERR    |
+		TSEC_IRQDEST_SWGEN0    |
 		TSEC_IRQDEST_SWGEN1;
 	TSEC(TSEC_ITFEN) = TSEC_ITFEN_CTXEN | TSEC_ITFEN_MTHDEN;
 	if (!_tsec_dma_wait_idle())
@@ -128,6 +129,7 @@ int tsec_query(void *tsec_keys, tsec_ctxt_t *tsec_ctxt)
 		fwbuf = (u8 *)malloc(SZ_16K);
 		u8 *fwbuf_aligned = (u8 *)ALIGN((u32)fwbuf, 0x100);
 		memcpy(fwbuf_aligned, tsec_ctxt->fw, tsec_ctxt->size);
+
 		TSEC(TSEC_DMATRFBASE) = (u32)fwbuf_aligned >> 8;
 	}
 
@@ -180,7 +182,7 @@ int tsec_query(void *tsec_keys, tsec_ctxt_t *tsec_ctxt)
 		mc = page_alloc(1);
 		memcpy(mc, (void *)MC_BASE, SZ_PAGE);
 		mc[MC_IRAM_BOM / 4] = 0;
-		mc[MC_IRAM_TOM / 4] = 0x80000000;
+		mc[MC_IRAM_TOM / 4] = DRAM_START;
 		smmu_map(pdir, MC_BASE, (u32)mc, 1, _READABLE | _NONSECURE);
 
 		// IRAM
@@ -197,15 +199,15 @@ int tsec_query(void *tsec_keys, tsec_ctxt_t *tsec_ctxt)
 
 	// Execute firmware.
 	HOST1X(HOST1X_CH0_SYNC_SYNCPT_160) = 0x34C2E1DA;
-	TSEC(TSEC_STATUS) = 0;
-	TSEC(TSEC_BOOTKEYVER) = 1; // HOS uses key version 1.
-	TSEC(TSEC_BOOTVEC) = 0;
-	TSEC(TSEC_CPUCTL) = TSEC_CPUCTL_STARTCPU;
+	TSEC(TSEC_MAILBOX1) = 0;
+	TSEC(TSEC_MAILBOX0) = 1; // Set HOS key version.
+	TSEC(TSEC_BOOTVEC)  = 0;
+	TSEC(TSEC_CPUCTL)   = TSEC_CPUCTL_STARTCPU;
 
 	if (type == TSEC_FW_TYPE_EMU)
 	{
-		u32 start = get_tmr_us();
 		u32 k = se[SE_CRYPTO_KEYTABLE_DATA_REG / 4];
+		u32 timeout = get_tmr_us() + 125000;
 		u32 key[16] = {0};
 		u32 kidx = 0;
 
@@ -220,7 +222,7 @@ int tsec_query(void *tsec_keys, tsec_ctxt_t *tsec_ctxt)
 			}
 
 			// Failsafe.
-			if ((u32)get_tmr_us() - start > 125000)
+			if ((u32)get_tmr_us() > timeout)
 				break;
 		}
 
@@ -243,7 +245,7 @@ int tsec_query(void *tsec_keys, tsec_ctxt_t *tsec_ctxt)
 		// for (int i = 0; i < kidx; i++)
 		// 	gfx_printf("key %08X\n", key[i]);
 
-		// gfx_printf("cpuctl (%08X) mbox (%08X)\n", TSEC(TSEC_CPUCTL), TSEC(TSEC_STATUS));
+		// gfx_printf("cpuctl (%08X) mbox (%08X)\n", TSEC(TSEC_CPUCTL), TSEC(TSEC_MAILBOX1));
 
 		// u32 errst = MC(MC_ERR_STATUS);
 		// gfx_printf(" MC %08X %08X %08X\n", MC(MC_INTSTATUS), errst, MC(MC_ERR_ADR));
@@ -259,14 +261,18 @@ int tsec_query(void *tsec_keys, tsec_ctxt_t *tsec_ctxt)
 			res = -3;
 			goto out_free;
 		}
+
 		u32 timeout = get_tmr_ms() + 2000;
-		while (!TSEC(TSEC_STATUS))
+		while (!TSEC(TSEC_MAILBOX1))
+		{
 			if (get_tmr_ms() > timeout)
 			{
 				res = -4;
 				goto out_free;
 			}
-		if (TSEC(TSEC_STATUS) != 0xB0B0B0B0)
+		}
+
+		if (TSEC(TSEC_MAILBOX1) != 0xB0B0B0B0)
 		{
 			res = -5;
 			goto out_free;
@@ -275,23 +281,22 @@ int tsec_query(void *tsec_keys, tsec_ctxt_t *tsec_ctxt)
 		// Fetch result.
 		HOST1X(HOST1X_CH0_SYNC_SYNCPT_160) = 0;
 		u32 buf[4];
-		buf[0] = SOR1(SOR_NV_PDISP_SOR_DP_HDCP_BKSV_LSB);
-		buf[1] = SOR1(SOR_NV_PDISP_SOR_TMDS_HDCP_BKSV_LSB);
-		buf[2] = SOR1(SOR_NV_PDISP_SOR_TMDS_HDCP_CN_MSB);
-		buf[3] = SOR1(SOR_NV_PDISP_SOR_TMDS_HDCP_CN_LSB);
-		SOR1(SOR_NV_PDISP_SOR_DP_HDCP_BKSV_LSB) = 0;
-		SOR1(SOR_NV_PDISP_SOR_TMDS_HDCP_BKSV_LSB) = 0;
-		SOR1(SOR_NV_PDISP_SOR_TMDS_HDCP_CN_MSB) = 0;
-		SOR1(SOR_NV_PDISP_SOR_TMDS_HDCP_CN_LSB) = 0;
+		buf[0] = SOR1(SOR_DP_HDCP_BKSV_LSB);
+		buf[1] = SOR1(SOR_TMDS_HDCP_BKSV_LSB);
+		buf[2] = SOR1(SOR_TMDS_HDCP_CN_MSB);
+		buf[3] = SOR1(SOR_TMDS_HDCP_CN_LSB);
+		SOR1(SOR_DP_HDCP_BKSV_LSB)   = 0;
+		SOR1(SOR_TMDS_HDCP_BKSV_LSB) = 0;
+		SOR1(SOR_TMDS_HDCP_CN_MSB)   = 0;
+		SOR1(SOR_TMDS_HDCP_CN_LSB)   = 0;
 
 		memcpy(tsec_keys, &buf, SE_KEY_128_SIZE);
 	}
 
-out_free:;
+out_free:
 	free(fwbuf);
 
-out:;
-
+out:
 	// Disable clocks.
 	clock_disable_kfuse();
 	clock_disable_sor1();
@@ -301,9 +306,10 @@ out:;
 	bpmp_mmu_enable();
 	bpmp_clk_rate_set(prev_fid);
 
-	// Disable AHB aperture.
-	if (type == TSEC_FW_TYPE_NEW)
-		mc_disable_ahb_redirect();
+#ifdef BDK_MC_ENABLE_AHB_REDIRECT
+	// Re-enable AHB aperture.
+	mc_enable_ahb_redirect();
+#endif
 
 	return res;
 }

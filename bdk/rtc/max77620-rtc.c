@@ -1,7 +1,7 @@
 /*
  * PMIC Real Time Clock driver for Nintendo Switch's MAX77620-RTC
  *
- * Copyright (c) 2018-2019 CTCaer
+ * Copyright (c) 2018-2022 CTCaer
  * Copyright (c) 2019 shchmue
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -19,7 +19,14 @@
 
 #include <rtc/max77620-rtc.h>
 #include <soc/i2c.h>
-#include <utils/util.h>
+#include <soc/pmc.h>
+#include <soc/timer.h>
+#include <soc/t210.h>
+
+void max77620_rtc_prep_read()
+{
+	i2c_send_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_UPDATE0_REG, MAX77620_RTC_READ_UPDATE);
+}
 
 void max77620_rtc_get_time(rtc_time_t *time)
 {
@@ -35,7 +42,7 @@ void max77620_rtc_get_time(rtc_time_t *time)
 	// Get time.
 	time->sec  = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_SEC_REG) & 0x7F;
 	time->min  = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_MIN_REG) & 0x7F;
-	u8 hour = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_HOUR_REG);
+	u8 hour    = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_HOUR_REG);
 	time->hour = hour & 0x1F;
 
 	if (!(val & MAX77620_RTC_24H) && (hour & MAX77620_RTC_HOUR_PM_MASK))
@@ -53,7 +60,7 @@ void max77620_rtc_get_time(rtc_time_t *time)
 	}
 
 	// Get date.
-	time->day  = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_DATE_REG) & 0x1f;
+	time->day   = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_DATE_REG) & 0x1f;
 	time->month = (i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_MONTH_REG) & 0xF) - 1;
 	time->year  = (i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_YEAR_REG) & 0x7F) + 2000;
 }
@@ -64,6 +71,7 @@ void max77620_rtc_stop_alarm()
 
 	// Update RTC regs from RTC clock.
 	i2c_send_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_UPDATE0_REG, MAX77620_RTC_READ_UPDATE);
+	msleep(16);
 
 	// Stop alarm for both ALARM1 and ALARM2. Horizon uses ALARM2.
 	for (int i = 0; i < (MAX77620_RTC_NR_TIME_REGS * 2); i++)
@@ -82,9 +90,9 @@ void max77620_rtc_epoch_to_date(u32 epoch, rtc_time_t *time)
 	u32 tmp, edays, year, month, day;
 
 	// Set time.
-	time->sec = epoch % 60;
+	time->sec  = epoch % 60;
 	epoch /= 60;
-	time->min = epoch % 60;
+	time->min  = epoch % 60;
 	epoch /= 60;
 	time->hour = epoch % 24;
 	epoch /= 24;
@@ -99,14 +107,14 @@ void max77620_rtc_epoch_to_date(u32 epoch, rtc_time_t *time)
 	day = edays - month * 30 - month * 601 / 1000;
 
 	// Month/Year offset.
-	if(month < 14)
+	if (month < 14)
 	{
 		year -= 4716;
 		month--;
 	}
 	else
 	{
-		year -= 4715;
+		year  -= 4715;
 		month -= 13;
 	}
 
@@ -129,13 +137,13 @@ u32 max77620_rtc_date_to_epoch(const rtc_time_t *time)
 	month = time->month;
 
 	// Month/Year offset.
-	if(month < 3)
+	if (month < 3)
 	{
 		month += 12;
 		year--;
 	}
 
-	epoch = (365 * year) + (year >> 2) - (year / 100) + (year / 400); // Years to days.
+	epoch  = (365 * year) + (year >> 2) - (year / 100) + (year / 400); // Years to days.
 
 	epoch += (30 * month) + (3 * (month + 1) / 5) + time->day; // Months to days.
 	epoch -= 719561; // Epoch time is 1/1/1970.
@@ -144,4 +152,46 @@ u32 max77620_rtc_date_to_epoch(const rtc_time_t *time)
 	epoch += (3600 * time->hour) + (60 * time->min) + time->sec; // Add hours, minutes and seconds.
 
 	return epoch;
+}
+
+void max77620_rtc_set_reboot_reason(rtc_reboot_reason_t *rr)
+{
+	max77620_rtc_stop_alarm();
+
+	// Set reboot reason.
+	i2c_send_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_ALARM1_YEAR_REG, rr->enc.val1);
+	i2c_send_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_ALARM2_YEAR_REG, rr->enc.val2);
+
+	// Set reboot reason magic.
+	i2c_send_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_ALARM1_WEEKDAY_REG, RTC_REBOOT_REASON_MAGIC);
+	i2c_send_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_ALARM2_WEEKDAY_REG, RTC_REBOOT_REASON_MAGIC);
+
+	// Update RTC clock from RTC regs.
+	i2c_send_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_UPDATE0_REG, MAX77620_RTC_WRITE_UPDATE);
+	msleep(16);
+}
+
+bool max77620_rtc_get_reboot_reason(rtc_reboot_reason_t *rr)
+{
+	u8 magic[2];
+
+	// Get reboot reason magic.
+	magic[0] = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_ALARM1_WEEKDAY_REG);
+	magic[1] = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_ALARM2_WEEKDAY_REG);
+
+	// Magic must be correct and match on both registers.
+	if (magic[0] != RTC_REBOOT_REASON_MAGIC || magic[0] != magic[1])
+		return false;
+
+	// Reboot reason setter is expected to have updated the actual regs already.
+	rr->enc.val1 = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_ALARM1_YEAR_REG);
+	rr->enc.val2 = i2c_recv_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_ALARM2_YEAR_REG);
+
+	// Clear magic and update actual regs.
+	i2c_send_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_ALARM1_WEEKDAY_REG, 0);
+	i2c_send_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_ALARM2_WEEKDAY_REG, 0);
+	i2c_send_byte(I2C_5, MAX77620_RTC_I2C_ADDR, MAX77620_RTC_UPDATE0_REG, MAX77620_RTC_WRITE_UPDATE);
+
+	// Return reboot reason. False if [config] was selected.
+	return true;
 }

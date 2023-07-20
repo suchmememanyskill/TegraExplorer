@@ -2,7 +2,7 @@
  * Touch driver for Nintendo Switch's STM FingerTip S (4CD60D) touch controller
  *
  * Copyright (c) 2018 langerhans
- * Copyright (c) 2018-2020 CTCaer
+ * Copyright (c) 2018-2023 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -24,9 +24,9 @@
 #include <soc/pinmux.h>
 #include <power/max7762x.h>
 #include <soc/gpio.h>
+#include <soc/timer.h>
 #include <soc/t210.h>
 #include <utils/btn.h>
-#include <utils/util.h>
 #include "touch.h"
 
 
@@ -35,12 +35,12 @@
 
 static touch_panel_info_t _panels[] =
 {
-	{  0,  1, 1, 1,  "NISSHA NFT-K12D" },
-	{  1,  0, 1, 1,  "GiS GGM6 B2X"    },
-	{  2,  0, 0, 0,  "NISSHA NBF-K9A"  },
-	{  3,  1, 0, 0,  "GiS 5.5\""       },
-	{  4,  0, 0, 1,  "Samsung BH2109"  },
-	{ -1,  1, 0, 1,  "GiS VA 6.2\""    }
+	{  0,  1, 1, 1,  "NISSHA NFT-K12D" },// 0.
+	{  1,  0, 1, 1,  "GiS GGM6 B2X"    },// 1.
+	{  2,  0, 0, 0,  "NISSHA NBF-K9A"  },// 3.
+	{  3,  1, 0, 0,  "GiS 5.5\""       },// 4.
+	{  4,  0, 0, 1,  "Samsung BH2109"  },// 5?
+	{ -1,  1, 0, 1,  "GiS VA 6.2\""    } // 2.
 };
 
 static int touch_command(u8 cmd, u8 *buf, u8 size)
@@ -87,19 +87,19 @@ static int touch_wait_event(u8 event, u8 status, u32 timeout, u8 *buf)
 
 static void _touch_compensate_limits(touch_event *event, bool touching)
 {
-	event->x = MAX(event->x, EDGE_OFFSET);
-	event->x = MIN(event->x, X_REAL_MAX);
+	event->x  = MAX(event->x, EDGE_OFFSET);
+	event->x  = MIN(event->x, X_REAL_MAX);
 	event->x -= EDGE_OFFSET;
 	u32 x_adj = (1280 * 1000) / (X_REAL_MAX - EDGE_OFFSET);
-	event->x = ((u32)event->x * x_adj) / 1000;
+	event->x  = ((u32)event->x * x_adj) / 1000;
 
 	if (touching)
 	{
-		event->y = MAX(event->y, EDGE_OFFSET);
-		event->y = MIN(event->y, Y_REAL_MAX);
+		event->y  = MAX(event->y, EDGE_OFFSET);
+		event->y  = MIN(event->y, Y_REAL_MAX);
 		event->y -= EDGE_OFFSET;
 		u32 y_adj = (720 * 1000) / (Y_REAL_MAX - EDGE_OFFSET);
-		event->y = ((u32)event->y * y_adj) / 1000;
+		event->y  = ((u32)event->y * y_adj) / 1000;
 	}
 }
 
@@ -115,6 +115,7 @@ static void _touch_process_contact_event(touch_event *event, bool touching)
 
 		event->z = event->raw[5] | (event->raw[6] << 8);
 		event->z = event->z << 6;
+
 		u16 tmp = 0x40;
 		if ((event->raw[7] & 0x3F) != 1 && (event->raw[7] & 0x3F) != 0x3F)
 			tmp = event->raw[7] & 0x3F;
@@ -245,7 +246,7 @@ int touch_get_fw_info(touch_fw_info_t *fw)
 		res = touch_read_reg(cmd, 3, buf, 8);
 		if (!res)
 		{
-			fw->fw_id = (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | buf[4];
+			fw->fw_id   = (buf[1] << 24) | (buf[2] << 16) | (buf[3] << 8) | buf[4];
 			fw->ftb_ver = (buf[6] << 8) | buf[5];
 		}
 
@@ -400,30 +401,29 @@ static int touch_init()
 
 int touch_power_on()
 {
-	// Enable LDO6 for touchscreen AVDD supply.
-	max7762x_regulator_set_voltage(REGULATOR_LDO6, 2900000);
-	max7762x_regulator_enable(REGULATOR_LDO6, true);
-
-	// Configure touchscreen VDD GPIO.
-	PINMUX_AUX(PINMUX_AUX_DAP4_SCLK) = PINMUX_PULL_DOWN | 1;
-	gpio_config(GPIO_PORT_J, GPIO_PIN_7, GPIO_MODE_GPIO);
-	gpio_output_enable(GPIO_PORT_J, GPIO_PIN_7, GPIO_OUTPUT_ENABLE);
-	gpio_write(GPIO_PORT_J, GPIO_PIN_7, GPIO_HIGH);
-
-	// Touscreen IRQ.
-	// PINMUX_AUX(PINMUX_AUX_TOUCH_INT) = PINMUX_INPUT_ENABLE | PINMUX_TRISTATE | PINMUX_PULL_UP | 3;
-	// gpio_config(GPIO_PORT_X, GPIO_PIN_1, GPIO_MODE_GPIO);
-	// gpio_write(GPIO_PORT_X, GPIO_PIN_1, GPIO_LOW);
-
 	// Configure Touscreen and GCAsic shared GPIO.
 	PINMUX_AUX(PINMUX_AUX_CAM_I2C_SDA) = PINMUX_LPDR | PINMUX_INPUT_ENABLE | PINMUX_TRISTATE | PINMUX_PULL_UP | 2;
-	PINMUX_AUX(PINMUX_AUX_CAM_I2C_SCL) = PINMUX_IO_HV | PINMUX_LPDR | PINMUX_TRISTATE | PINMUX_PULL_DOWN | 2;
+	PINMUX_AUX(PINMUX_AUX_CAM_I2C_SCL) = PINMUX_IO_HV | PINMUX_LPDR | PINMUX_TRISTATE | PINMUX_PULL_DOWN | 2; // Unused.
 	gpio_config(GPIO_PORT_S, GPIO_PIN_3, GPIO_MODE_GPIO); // GC detect.
+
+	// Configure touchscreen Touch Reset pin.
+	PINMUX_AUX(PINMUX_AUX_DAP4_SCLK) = PINMUX_PULL_DOWN | 1;
+	gpio_direction_output(GPIO_PORT_J, GPIO_PIN_7, GPIO_LOW);
+	usleep(20);
+
+	// Enable LDO6 for touchscreen AVDD and DVDD supply.
+	max7762x_regulator_set_voltage(REGULATOR_LDO6, 2900000);
+	max7762x_regulator_enable(REGULATOR_LDO6, true);
 
 	// Initialize I2C3.
 	pinmux_config_i2c(I2C_3);
 	clock_enable_i2c(I2C_3);
 	i2c_init(I2C_3);
+	usleep(1000);
+
+	// Set Touch Reset pin.
+	gpio_write(GPIO_PORT_J, GPIO_PIN_7, GPIO_HIGH);
+	usleep(10000);
 
 	// Wait for the touchscreen module to get ready.
 	touch_wait_event(STMFTS_EV_CONTROLLER_READY, 0, 20, NULL);

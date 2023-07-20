@@ -20,8 +20,8 @@
 #include <power/max77812.h>
 #include <soc/fuse.h>
 #include <soc/i2c.h>
+#include <soc/timer.h>
 #include <soc/t210.h>
-#include <utils/util.h>
 
 #define REGULATOR_SD  0
 #define REGULATOR_LDO 1
@@ -75,7 +75,7 @@ typedef struct _max77620_regulator_t
 
 static const max77620_regulator_t _pmic_regulators[] = {
 	{  "sd0",  12500, 600000,  625000, 1400000,  REGULATOR_SD,  MAX77620_REG_SD0,      MAX77620_REG_SD0_CFG,    MAX77620_SD0_VOLT_MASK,  {{ MAX77620_REG_FPS_SD0,  1, 7, 1 }} },
-	{  "sd1",  12500, 600000, 1125000, 1250000,  REGULATOR_SD,  MAX77620_REG_SD1,      MAX77620_REG_SD1_CFG,    MAX77620_SD1_VOLT_MASK,  {{ MAX77620_REG_FPS_SD1,  0, 1, 5 }} },
+	{  "sd1",  12500, 600000, 1125000, 1175000,  REGULATOR_SD,  MAX77620_REG_SD1,      MAX77620_REG_SD1_CFG,    MAX77620_SD1_VOLT_MASK,  {{ MAX77620_REG_FPS_SD1,  0, 1, 5 }} },
 	{  "sd2",  12500, 600000, 1325000, 1350000,  REGULATOR_SD,  MAX77620_REG_SD2,      MAX77620_REG_SD2_CFG,    MAX77620_SDX_VOLT_MASK,  {{ MAX77620_REG_FPS_SD2,  1, 5, 2 }} },
 	{  "sd3",  12500, 600000, 1800000, 1800000,  REGULATOR_SD,  MAX77620_REG_SD3,      MAX77620_REG_SD3_CFG,    MAX77620_SDX_VOLT_MASK,  {{ MAX77620_REG_FPS_SD3,  0, 3, 3 }} },
 	{ "ldo0",  25000, 800000, 1200000, 1200000,  REGULATOR_LDO, MAX77620_REG_LDO0_CFG, MAX77620_REG_LDO0_CFG2,  MAX77620_LDO_VOLT_MASK,  {{ MAX77620_REG_FPS_LDO0, 3, 7, 0 }} },
@@ -88,11 +88,11 @@ static const max77620_regulator_t _pmic_regulators[] = {
 	{ "ldo7",  50000, 800000, 1050000, 1050000,  REGULATOR_LDO, MAX77620_REG_LDO7_CFG, MAX77620_REG_LDO7_CFG2,  MAX77620_LDO_VOLT_MASK,  {{ MAX77620_REG_FPS_LDO7, 1, 4, 3 }} },
 	{ "ldo8",  50000, 800000, 1050000, 2800000,  REGULATOR_LDO, MAX77620_REG_LDO8_CFG, MAX77620_REG_LDO8_CFG2,  MAX77620_LDO_VOLT_MASK,  {{ MAX77620_REG_FPS_LDO8, 3, 7, 0 }} },
 
-	{ "max77621_CPU", 6250, 606250, 1000000, 1400000,  REGULATOR_BC0, MAX77621_VOUT_REG,    MAX77621_VOUT_DVS_REG,  MAX77621_DVC_DVS_VOLT_MASK, {{ MAX77621_CPU_CTRL1_POR_DEFAULT, MAX77621_CPU_CTRL1_HOS_DEFAULT, MAX77621_CPU_CTRL2_POR_DEFAULT, MAX77621_CPU_CTRL2_HOS_DEFAULT }} },
-	{ "max77621_GPU", 6250, 606250, 1200000, 1400000,  REGULATOR_BC0, MAX77621_VOUT_REG,    MAX77621_VOUT_DVS_REG,  MAX77621_DVC_DVS_VOLT_MASK, {{ MAX77621_CPU_CTRL1_POR_DEFAULT, MAX77621_CPU_CTRL1_HOS_DEFAULT, MAX77621_CPU_CTRL2_POR_DEFAULT, MAX77621_CPU_CTRL2_HOS_DEFAULT }} },
+	{ "max77621_CPU", 6250, 606250, 1000000, 1400000,  REGULATOR_BC0, MAX77621_REG_VOUT,    MAX77621_REG_VOUT_DVS,  MAX77621_DVC_DVS_VOLT_MASK, {{ MAX77621_CPU_CTRL1_POR_DEFAULT, MAX77621_CPU_CTRL1_HOS_DEFAULT, MAX77621_CPU_CTRL2_POR_DEFAULT, MAX77621_CPU_CTRL2_HOS_DEFAULT }} },
+	{ "max77621_GPU", 6250, 606250, 1200000, 1400000,  REGULATOR_BC0, MAX77621_REG_VOUT,    MAX77621_REG_VOUT_DVS,  MAX77621_DVC_DVS_VOLT_MASK, {{ MAX77621_CPU_CTRL1_POR_DEFAULT, MAX77621_CPU_CTRL1_HOS_DEFAULT, MAX77621_CPU_CTRL2_POR_DEFAULT, MAX77621_CPU_CTRL2_HOS_DEFAULT }} },
 	{ "max77812_CPU", 5000, 250000,  600000, 1525000,  REGULATOR_BC1, MAX77812_REG_M4_VOUT, MAX77812_REG_EN_CTRL,   MAX77812_BUCK_VOLT_MASK,    {{ MAX77812_EN_CTRL_EN_M4_MASK, MAX77812_EN_CTRL_EN_M4_SHIFT, 0, 0 }} },
+	{ "max77812_RAM", 5000, 250000,  600000,  650000,  REGULATOR_BC1, MAX77812_REG_M3_VOUT, MAX77812_REG_EN_CTRL,   MAX77812_BUCK_VOLT_MASK,    {{ MAX77812_EN_CTRL_EN_M3_MASK, MAX77812_EN_CTRL_EN_M3_SHIFT, 0, 0 }} } // Only on PHASE211 configuration.
 	//{ "max77812_GPU", 5000, 250000,  600000, 1525000,  REGULATOR_BC1, MAX77812_REG_M1_VOUT, MAX77812_REG_EN_CTRL,   MAX77812_BUCK_VOLT_MASK,    {{ MAX77812_EN_CTRL_EN_M1_MASK, MAX77812_EN_CTRL_EN_M1_SHIFT, 0, 0 }} },
-	//{ "max77812_RAM", 5000, 250000,  600000, 1525000,  REGULATOR_BC1, MAX77812_REG_M3_VOUT, MAX77812_REG_EN_CTRL,   MAX77812_BUCK_VOLT_MASK,    {{ MAX77812_EN_CTRL_EN_M3_MASK, MAX77812_EN_CTRL_EN_M3_SHIFT, 0, 0 }} } // Only on PHASE211 configuration.
 };
 
 static u8 _max77812_get_address()
@@ -121,7 +121,12 @@ static u8 _max7762x_get_i2c_address(u32 id)
 	case REGULATOR_BC0:
 		return (id == REGULATOR_CPU0 ? MAX77621_CPU_I2C_ADDR : MAX77621_GPU_I2C_ADDR);
 	case REGULATOR_BC1:
-		return _max77812_get_address();
+		{
+		u8 reg_addr = _max77812_get_address();
+		if (id == REGULATOR_RAM0 && reg_addr == MAX77812_PHASE31_CPU_I2C_ADDR)
+			reg_addr = 0;
+		return reg_addr;
+		}
 	default:
 		return 0;
 	}
@@ -175,20 +180,22 @@ int max77620_regulator_config_fps(u32 id)
 	return 1;
 }
 
-int max7762x_regulator_set_voltage(u32 id, u32 mv)
+int max7762x_regulator_set_voltage(u32 id, u32 uv)
 {
 	if (id > REGULATOR_MAX)
 		return 0;
 
 	const max77620_regulator_t *reg = &_pmic_regulators[id];
 
-	if (mv < reg->uv_min || mv > reg->uv_max)
+	if (uv < reg->uv_min || uv > reg->uv_max)
 		return 0;
 
 	u8 addr = _max7762x_get_i2c_address(id);
+	if (!addr)
+		return 0;
 
 	// Calculate voltage multiplier.
-	u32 mult = (mv + reg->uv_step - 1 - reg->uv_min) / reg->uv_step;
+	u32 mult = (uv + reg->uv_step - 1 - reg->uv_min) / reg->uv_step;
 	u8 val = i2c_recv_byte(I2C_5, addr, reg->volt_addr);
 	val = (val & ~reg->volt_mask) | (mult & reg->volt_mask);
 
@@ -249,6 +256,8 @@ int max7762x_regulator_enable(u32 id, bool enable)
 	}
 
 	u8 addr = _max7762x_get_i2c_address(id);
+	if (!addr)
+		return 0;
 
 	// Read and enable/disable.
 	u8 val = i2c_recv_byte(I2C_5, addr, reg_addr);
@@ -291,6 +300,8 @@ void max77621_config_default(u32 id, bool por)
 		return;
 
 	u8 addr = _max7762x_get_i2c_address(id);
+	if (!addr)
+		return;
 
 	if (por)
 	{
@@ -299,13 +310,13 @@ void max77621_config_default(u32 id, bool por)
 		max7762x_regulator_enable(id, false);
 
 		// Configure to default.
-		i2c_send_byte(I2C_5, addr, MAX77621_CONTROL1_REG, reg->ctrl.ctrl1_por);
-		i2c_send_byte(I2C_5, addr, MAX77621_CONTROL2_REG, reg->ctrl.ctrl2_por);
+		i2c_send_byte(I2C_5, addr, MAX77621_REG_CONTROL1, reg->ctrl.ctrl1_por);
+		i2c_send_byte(I2C_5, addr, MAX77621_REG_CONTROL2, reg->ctrl.ctrl2_por);
 	}
 	else
 	{
-		i2c_send_byte(I2C_5, addr, MAX77621_CONTROL1_REG, reg->ctrl.ctrl1_hos);
-		i2c_send_byte(I2C_5, addr, MAX77621_CONTROL2_REG, reg->ctrl.ctrl2_hos);
+		i2c_send_byte(I2C_5, addr, MAX77621_REG_CONTROL1, reg->ctrl.ctrl1_hos);
+		i2c_send_byte(I2C_5, addr, MAX77621_REG_CONTROL2, reg->ctrl.ctrl2_hos);
 	}
 }
 

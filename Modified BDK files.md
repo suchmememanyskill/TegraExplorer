@@ -19,5 +19,10 @@ For future reference if updating the BDK
 ## /bdk/utils/ini.c
 - Added initial 'unknown' section to parse prod.keys
 
+## /bdk/utils/types.h
+- Added colors from lockpick-rcm
+- Add ALWAYS_INLINE, LOG2, DIV_ROUND_UP defs
+- Add 'open_mode_t' and 'validity_t' enums
+
 ## /bdk/libs
 - Added nx-savedata from [Lockpick_RCM](https://github.com/shchmue/Lockpick_RCM)

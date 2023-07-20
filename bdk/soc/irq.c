@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "irq.h"
+#include <soc/timer.h>
 #include <soc/t210.h>
 #include <gfx_utils.h>
 #include <mem/heap.h>
@@ -26,6 +27,7 @@
 //#define DPRINTF(...) gfx_printf(__VA_ARGS__)
 #define DPRINTF(...)
 
+extern void excp_reset();
 extern void irq_disable();
 extern void irq_enable_cpu_irq_exceptions();
 extern void irq_disable_cpu_irq_exceptions();
@@ -69,7 +71,7 @@ static void _irq_disable_and_ack_all()
 	{
 		u32 enabled_irqs = ICTLR(ctrl_idx, PRI_ICTLR_COP_IER);
 		ICTLR(ctrl_idx, PRI_ICTLR_COP_IER_CLR) = enabled_irqs;
-		ICTLR(ctrl_idx, PRI_ICTLR_FIR_CLR) = enabled_irqs;
+		ICTLR(ctrl_idx, PRI_ICTLR_FIR_CLR)     = enabled_irqs;
 	}
 }
 
@@ -88,10 +90,10 @@ void irq_free(u32 irq)
 	{
 		if (irqs[idx].irq == irq && irqs[idx].handler)
 		{
-			irqs[idx].irq = 0;
+			irqs[idx].irq     = 0;
 			irqs[idx].handler = NULL;
-			irqs[idx].data = NULL;
-			irqs[idx].flags = 0;
+			irqs[idx].data    = NULL;
+			irqs[idx].flags   = 0;
 
 			_irq_disable_source(irq);
 		}
@@ -106,10 +108,10 @@ static void _irq_free_all()
 		{
 			_irq_disable_source(irqs[idx].irq);
 
-			irqs[idx].irq = 0;
+			irqs[idx].irq     = 0;
 			irqs[idx].handler = NULL;
-			irqs[idx].data = NULL;
-			irqs[idx].flags = 0;
+			irqs[idx].data    = NULL;
+			irqs[idx].flags   = 0;
 		}
 	}
 }
@@ -218,10 +220,10 @@ irq_status_t irq_request(u32 irq, irq_handler_t handler, void *data, irq_flags_t
 			DPRINTF("Registered handler, IRQ: %d, Slot: %d\n", irq, idx);
 			DPRINTF("Handler: %08p, Flags: %x\n", (u32)handler, flags);
 
-			irqs[idx].irq = irq;
+			irqs[idx].irq     = irq;
 			irqs[idx].handler = handler;
-			irqs[idx].data = data;
-			irqs[idx].flags = flags;
+			irqs[idx].data    = data;
+			irqs[idx].flags   = flags;
 
 			_irq_enable_source(irq);
 
@@ -270,4 +272,14 @@ void  __attribute__ ((target("arm"), interrupt ("FIQ"))) fiq_handler()
 		len--;
 	}
 */
+#ifdef BDK_WATCHDOG_FIQ_ENABLE
+	// Set watchdog timeout status and disable WDT and its FIQ signal.
+	watchdog_handle();
+
+#ifdef BDK_RESTART_BL_ON_WDT
+	// Restart bootloader.
+	excp_reset();
+#endif
+
+#endif
 }

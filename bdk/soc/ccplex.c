@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2020 CTCaer
+ * Copyright (c) 2018-2022 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <memory_map.h>
 #include <soc/ccplex.h>
 #include <soc/hw_init.h>
 #include <soc/i2c.h>
@@ -51,7 +52,7 @@ void _ccplex_enable_power_t210b01()
 void ccplex_boot_cpu0(u32 entry)
 {
 	// Set ACTIVE_CLUSER to FAST.
-	FLOW_CTLR(FLOW_CTLR_BPMP_CLUSTER_CONTROL) &= 0xFFFFFFFE;
+	FLOW_CTLR(FLOW_CTLR_BPMP_CLUSTER_CONTROL) &= ~CLUSTER_CTRL_ACTIVE_SLOW;
 
 	if (hw_get_chip_id() == GP_HIDREV_MAJOR_T210)
 		_ccplex_enable_power_t210();
@@ -62,12 +63,12 @@ void ccplex_boot_cpu0(u32 entry)
 
 	// Configure MSELECT source and enable clock to 102MHz.
 	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_MSELECT) = (CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_MSELECT) & 0x1FFFFF00) | 6;
-	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_V_SET) = BIT(CLK_V_MSELECT);
+	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_V_SET)      = BIT(CLK_V_MSELECT);
 
 	// Configure initial CPU clock frequency and enable clock.
 	CLOCK(CLK_RST_CONTROLLER_CCLK_BURST_POLICY)  = 0x20008888; // PLLX_OUT0_LJ.
 	CLOCK(CLK_RST_CONTROLLER_SUPER_CCLK_DIVIDER) = 0x80000000;
-	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_V_SET) = BIT(CLK_V_CPUG);
+	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_V_SET)      = BIT(CLK_V_CPUG);
 
 	clock_enable_coresight();
 
@@ -81,9 +82,9 @@ void ccplex_boot_cpu0(u32 entry)
 	// Enable CPU0 rail.
 	pmc_enable_partition(POWER_RAIL_CE0,   ENABLE);
 
-	// Request and wait for RAM repair.
-	FLOW_CTLR(FLOW_CTLR_RAM_REPAIR) = 1;
-	while (!(FLOW_CTLR(FLOW_CTLR_RAM_REPAIR) & 2))
+	// Request and wait for RAM repair. Needed for the Fast cluster.
+	FLOW_CTLR(FLOW_CTLR_RAM_REPAIR) = RAM_REPAIR_REQ;
+	while (!(FLOW_CTLR(FLOW_CTLR_RAM_REPAIR) & RAM_REPAIR_STS))
 		;
 
 	EXCP_VEC(EVP_CPU_RESET_VECTOR) = 0;
@@ -100,7 +101,7 @@ void ccplex_boot_cpu0(u32 entry)
 	// MC(MC_TZ_SECURITY_CTRL) = 1;
 
 	// Clear MSELECT reset.
-	CLOCK(CLK_RST_CONTROLLER_RST_DEV_V_CLR) = BIT(CLK_V_MSELECT);
+	CLOCK(CLK_RST_CONTROLLER_RST_DEV_V_CLR)      = BIT(CLK_V_MSELECT);
 	// Clear NONCPU reset.
 	CLOCK(CLK_RST_CONTROLLER_RST_CPUG_CMPLX_CLR) = 0x20000000;
 	// Clear CPU0 reset.
