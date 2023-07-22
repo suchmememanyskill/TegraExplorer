@@ -17,7 +17,6 @@
 #ifndef _MEMORY_MAP_H_
 #define _MEMORY_MAP_H_
 
-//#define IPL_STACK_TOP  0x4003FF00
 /* --- BIT/BCT: 0x40000000 - 0x40003000 --- */
 /* ---     IPL: 0x40008000 - 0x40028000 --- */
 #define LDR_LOAD_ADDR     0x40007000
@@ -25,13 +24,20 @@
 #define IPL_LOAD_ADDR     0x40008000
 #define  IPL_SZ_MAX          SZ_128K
 
-/* --- XUSB EP context and TRB ring buffers --- */
-#define XUSB_RING_ADDR    0x40020000
+#define XUSB_RING_ADDR    0x40020000 // XUSB EP context and TRB ring buffers.
 
-#define SECMON_MIN_START  0x4002B000
+#define SECMON_MIN_START  0x4002B000 // Minimum reserved address for secmon.
 
 #define SDRAM_PARAMS_ADDR 0x40030000 // SDRAM extraction buffer during sdram init.
-#define CBFS_DRAM_EN_ADDR 0x4003e000 // u32.
+
+/* start.S / exception_handlers.S */
+#define SYS_STACK_TOP_INIT 0x4003FF00
+#define FIQ_STACK_TOP      0x40040000
+#define IRQ_STACK_TOP      0x40040000
+#define IPL_RELOC_ADDR     0x4003FF00
+#define  IPL_RELOC_SZ            0x10
+#define EXCP_STORAGE_ADDR  0x4003FFF0
+#define  EXCP_STORAGE_SZ         0x10
 
 /* --- DRAM START --- */
 #define DRAM_START     0x80000000
@@ -48,15 +54,9 @@
 /* --- Gap: 1040MB 0xA4000000 - 0xE4FFFFFF --- */
 
 // Virtual disk / Chainloader buffers.
-#define RAM_DISK_ADDR     0xA4000000
-#define  RAM_DISK_SZ      0x41000000 // 1040MB.
+#define RAM_DISK_ADDR 0xA4000000
+#define  RAM_DISK_SZ  0x41000000 // 1040MB.
 #define  RAM_DISK2_SZ 0x21000000 //  528MB.
-
-// NX BIS driver sector cache.
-#define NX_BIS_CACHE_ADDR  0xC5000000
-#define  NX_BIS_CACHE_SZ   0x10020000 // 256MB.
-#define NX_BIS_LOOKUP_ADDR 0xD6000000
-#define  NX_BIS_LOOKUP_SZ   0xF000000 // 240MB.
 
 // L4T Kernel Panic Storage (PSTORE).
 #define PSTORE_ADDR   0xB0000000
@@ -77,7 +77,6 @@
 // SDMMC DMA buffers 2
 #define SDXC_BUF_ALIGNED   0xEF000000
 #define MIXD_BUF_ALIGNED   0xF0000000
-#define TITLEKEY_BUF_ADR   MIXD_BUF_ALIGNED
 #define EMMC_BUF_ALIGNED   MIXD_BUF_ALIGNED
 #define  SDMMC_DMA_BUF_SZ      SZ_16M // 4MB currently used.
 
@@ -96,6 +95,7 @@
 #define NYX_FB2_ADDRESS  0xF6600000
 #define  NYX_FB_SZ         0x384000 // 1280 x 720 x 4.
 
+/* OBSOLETE: Very old hwinit based payloads were setting a carveout here. */
 #define DRAM_MEM_HOLE_ADR 0xF6A00000
 #define DRAM_MEM_HOLE_SZ   0x8140000
 /* ---   Hole: 129MB 0xF6A00000 - 0xFEB3FFFF --- */
@@ -112,5 +112,11 @@
 // #define EXT_PAYLOAD_ADDR    0xC0000000
 // #define RCM_PAYLOAD_ADDR    (EXT_PAYLOAD_ADDR + ALIGN(PATCHED_RELOC_SZ, 0x10))
 // #define COREBOOT_ADDR       (0xD0000000 - rom_size)
+
+// NX BIS driver sector cache.
+#define NX_BIS_CACHE_ADDR  0xC5000000
+#define  NX_BIS_CACHE_SZ   0x10020000 // 256MB.
+#define NX_BIS_LOOKUP_ADDR DRAM_MEM_HOLE_ADR
+#define  NX_BIS_LOOKUP_SZ  DRAM_MEM_HOLE_SZ 
 
 #endif
