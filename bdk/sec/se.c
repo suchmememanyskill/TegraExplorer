@@ -181,7 +181,7 @@ static int _se_execute_one_block(u32 op, void *dst, u32 dst_size, const void *sr
 	return res;
 }
 
-static void _se_aes_ctr_set(void *ctr)
+static void _se_aes_ctr_set(const void *ctr)
 {
 	u32 data[SE_AES_IV_SIZE / 4];
 	memcpy(data, ctr, SE_AES_IV_SIZE);
@@ -255,7 +255,7 @@ int se_rsa_exp_mod(u32 ks, void *dst, u32 dst_size, const void *src, u32 src_siz
 	// Copy output hash.
 	u32 *dst32 = (u32 *)dst;
 	for (u32 i = 0; i < dst_size / 4; i++)
-		dst32[dst_size / 4 - i - 1] = byte_swap_32(SE(SE_RSA_OUTPUT_REG + (i << 2)));
+		dst32[dst_size / 4 - i - 1] = byte_swap_32(SE(SE_RSA_OUTPUT_REG + (i * 4)));
 
 	return res;
 }
@@ -383,7 +383,7 @@ int se_aes_crypt_block_ecb(u32 ks, u32 enc, void *dst, const void *src)
 	return se_aes_crypt_ecb(ks, enc, dst, SE_AES_BLOCK_SIZE, src, SE_AES_BLOCK_SIZE);
 }
 
-int se_aes_crypt_ctr(u32 ks, void *dst, u32 dst_size, const void *src, u32 src_size, void *ctr)
+int se_aes_crypt_ctr(u32 ks, void *dst, u32 dst_size, const void *src, u32 src_size, const void *ctr)
 {
 	SE(SE_SPARE_REG)         = SE_ECO(SE_ERRATA_FIX_ENABLE);
 	SE(SE_CONFIG_REG)        = SE_CONFIG_ENC_ALG(ALG_AES_ENC) | SE_CONFIG_DST(DST_MEMORY);
@@ -391,7 +391,7 @@ int se_aes_crypt_ctr(u32 ks, void *dst, u32 dst_size, const void *src, u32 src_s
 		SE_CRYPTO_XOR_POS(XOR_BOTTOM) | SE_CRYPTO_INPUT_SEL(INPUT_LNR_CTR) | SE_CRYPTO_CTR_CNTN(1);
 	_se_aes_ctr_set(ctr);
 
-	u32 src_size_aligned = src_size & 0xFFFFFFF0;
+	u32 src_size_aligned = ALIGN_DOWN(src_size, 0x10);
 	u32 src_size_delta = src_size & 0xF;
 
 	if (src_size_aligned)
@@ -485,7 +485,7 @@ int se_aes_xts_crypt_sec(u32 tweak_ks, u32 crypt_ks, u32 enc, u64 sec, void *dst
 		tweak[i] = sec & 0xFF;
 		sec >>= 8;
 	}
-	if (!se_aes_crypt_block_ecb(tweak_ks, 1, tweak, tweak))
+	if (!se_aes_crypt_block_ecb(tweak_ks, ENCRYPT, tweak, tweak))
 		return 0;
 
 	memcpy(orig_tweak, tweak, 0x10);
@@ -538,7 +538,7 @@ int se_aes_cmac(u32 ks, void *dst, u32 dst_size, const void *src, u32 src_size)
 	u8 *last_block = (u8 *)calloc(0x10, 1);
 
 	// generate derived key
-	if (!se_aes_crypt_block_ecb(ks, 1, key, key))
+	if (!se_aes_crypt_block_ecb(ks, ENCRYPT, key, key))
 		goto out;
 	_gf256_mul_x(key);
 	if (src_size & 0xF)
@@ -668,7 +668,7 @@ int se_calc_sha256_finalize(void *hash, u32 *msg_left)
 
 	// Copy output hash.
 	for (u32 i = 0; i < (SE_SHA_256_SIZE / 4); i++)
-		hash32[i] = byte_swap_32(SE(SE_HASH_RESULT_REG + (i << 2)));
+		hash32[i] = byte_swap_32(SE(SE_HASH_RESULT_REG + (i * 4)));
 	memcpy(hash, hash32, SE_SHA_256_SIZE);
 
 	return res;
@@ -716,76 +716,6 @@ out:;
 	free(ipad);
 	free(opad);
 	return res;
-}
-
-// _mgf1_xor() and rsa_oaep_decode were derived from Atmosphère
-static void _mgf1_xor(void *masked, u32 masked_size, const void *seed, u32 seed_size)
-{
-    u8 cur_hash[0x20] __attribute__((aligned(4)));
-    u8 hash_buf[0xe4] __attribute__((aligned(4)));
-
-    u32 hash_buf_size = seed_size + 4;
-    memcpy(hash_buf, seed, seed_size);
-    u32 round_num = 0;
-
-    u8 *p_out = (u8 *)masked;
-
-    while (masked_size) {
-        u32 cur_size = MIN(masked_size, 0x20);
-
-        for (u32 i = 0; i < 4; i++)
-            hash_buf[seed_size + 3 - i] = (round_num >> (8 * i)) & 0xff;
-        round_num++;
-
-        se_calc_sha256_oneshot(cur_hash, hash_buf, hash_buf_size);
-
-        for (unsigned int i = 0; i < cur_size; i++) {
-            *p_out ^= cur_hash[i];
-            p_out++;
-        }
-
-        masked_size -= cur_size;
-    }
-}
-
-u32 se_rsa_oaep_decode(void *dst, u32 dst_size, const void *label_digest, u32 label_digest_size, u8 *buf, u32 buf_size)
-{
-	if (dst_size <= 0 || buf_size < 0x43 || label_digest_size != 0x20)
-		return 0;
-
-	bool is_valid = buf[0] == 0;
-
-	u32 db_len = buf_size - 0x21;
-	u8 *seed = buf + 1;
-	u8 *db = seed + 0x20;
-	_mgf1_xor(seed, 0x20, db, db_len);
-	_mgf1_xor(db, db_len, seed, 0x20);
-
-	is_valid &= memcmp(label_digest, db, 0x20) ? 0 : 1;
-
-	db += 0x20;
-	db_len -= 0x20;
-
-	int msg_ofs = 0;
-	int looking_for_one = 1;
-	int invalid_db_padding = 0;
-	int is_zero;
-	int is_one;
-	for (int i = 0; i < db_len; )
-	{
-		is_zero = (db[i] == 0);
-		is_one  = (db[i] == 1);
-		msg_ofs += (looking_for_one & is_one) * (++i);
-		looking_for_one &= ~is_one;
-		invalid_db_padding |= (looking_for_one & ~is_zero);
-	}
-
-	is_valid &= (invalid_db_padding == 0);
-
-	const u32 msg_size = MIN(dst_size, is_valid * (db_len - msg_ofs));
-	memcpy(dst, db + msg_ofs, msg_size);
-
-	return msg_size;
 }
 
 void se_get_aes_keys(u8 *buf, u8 *keys, u32 keysize)
@@ -841,6 +771,6 @@ void se_get_aes_keys(u8 *buf, u8 *keys, u32 keysize)
 	// Decrypt context.
 	se_aes_key_clear(3);
 	se_aes_key_set(3, srk, SE_KEY_128_SIZE);
-	se_aes_crypt_cbc(3, 0, keys, SE_AES_KEYSLOT_COUNT * keysize, keys, SE_AES_KEYSLOT_COUNT * keysize);
+	se_aes_crypt_cbc(3, DECRYPT, keys, SE_AES_KEYSLOT_COUNT * keysize, keys, SE_AES_KEYSLOT_COUNT * keysize);
 	se_aes_key_clear(3);
 }

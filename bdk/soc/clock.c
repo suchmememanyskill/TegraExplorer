@@ -279,6 +279,32 @@ void clock_disable_pwm()
 	clock_disable(&_clock_pwm);
 }
 
+void clock_enable_pllx()
+{
+	// Configure and enable PLLX if disabled.
+	if (!(CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) & PLLX_BASE_ENABLE)) // PLLX_ENABLE.
+	{
+		CLOCK(CLK_RST_CONTROLLER_PLLX_MISC_3) &= ~PLLX_MISC3_IDDQ; // Disable IDDQ.
+		usleep(2);
+
+		// Set div configuration.
+		const u32 pllx_div_cfg = (2 << 20) | (156 << 8) | 2; // P div: 2 (3), N div: 156, M div: 2. 998.4 MHz.
+
+		// Bypass dividers.
+		CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) = PLLX_BASE_BYPASS | pllx_div_cfg;
+		// Disable bypass
+		CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) = pllx_div_cfg;
+		// Set PLLX_LOCK_ENABLE.
+		CLOCK(CLK_RST_CONTROLLER_PLLX_MISC) |= PLLX_MISC_LOCK_EN;
+		// Enable PLLX.
+		CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) = PLLX_BASE_ENABLE | pllx_div_cfg;
+	}
+
+	// Wait for PLL to stabilize.
+	while (!(CLOCK(CLK_RST_CONTROLLER_PLLX_BASE) & PLLX_BASE_LOCK))
+		;
+}
+
 void clock_enable_pllc(u32 divn)
 {
 	u8 pll_divn_curr = (CLOCK(CLK_RST_CONTROLLER_PLLC_BASE) >> 10) & 0xFF;
@@ -757,15 +783,25 @@ u32 clock_get_osc_freq()
 
 u32 clock_get_dev_freq(clock_pto_id_t id)
 {
-	u32 val = ((id & PTO_SRC_SEL_MASK) << PTO_SRC_SEL_SHIFT) | PTO_DIV_SEL_DIV1 | PTO_CLK_ENABLE | (16 - 1); // 16 periods of 32.76KHz window.
+	const u32 pto_win = 16;
+	const u32 pto_osc = 32768;
+
+	u32 val = ((id & PTO_SRC_SEL_MASK) << PTO_SRC_SEL_SHIFT) | PTO_DIV_SEL_DIV1 | PTO_CLK_ENABLE | (pto_win - 1);
 	CLOCK(CLK_RST_CONTROLLER_PTO_CLK_CNT_CNTL) = val;
+	(void)CLOCK(CLK_RST_CONTROLLER_PTO_CLK_CNT_CNTL);
 	usleep(2);
+
 	CLOCK(CLK_RST_CONTROLLER_PTO_CLK_CNT_CNTL) = val | PTO_CNT_RST;
+	(void)CLOCK(CLK_RST_CONTROLLER_PTO_CLK_CNT_CNTL);
 	usleep(2);
+
 	CLOCK(CLK_RST_CONTROLLER_PTO_CLK_CNT_CNTL) = val;
+	(void)CLOCK(CLK_RST_CONTROLLER_PTO_CLK_CNT_CNTL);
 	usleep(2);
+
 	CLOCK(CLK_RST_CONTROLLER_PTO_CLK_CNT_CNTL) = val | PTO_CNT_EN;
-	usleep(502);
+	(void)CLOCK(CLK_RST_CONTROLLER_PTO_CLK_CNT_CNTL);
+	usleep((1000000 * pto_win / pto_osc) + 12 + 2);
 
 	while (CLOCK(CLK_RST_CONTROLLER_PTO_CLK_CNT_STATUS) & PTO_CLK_CNT_BUSY)
 		;
@@ -773,9 +809,11 @@ u32 clock_get_dev_freq(clock_pto_id_t id)
 	u32 cnt = CLOCK(CLK_RST_CONTROLLER_PTO_CLK_CNT_STATUS) & PTO_CLK_CNT;
 
 	CLOCK(CLK_RST_CONTROLLER_PTO_CLK_CNT_CNTL) = 0;
+	(void)CLOCK(CLK_RST_CONTROLLER_PTO_CLK_CNT_CNTL);
+	usleep(2);
 
-	u32 freq = ((cnt << 8) | 0x3E) / 125;
+	u32 freq_khz = (u64)cnt * pto_osc / pto_win / 1000;
 
-	return freq;
+	return freq_khz;
 }
 

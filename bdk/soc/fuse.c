@@ -2,7 +2,8 @@
  * Copyright (c) 2018 naehrwert
  * Copyright (c) 2018 shuffle2
  * Copyright (c) 2018 balika011
- * Copyright (c) 2019-2020 CTCaer
+ * Copyright (c) 2019-2021 CTCaer
+ * Copyright (c) 2021 shchmue
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,6 +20,8 @@
 
 #include <string.h>
 
+#include <sec/se.h>
+#include <sec/se_t210.h>
 #include <soc/fuse.h>
 #include <soc/hw_init.h>
 #include <soc/t210.h>
@@ -76,6 +79,15 @@ u32 fuse_read_odm_keygen_rev()
 	return 0;
 }
 
+u32 fuse_read_bootrom_rev()
+{
+	u32 rev = FUSE(FUSE_SOC_SPEEDO_1_CALIB);
+	if (hw_get_chip_id() == GP_HIDREV_MAJOR_T210)
+		return rev;
+	else
+		return rev | (1 << 12);
+}
+
 u32 fuse_read_dramid(bool raw_id)
 {
 	u32 dramid = (fuse_read_odm(4) & 0xF8) >> 3;
@@ -90,7 +102,7 @@ u32 fuse_read_dramid(bool raw_id)
 	}
 	else
 	{
-		if (dramid > 27)
+		if (dramid > 28)
 			dramid = 8;
 	}
 
@@ -111,26 +123,41 @@ u32 fuse_read_hw_type()
 	{
 		switch ((fuse_read_odm(4) & 0xF0000) >> 16)
 		{
-		case 1:
-			return FUSE_NX_HW_TYPE_IOWA;
 		case 2:
 			return FUSE_NX_HW_TYPE_HOAG;
+		case 4:
+			return FUSE_NX_HW_TYPE_AULA;
+		case 1:
+		default:
+			return FUSE_NX_HW_TYPE_IOWA;
 		}
 	}
 
 	return FUSE_NX_HW_TYPE_ICOSA;
 }
 
-u8 fuse_count_burnt(u32 val)
+int fuse_set_sbk()
 {
-	u8 burnt_fuses = 0;
-	for (u32 i = 0; i < 32; i++)
+	if (FUSE(FUSE_PRIVATE_KEY0) != 0xFFFFFFFF)
 	{
-		if ((val >> i) & 1)
-			burnt_fuses++;
+		// Read SBK from fuses.
+		u32 sbk[4] = {
+			FUSE(FUSE_PRIVATE_KEY0),
+			FUSE(FUSE_PRIVATE_KEY1),
+			FUSE(FUSE_PRIVATE_KEY2),
+			FUSE(FUSE_PRIVATE_KEY3)
+		};
+
+		// Set SBK to slot 14.
+		se_aes_key_set(14, sbk, SE_KEY_128_SIZE);
+
+		// Lock SBK from being read.
+		se_key_acc_ctrl(14, SE_KEY_TBL_DIS_KEYREAD_FLAG);
+
+		return 1;
 	}
 
-	return burnt_fuses;
+	return 0;
 }
 
 void fuse_wait_idle()
