@@ -58,12 +58,6 @@
 #define  RAM_DISK_SZ  0x41000000 // 1040MB.
 #define  RAM_DISK2_SZ 0x21000000 //  528MB.
 
-// NX BIS driver sector cache.
-#define NX_BIS_CACHE_ADDR  0xC5000000
-#define  NX_BIS_CACHE_SZ   0x10020000 // 256MB.
-#define NX_BIS_LOOKUP_ADDR 0xD6000000
-#define  NX_BIS_LOOKUP_SZ   0xF000000 // 240MB.
-
 // L4T Kernel Panic Storage (PSTORE).
 #define PSTORE_ADDR   0xB0000000
 #define  PSTORE_SZ         SZ_2M
@@ -118,5 +112,11 @@
 // #define EXT_PAYLOAD_ADDR    0xC0000000
 // #define RCM_PAYLOAD_ADDR    (EXT_PAYLOAD_ADDR + ALIGN(PATCHED_RELOC_SZ, 0x10))
 // #define COREBOOT_ADDR       (0xD0000000 - rom_size)
+
+// NX BIS driver sector cache.
+#define NX_BIS_CACHE_ADDR  0xC5000000
+#define  NX_BIS_CACHE_SZ   0x10020000 // 256MB.
+#define NX_BIS_LOOKUP_ADDR DRAM_MEM_HOLE_ADR
+#define  NX_BIS_LOOKUP_SZ   DRAM_MEM_HOLE_SZ // 240MB.
 
 #endif

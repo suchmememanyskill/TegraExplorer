@@ -227,6 +227,8 @@ void ipl_main()
 	h_cfg.emummc_force_disable = false;
 	h_cfg.t210b01 = !!(hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01);
 
+
+	max77620_rtc_prep_read();
 	display_init();
 
 	// Mount SD Card.
@@ -238,7 +240,7 @@ void ipl_main()
 	// Train DRAM and switch to max frequency.
 	if (TConf.minervaEnabled) //!TODO: Add Tegra210B01 support to minerva.
 		h_cfg.errors |= ERR_LIBSYS_MTC;
-	minerva_change_freq(FREQ_1600);
+	minerva_change_freq(FREQ_800);
 
 	u32 *fb = display_init_framebuffer_pitch();
 	gfx_init_ctxt(fb, 720, 1280, 720);
@@ -249,7 +251,7 @@ void ipl_main()
 	display_backlight_brightness(100, 1000);
 
 	// Overclock BPMP.
-	bpmp_clk_rate_set(BPMP_CLK_DEFAULT_BOOST);
+	bpmp_clk_rate_set(h_cfg.t210b01 ? BPMP_CLK_DEFAULT_BOOST : BPMP_CLK_LOWER_BOOST);
 
 	emummc_load_cfg();
 	// Ignore whether emummc is enabled.

@@ -26,17 +26,16 @@ Input_t *hidRead(){
     u8 right_connected = 0;
 
     if (controller != NULL){
-        if (controller->home && !h_cfg.t210b01)
-            RebootToPayloadOrRcm();
-
-        if (controller->cap)
-            TakeScreenshot();
-
         inputs.buttons = controller->buttons;
-
         left_connected = controller->conn_l;
         right_connected = controller->conn_r;
     }
+
+    if (right_connected && controller->home && !h_cfg.t210b01)
+        RebootToPayloadOrRcm();
+
+    if (left_connected && controller->cap)
+        TakeScreenshot();
 
 
     u8 btn = btn_read();
@@ -45,15 +44,23 @@ Input_t *hidRead(){
     inputs.power = (btn & BTN_POWER) ? 1 : 0;
 
     if (left_connected){
+/*
         if ((LbaseX == 0 || LbaseY == 0) || controller->l3){
             LbaseX = controller->lstick_x;
             LbaseY = controller->lstick_y;
         }
 
-        inputs.up = (controller->up || (controller->lstick_y > LbaseY + 500)) ? 1 : 0;
-        inputs.down = (controller->down || (controller->lstick_y < LbaseY - 500)) ? 1 : 0;
-        inputs.left = (controller->left || (controller->lstick_x < LbaseX - 500)) ? 1 : 0;
-        inputs.right = (controller->right || (controller->lstick_x > LbaseX + 500)) ? 1 : 0;
+
+        inputs.up = (controller->up || (controller->lstick_y > LbaseY + 10000)) ? 1 : 0;
+        inputs.down = (controller->down || (controller->lstick_y < LbaseY - 10000)) ? 1 : 0;
+        inputs.left = (controller->left || (controller->lstick_x < LbaseX - 10000)) ? 1 : 0;
+        inputs.right = (controller->right || (controller->lstick_x > LbaseX + 10000)) ? 1 : 0;
+*/
+
+        inputs.up = controller->up ? 1 : 0;
+        inputs.down = controller->down ? 1 : 0;
+        inputs.left = controller->left ? 1 : 0;
+        inputs.right = controller->right ? 1 : 0;
     }
     else {
         inputs.up = inputs.volp;
@@ -61,6 +68,7 @@ Input_t *hidRead(){
     }
 
     if (right_connected){
+        /*
         if ((RbaseX == 0 || RbaseY == 0) || controller->r3){
             RbaseX = controller->rstick_x;
             RbaseY = controller->rstick_y;
@@ -70,6 +78,7 @@ Input_t *hidRead(){
         inputs.rDown = (controller->rstick_y < RbaseY - 500) ? 1 : 0;
         inputs.rLeft = (controller->rstick_x < RbaseX - 500) ? 1 : 0;
         inputs.rRight = (controller->rstick_x > RbaseX + 500) ? 1 : 0;
+        */
     }
     else
         inputs.a = inputs.power;
