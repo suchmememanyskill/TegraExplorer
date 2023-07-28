@@ -118,7 +118,7 @@ static void _derive_bis_keys(key_derivation_ctx_t *keys) {
     /*  key = unwrap(source, wrapped_key):
         key_set(ks, wrapped_key), block_ecb(ks, 0, key, source) -> final key in key
     */
-    minerva_periodic_training();
+
     u32 key_generation = fuse_read_odm_keygen_rev();
     if (key_generation)
         key_generation--;
@@ -196,8 +196,6 @@ static bool _derive_tsec_keys(tsec_ctxt_t *tsec_ctxt, key_derivation_ctx_t *keys
         DPRINTF("Unable to locate TSEC firmware.");
         return false;
     }
-
-    minerva_periodic_training();
 
     tsec_ctxt->size = _get_tsec_fw_size((tsec_key_data_t *)(tsec_ctxt->fw + TSEC_KEY_DATA_OFFSET));
     if (tsec_ctxt->size > PKG1_MAX_SIZE) {
