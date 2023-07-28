@@ -250,7 +250,7 @@ uint32_t save_fs_list_allocate_entry(save_filesystem_list_ctx_t *ctx) {
     if (capacity == 0 || length >= capacity) {
         uint64_t current_size, new_size;
         save_allocation_table_storage_get_size(&ctx->storage, &current_size);
-        if (!save_allocation_table_storage_set_size(&ctx->storage, current_size + 0x4000))
+        if (!save_allocation_table_storage_set_size(&ctx->storage, current_size + SZ_16K))
             return 0;
         save_allocation_table_storage_get_size(&ctx->storage, &new_size);
         if (!save_fs_list_set_capacity(ctx, (uint32_t)(new_size / sizeof(save_fs_list_entry_t))))

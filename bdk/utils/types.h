@@ -1,5 +1,6 @@
 /*
 * Copyright (c) 2018 naehrwert
+* Copyright (c) 2018-2021 CTCaer
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -17,37 +18,18 @@
 #ifndef _TYPES_H_
 #define _TYPES_H_
 
-#define NULL ((void *)0)
+#include <assert.h>
 
-#define ALWAYS_INLINE inline __attribute__((always_inline))
-
-#define ALIGN(x, a) (((x) + (a) - 1) & ~((a) - 1))
-#define ALIGN_DOWN(x, a) ((x) & ~((a) - 1))
-#define BIT(n) (1U << (n))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define DIV_ROUND_UP(a, b) ((a + b - 1) / b)
-
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
-#define LOG2(n) (32 - __builtin_clz(n) - 1)
-
-#define OFFSET_OF(t, m) ((u32)&((t *)NULL)->m)
-#define CONTAINER_OF(mp, t, mn) ((t *)((u32)mp - OFFSET_OF(t, mn)))
-
-#define COLOR_RED    0xFFE70000
-#define COLOR_ORANGE 0xFFFF8C00
-#define COLOR_YELLOW 0xFFFFFF40
-#define COLOR_GREEN  0xFF40FF00
-#define COLOR_BLUE   0xFF00DDFF
-#define COLOR_VIOLET 0xFF8040FF
-
+/* Types */
 typedef signed char s8;
 typedef short s16;
 typedef short SHORT;
 typedef int s32;
 typedef int INT;
+typedef int bool;
 typedef long LONG;
 typedef long long int s64;
+
 typedef unsigned char u8;
 typedef unsigned char BYTE;
 typedef unsigned short u16;
@@ -58,6 +40,7 @@ typedef unsigned int UINT;
 typedef unsigned long DWORD;
 typedef unsigned long long QWORD;
 typedef unsigned long long int u64;
+
 typedef volatile unsigned char vu8;
 typedef volatile unsigned short vu16;
 typedef volatile unsigned int vu32;
@@ -68,22 +51,96 @@ typedef u64 uptr;
 typedef u32 uptr;
 #endif
 
+/* Colors */
+#define COLOR_RED    0xFFE70000
+#define COLOR_ORANGE 0xFFFF8C00
+#define COLOR_YELLOW 0xFFFFFF40
+#define COLOR_GREEN  0xFF40FF00
+#define COLOR_BLUE   0xFF00DDFF
+#define COLOR_VIOLET 0xFF8040FF
+
 static const u32 colors[6] = {COLOR_RED, COLOR_ORANGE, COLOR_YELLOW, COLOR_GREEN, COLOR_BLUE, COLOR_VIOLET};
 
-typedef int bool;
-#define true  1
+/* Important */
 #define false 0
+#define true  1
 
+#define NULL ((void *)0)
+
+/* Misc */
 #define DISABLE 0
 #define ENABLE  1
 
+/* Sizes */
+#define SZ_1K   0x400
+#define SZ_2K   0x800
+#define SZ_4K   0x1000
+#define SZ_8K   0x2000
+#define SZ_16K  0x4000
+#define SZ_32K  0x8000
+#define SZ_64K  0x10000
+#define SZ_128K 0x20000
+#define SZ_256K 0x40000
+#define SZ_512K 0x80000
+#define SZ_1M   0x100000
+#define SZ_2M   0x200000
+#define SZ_4M   0x400000
+#define SZ_8M   0x800000
+#define SZ_16M  0x1000000
+#define SZ_32M  0x2000000
+#define SZ_64M  0x4000000
+#define SZ_128M 0x8000000
+#define SZ_256M 0x10000000
+#define SZ_512M 0x20000000
+#define SZ_1G   0x40000000
+#define SZ_2G   0x80000000
+#define SZ_PAGE SZ_4K
+
+/* Macros */
+#define ALWAYS_INLINE inline __attribute__((always_inline))
+#define ALIGN(x, a) (((x) + (a) - 1) & ~((a) - 1))
+#define ALIGN_DOWN(x, a) ((x) & ~((a) - 1))
+#define BIT(n) (1U << (n))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define DIV_ROUND_UP(a, b) ((a + b - 1) / b)
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
+#define LOG2(n) (32 - __builtin_clz(n) - 1)
+#define CLZ(n) __builtin_clz(n)
+#define CLO(n) __builtin_clz(~n)
+
+#define OFFSET_OF(t, m) ((uptr)&((t *)NULL)->m)
+#define CONTAINER_OF(mp, t, mn) ((t *)((uptr)mp - OFFSET_OF(t, mn)))
+
+#define byte_swap_16(num) ((((num) >> 8) & 0xff) | (((num) << 8) & 0xff00))
+#define byte_swap_32(num) ((((num) >> 24) & 0xff) | (((num) << 8) & 0xff0000) | \
+						(((num) >> 8 )& 0xff00) | (((num) << 24) & 0xff000000))
+
+
+/* Bootloader/Nyx */
 #define BOOT_CFG_AUTOBOOT_EN BIT(0)
 #define BOOT_CFG_FROM_LAUNCH BIT(1)
 #define BOOT_CFG_FROM_ID     BIT(2)
 #define BOOT_CFG_TO_EMUMMC   BIT(3)
-#define BOOT_CFG_SEPT_RUN    BIT(7)
 
-#define EXTRA_CFG_DUMP_EMUMMC BIT(0)
+#define EXTRA_CFG_KEYS    BIT(0)
+#define EXTRA_CFG_PAYLOAD BIT(1)
+#define EXTRA_CFG_MODULE  BIT(2)
+
+#define EXTRA_CFG_NYX_UMS    BIT(5)
+#define EXTRA_CFG_NYX_RELOAD BIT(6)
+
+typedef enum _nyx_ums_type
+{
+	NYX_UMS_SD_CARD = 0,
+	NYX_UMS_EMMC_BOOT0,
+	NYX_UMS_EMMC_BOOT1,
+	NYX_UMS_EMMC_GPP,
+	NYX_UMS_EMUMMC_BOOT0,
+	NYX_UMS_EMUMMC_BOOT1,
+	NYX_UMS_EMUMMC_GPP
+} nyx_ums_type;
 
 typedef struct __attribute__((__packed__)) _boot_cfg_t
 {
@@ -102,6 +159,16 @@ typedef struct __attribute__((__packed__)) _boot_cfg_t
 		u8 xt_str[0x80];
 	};
 } boot_cfg_t;
+
+static_assert(sizeof(boot_cfg_t) == 0x84, "Boot cfg storage size is wrong!");
+
+typedef struct __attribute__((__packed__)) _ipl_ver_meta_t
+{
+	u32 magic;
+	u32 version;
+	u16 rsvd0;
+	u16 rsvd1;
+} ipl_ver_meta_t;
 
 typedef struct __attribute__((__packed__)) _reloc_meta_t
 {

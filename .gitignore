@@ -4,7 +4,6 @@ output
 research
 
 loader/payload_00.h
-
 loader/payload_01.h
 
 source/script/Debug
@@ -16,3 +15,8 @@ source/script/.vs
 source/script/builtin.c
 
 source/script/builtin.h
+
+tools/bin2c/bin2c
+tools/lz/lz77
+
+.DS_Store

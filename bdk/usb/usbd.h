@@ -1,7 +1,7 @@
 /*
  * Enhanced & eXtensible USB Device (EDCI & XDCI) driver for Tegra X1
  *
- * Copyright (c) 2019 CTCaer
+ * Copyright (c) 2019-2021 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -148,6 +148,7 @@ typedef enum _usb_error_t
 	XUSB_ERROR_INVALID_EP           = USB_ERROR_XFER_ERROR,        // From 2.
 	XUSB_ERROR_XFER_BULK_IN_RESIDUE = 7,
 	XUSB_ERROR_INVALID_CYCLE        = USB2_ERROR_XFER_EP_DISABLED, // From 8.
+	XUSB_ERROR_BABBLE_DETECTED      = 50,
 	XUSB_ERROR_SEQ_NUM              = 51,
 	XUSB_ERROR_XFER_DIR             = 52,
 	XUSB_ERROR_PORT_CFG             = 54
@@ -175,9 +176,9 @@ typedef struct _usb_ops_t
 
 	int  (*usb_device_ep1_out_read)(u8 *, u32, u32 *, u32);
 	int  (*usb_device_ep1_out_read_big)(u8 *, u32, u32 *);
-	int  (*usb_device_ep1_out_reading_finish)(u32 *);
+	int  (*usb_device_ep1_out_reading_finish)(u32 *, u32);
 	int  (*usb_device_ep1_in_write)(u8 *, u32, u32 *, u32);
-	int  (*usb_device_ep1_in_writing_finish)(u32 *);
+	int  (*usb_device_ep1_in_writing_finish)(u32 *, u32);
 	bool (*usb_device_get_suspended)();
 	bool (*usb_device_get_port_in_sleep)();
 } usb_ops_t;

@@ -4,8 +4,6 @@
 #include <display/di.h>
 #include <gfx_utils.h>
 #include "../hos/pkg1.h"
-#include "../hos/pkg2.h"
-#include "../hos/sept.h"
 #include <libs/fatfs/ff.h>
 #include <mem/heap.h>
 #include <mem/mc.h>
@@ -38,6 +36,25 @@ extern hekate_config h_cfg;
 
 #define DPRINTF(x)
 
+#define TSEC_KEY_DATA_OFFSET 0x300
+
+typedef struct _tsec_key_data_t
+{
+	u8 debug_key[0x10];
+	u8 blob0_auth_hash[0x10];
+	u8 blob1_auth_hash[0x10];
+	u8 blob2_auth_hash[0x10];
+	u8 blob2_aes_iv[0x10];
+	u8 hovi_eks_seed[0x10];
+	u8 hovi_common_seed[0x10];
+	u32 blob0_size;
+	u32 blob1_size;
+	u32 blob2_size;
+	u32 blob3_size;
+	u32 blob4_size;
+	u8 reserved[0x7C];
+} tsec_key_data_t;
+
 static int  _key_exists(const void *data) { return memcmp(data, "\x00\x00\x00\x00\x00\x00\x00\x00", 8) != 0; };
 
 static ALWAYS_INLINE u8 *_find_tsec_fw(const u8 *pkg1) {
@@ -67,7 +84,7 @@ static void _generate_kek(u32 ks, const void *key_source, void *master_key, cons
 }
 
 static void _get_device_key(u32 ks, void *out_device_key, u32 revision, const void *device_key, const void *new_device_key, const void *master_key) {
-    if (revision == KB_FIRMWARE_VERSION_100_200 && !h_cfg.t210b01) {
+    if (revision == KB_FIRMWARE_VERSION_100 && !h_cfg.t210b01) {
         memcpy(out_device_key, device_key, AES_128_KEY_SIZE);
         return;
     }
@@ -175,7 +192,7 @@ static int _derive_master_keys_from_keyblobs(key_derivation_ctx_t *keys) {
     return false;
 }
 
-static bool _derive_tsec_keys(tsec_ctxt_t *tsec_ctxt, u32 kb, key_derivation_ctx_t *keys) {
+static bool _derive_tsec_keys(tsec_ctxt_t *tsec_ctxt, key_derivation_ctx_t *keys) {
     tsec_ctxt->fw = _find_tsec_fw(tsec_ctxt->pkg1);
     if (!tsec_ctxt->fw) {
         DPRINTF("Unable to locate TSEC firmware.");
@@ -195,7 +212,7 @@ static bool _derive_tsec_keys(tsec_ctxt_t *tsec_ctxt, u32 kb, key_derivation_ctx
 
     mc_disable_ahb_redirect();
 
-    while (tsec_query(keys->tsec_keys, kb, tsec_ctxt) < 0) {
+    while (tsec_query(keys->tsec_keys, tsec_ctxt) < 0) {
         memset(keys->tsec_keys, 0, sizeof(keys->tsec_keys));
         retries++;
         if (retries > 15) {
@@ -204,7 +221,7 @@ static bool _derive_tsec_keys(tsec_ctxt_t *tsec_ctxt, u32 kb, key_derivation_ctx
         }
     }
 
-    mc_enable_ahb_redirect();
+    mc_enable_ahb_redirect(false);
 
     if (res < 0) {
         //EPRINTFARGS("ERROR %x dumping TSEC.\n", res);
@@ -269,7 +286,7 @@ int DumpKeys(){
 
     tsec_ctxt_t tsec_ctxt;
     tsec_ctxt.pkg1 = pkg1;
-    res =_derive_tsec_keys(&tsec_ctxt, pkg1_id->kb, &dumpedKeys);
+    res =_derive_tsec_keys(&tsec_ctxt, &dumpedKeys);
     
     free(pkg1);
     if (res == false) {
