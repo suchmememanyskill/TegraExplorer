@@ -61,6 +61,7 @@ Other awesome people:
 - Bleck9999
 - Exelix
 - Emmo
+- JeffV
 
 ## Screenshots
 
