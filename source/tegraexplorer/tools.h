@@ -19,6 +19,5 @@ typedef struct _bmp_t
 	u64 rsvd2;
 } __attribute__((packed)) bmp_t;
 
-void DumpSysFw();
 void FormatSD();
 void TakeScreenshot();
