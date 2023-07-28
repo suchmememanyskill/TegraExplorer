@@ -7,6 +7,11 @@ include $(DEVKITARM)/base_rules
 ################################################################################
 
 LDR_LOAD_ADDR := 0x40007000
+IPL_MAGIC := 0x43544349 #"ICTC"
+BLVERSION_MAJOR := 4
+BLVERSION_MINOR := 1
+BLVERSION_BUGFX := 0
+BLVERSION_RSVD := 0
 
 ################################################################################
 
@@ -28,7 +33,7 @@ CUSTOMDEFINES := -DBL_MAGIC=$(IPL_MAGIC)
 CUSTOMDEFINES += -DBL_VER_MJ=$(BLVERSION_MAJOR) -DBL_VER_MN=$(BLVERSION_MINOR) -DBL_VER_HF=$(BLVERSION_HOTFX) -DBL_RESERVED=$(BLVERSION_RSVD)
 
 #TODO: Considering reinstating some of these when pointer warnings have been fixed.
-WARNINGS := -Wall -Wno-array-bounds -Wno-stringop-overflow
+WARNINGS := -Wall -Wsign-compare -Wno-array-bounds -Wno-stringop-overflow
 
 ARCH := -march=armv4t -mtune=arm7tdmi -mthumb-interwork
 CFLAGS = $(ARCH) -O2 -g -nostdlib -ffunction-sections -fdata-sections -fomit-frame-pointer -std=gnu11 $(WARNINGS) $(CUSTOMDEFINES)
