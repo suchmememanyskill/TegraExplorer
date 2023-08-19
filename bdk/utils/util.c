@@ -1,6 +1,7 @@
 /*
 * Copyright (c) 2018 naehrwert
 * Copyright (c) 2018-2020 CTCaer
+# Copyright (c) 2022 shchmue
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -29,6 +30,27 @@
 #define USE_RTC_TIMER
 
 extern volatile nyx_storage_t *nyx_str;
+
+u8 bit_count(u32 val)
+{
+	u8 cnt = 0;
+	for (u32 i = 0; i < 32; i++)
+	{
+		if ((val >> i) & 1)
+			cnt++;
+	}
+
+	return cnt;
+}
+
+u32 bit_count_mask(u8 bits)
+{
+	u32 val = 0;
+	for (u32 i = 0; i < bits; i++)
+		val |= 1 << i;
+
+	return val;
+}
 
 u32 get_tmr_s()
 {
@@ -79,6 +101,27 @@ void exec_cfg(u32 *base, const cfg_op_t *ops, u32 num_ops)
 {
 	for(u32 i = 0; i < num_ops; i++)
 		base[ops[i].off] = ops[i].val;
+}
+
+u16 crc16_calc(const u8 *buf, u32 len)
+{
+	const u8 *p, *q;
+	u16 crc = 0x55aa;
+
+	static u16 table[16] = {
+		0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401,
+		0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400
+	};
+
+	q = buf + len;
+	for (p = buf; p < q; p++)
+	{
+		u8 oct = *p;
+		crc = (crc >> 4) ^ table[crc & 0xf] ^ table[(oct >> 0) & 0xf];
+		crc = (crc >> 4) ^ table[crc & 0xf] ^ table[(oct >> 4) & 0xf];
+	}
+
+	return crc;
 }
 
 u32 crc32_calc(u32 crc, const u8 *buf, u32 len)

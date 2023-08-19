@@ -250,10 +250,8 @@ void ipl_main()
 	TConf.minervaEnabled = !minerva_init();
 	TConf.FSBuffSize = (TConf.minervaEnabled) ? 0x800000 : 0x10000;
 
-	// Train DRAM and switch to max frequency.
-	if (TConf.minervaEnabled) //!TODO: Add Tegra210B01 support to minerva.
+	if (!TConf.minervaEnabled) //!TODO: Add Tegra210B01 support to minerva.
 		h_cfg.errors |= ERR_LIBSYS_MTC;
-	minerva_change_freq(FREQ_1600);
 
 	display_init();
 
@@ -267,6 +265,7 @@ void ipl_main()
 
 	// Overclock BPMP.
 	bpmp_clk_rate_set(BPMP_CLK_DEFAULT_BOOST);
+	minerva_change_freq(FREQ_800);
 
 	emummc_load_cfg();
 	// Ignore whether emummc is enabled.
@@ -277,23 +276,11 @@ void ipl_main()
 	TConf.pkg1ID = "Unk";
 
 	hidInit();
-
-	//gfx_clearscreen();
-	//Vector_t a = vecFromArray(testEntries, 9, sizeof(MenuEntry_t));
-	//u32 res = newMenu(&a, 0, 40, 5, testAdd, NULL);
-
-	//gfx_clearscreen();
-	//DrawError(newErrCode(1));
-
-	// TODO: Write exceptions in err.c and check them here
-
 	_show_errors();
-
 	gfx_clearscreen();
 
 	int res = -1;
 
-	
 	if (btn_read() & BTN_VOL_DOWN || DumpKeys())
 		res = GetKeysFromFile("sd:/switch/prod.keys");
 

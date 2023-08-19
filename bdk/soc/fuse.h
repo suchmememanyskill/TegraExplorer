@@ -2,7 +2,8 @@
  * Copyright (c) 2018 naehrwert
  * Copyright (c) 2018 shuffle2
  * Copyright (c) 2018 balika011
- * Copyright (c) 2019-2020 CTCaer
+ * Copyright (c) 2019-2021 CTCaer
+ * Copyright (c) 2021 shchmue
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -82,7 +83,8 @@ enum
 {
 	FUSE_NX_HW_TYPE_ICOSA,
 	FUSE_NX_HW_TYPE_IOWA,
-	FUSE_NX_HW_TYPE_HOAG
+	FUSE_NX_HW_TYPE_HOAG,
+	FUSE_NX_HW_TYPE_AULA
 };
 
 enum
@@ -94,10 +96,11 @@ enum
 void fuse_disable_program();
 u32  fuse_read_odm(u32 idx);
 u32  fuse_read_odm_keygen_rev();
+u32  fuse_read_bootrom_rev();
 u32  fuse_read_dramid(bool raw_id);
 u32  fuse_read_hw_state();
 u32  fuse_read_hw_type();
-u8   fuse_count_burnt(u32 val);
+int  fuse_set_sbk();
 void fuse_wait_idle();
 int  fuse_read_ipatch(void (*ipatch)(u32 offset, u32 value));
 int  fuse_read_evp_thunk(u32 *iram_evp_thunks, u32 *iram_evp_thunks_len);
