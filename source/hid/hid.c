@@ -50,8 +50,8 @@ Input_t *hidRead(){
             LbaseY = controller->lstick_y;
         }
 
-        inputs.up = (controller->up || (controller->lstick_y > LbaseY + 500)) ? 1 : 0;
-        inputs.down = (controller->down || (controller->lstick_y < LbaseY - 500)) ? 1 : 0;
+        inputs.up = (controller->up || inputs.volp || (controller->lstick_y > LbaseY + 500)) ? 1 : 0;
+        inputs.down = (controller->down || inputs.volm || (controller->lstick_y < LbaseY - 500)) ? 1 : 0;
         inputs.left = (controller->left || (controller->lstick_x < LbaseX - 500)) ? 1 : 0;
         inputs.right = (controller->right || (controller->lstick_x > LbaseX + 500)) ? 1 : 0;
     }
@@ -71,8 +71,7 @@ Input_t *hidRead(){
         inputs.rLeft = (controller->rstick_x < RbaseX - 500) ? 1 : 0;
         inputs.rRight = (controller->rstick_x > RbaseX + 500) ? 1 : 0;
     }
-    else
-        inputs.a = inputs.power;
+    inputs.a = inputs.a || inputs.power;
 
     return &inputs;
 }
