@@ -51,16 +51,18 @@ For question specifically for TegraExplorer, go to [my discord](https://discord.
 Based on [Lockpick_RCM](https://github.com/shchmue/Lockpick_RCM), and thus also based on [Hekate](https://github.com/CTCaer/hekate)
 
 Awesome people who helped with this project:
-- shchmue
-- Dennthecafebabe
+- [shchmue](https://github.com/shchmue)
+- [maddiethecafebabe](https://github.com/maddiethecafebabe/)
+- [bleck9999](https://github.com/bleck9999)
 
 Other awesome people:
 - PhazonicRidley
 - Dax
 - Huhen
-- Bleck9999
 - Exelix
 - Emmo
+- Gengar
+- Einso
 - JeffV
 
 ## Screenshots
