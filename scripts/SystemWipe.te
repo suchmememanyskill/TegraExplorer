@@ -1,5 +1,5 @@
 #REQUIRE KEYS
-is=["8000000000000120","80000000000000d1","8000000000000047"]
+is=["8000000000000120","8000000000000000"]
 p=println
 pr=print
 pe={pause() exit()}
@@ -24,6 +24,44 @@ pr("Deleting system saves... ")
 f=readdir("bis:/save")
 if(f.folders.len()!=0){p("Folders in save dir???")pe()}
 f.files.foreach("x"){if(!is.contains(x)){if(delfile("bis:/save/"+x)){p("File deletion failed: ", x)pe()}}}
+pr("Done!\nSetting up indexer save...")
+s=getfilesize("bis:/save/"+is[0])
+ba0=["BYTE[]",0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]
+ba120=["BYTE[]",0x20,0x01,0x00,0x00,0x00,0x00,0x00,0x80]
+s1=s&0xFF
+s2=(s>>8)&0xFF
+s3=(s>>16)&0xFF
+s4=(s>>24)&0xFF
+idb=["BYTE[]",0x49,0x4D,0x4B,0x56,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x49,0x4D,0x45,0x4E,0x40,0x00,0x00,0x00,0x40,0x00,0x00,0x00].copy()
+idb.addrange(ba0)
+idb.addrange(ba0)
+idb.addrange(ba0)
+idb.addrange(ba120)
+idb.addrange(ba0)
+idb.addrange(ba0)
+idb.addrange(ba0)
+idb.addrange(ba0)
+idb.addrange(ba120)
+idb.add(s1)
+idb.add(s2)
+idb.add(s3)
+idb.add(s4)
+idb.add(0x00)
+idb.add(0x00)
+idb.add(0x00)
+idb.add(0x00)
+idb.addrange(ba0)
+idb.addrange(ba0)
+idb.addrange(ba0)
+idb.addrange(ba0)
+idb.addrange(ba0)
+idb.addrange(ba0)
+idxs=readsave("bis:/save/"+is[1])
+if(idxs.resize("/imkvdb.arc",idb.len())){p("imkvdb resize failed")pe()}
+if(idxs.write("/imkvdb.arc",idb)){p("imkvdb write failed")pe()}
+if(idxs.resize("/lastPublishedId",ba0.len())){p("lastPublishedId resize failed")pe()}
+if(idxs.write("/lastPublishedId",ba0)){p("lastPublishedId write failed")pe()}
+if(idxs.commit()){p("Indexer save commit failed")pe()}
 pr("Done!\nDeleting user dirs...")ud=["Album","Contents","save","saveMeta","temp"]
 if(mount("USER")){p("Mount failed!")pe()}
 ud.foreach("x"){pr("\n"+x,"")if(deldir("bis:/"+x)){p("Dir deletion failed")pe()}mkdir("bis:/"+x)}

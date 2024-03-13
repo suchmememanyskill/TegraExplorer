@@ -65,6 +65,27 @@ int arrayClassAdd(Variable_t *caller, Variable_t *add){
 	return 0;
 }
 
+int arrayClassAddRange(Variable_t* caller, Variable_t* add)
+{
+	// Check if IntArrayClass or StringArrayClass or ByteArrayClass
+	if ((caller->variableType == IntArrayClass) || (caller->variableType == StringArrayClass) || (caller->variableType == ByteArrayClass)) {
+		if (caller->variableType != add->variableType) {
+			return 1;
+		}
+
+		for (s64 i = 0; i < add->solvedArray.vector.count; i++)
+		{
+			Variable_t v = arrayClassGetIdx(add, i);
+			if (arrayClassAdd(caller, &v))
+			{
+				return 1;
+			}
+		}
+	}
+
+	return 0;
+}
+
 ClassFunction(getArrayIdx) {
 	s64 getVal = (*args)->integer.value;
 	// Out of bounds
@@ -167,6 +188,20 @@ ClassFunction(arrayAdd) {
 	return &emptyClass;
 }
 
+ClassFunction(arrayAddRange) {
+	Variable_t* arg = *args;
+
+	if (caller->readOnly) {
+		SCRIPT_FATAL_ERR("Array is read-only");
+	}
+
+	if (arrayClassAddRange(caller, arg)) {
+		SCRIPT_FATAL_ERR("Adding the wrong type to a typed array");
+	}
+
+	return &emptyClass;
+}
+
 ClassFunction(arrayContains) {
 	Vector_t* v = &caller->solvedArray.vector;
 	Variable_t* arg = *args;
@@ -258,6 +293,7 @@ ClassFunctionTableEntry_t arrayFunctions[] = {
 	{"set", arraySet, 2, oneIntOneAny},
 	{"+", arrayAdd, 1, anotherAnotherOneVarArg},
 	{"add", arrayAdd, 1, anotherAnotherOneVarArg},
+	{"addrange", arrayAddRange, 1, anotherAnotherOneVarArg},
 	{"-", arrayMinus, 1, anotherOneIntArg},
 	{"contains", arrayContains, 1, anotherAnotherOneVarArg},
 	{"bytestostr", bytesToStr, 0, 0},
