@@ -5,6 +5,7 @@
 
 u8 oneStringArgSave[] = {StringClass};
 u8 oneStrOneByteArrayArgSave[] = {StringClass, ByteArrayClass};
+u8 oneStringOneIntArgSave[] = {StringClass, IntClass};
 
 ClassFunction(readFile){
     Variable_t *arg = (*args);
@@ -96,11 +97,25 @@ ClassFunction(saveClassCommit){
     return newIntVariablePtr(!save_commit(&caller->save->saveCtx));
 }
 
+ClassFunction(writeFileSize) {
+    Variable_t* arg = (*args);
+    save_data_file_ctx_t dataArc;
+    if (!save_open_file(&caller->save->saveCtx, &dataArc, arg->string.value, OPEN_MODE_WRITE))
+        return newIntVariablePtr(1);
+
+    if (!save_data_file_set_size(&dataArc, args[1]->integer.value)) {
+        return newIntVariablePtr(2);
+    };
+
+    return newIntVariablePtr(0);
+}
+
 ClassFunctionTableEntry_t saveFunctions[] = {
     {"read", readFile, 1, oneStringArgSave},
     {"write", writeFile, 2, oneStrOneByteArrayArgSave},
     //{"readdir", getFiles, 1, oneStringArgSave}, // Seems broken?
     {"commit", saveClassCommit, 0, 0},
+    {"resize", writeFileSize, 2, oneStringOneIntArgSave},
 };
 
 Variable_t getSaveMember(Variable_t* var, char* memberName) {
