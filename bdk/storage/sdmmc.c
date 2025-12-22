@@ -235,10 +235,10 @@ int sdmmc_storage_end(sdmmc_storage_t *storage)
 	return 1;
 }
 
-static int _sdmmc_storage_readwrite(sdmmc_storage_t *storage, u32 sector, u32 num_sectors, void *buf, u32 is_write)
+static int _sdmmc_storage_readwrite(sdmmc_storage_t *storage, u64 sector, u32 num_sectors, void *buf, u32 is_write)
 {
 	u8 *bbuf = (u8 *)buf;
-	u32 sct_off = sector;
+	u64 sct_off = sector;
 	u32 sct_total = num_sectors;
 	bool first_reinit = true;
 
@@ -308,7 +308,7 @@ out:
 	return 1;
 }
 
-int sdmmc_storage_read(sdmmc_storage_t *storage, u32 sector, u32 num_sectors, void *buf)
+int sdmmc_storage_read(sdmmc_storage_t *storage, u64 sector, u32 num_sectors, void *buf)
 {
 	// Ensure that buffer resides in DRAM and it's DMA aligned.
 	if (((u32)buf >= DRAM_START) && !((u32)buf % 8))
@@ -326,7 +326,7 @@ int sdmmc_storage_read(sdmmc_storage_t *storage, u32 sector, u32 num_sectors, vo
 	return 0;
 }
 
-int sdmmc_storage_write(sdmmc_storage_t *storage, u32 sector, u32 num_sectors, void *buf)
+int sdmmc_storage_write(sdmmc_storage_t *storage, u64 sector, u32 num_sectors, void *buf)
 {
 	// Ensure that buffer resides in DRAM and it's DMA aligned.
 	if (((u32)buf >= DRAM_START) && !((u32)buf % 8))

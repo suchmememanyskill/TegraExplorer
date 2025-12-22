@@ -182,7 +182,7 @@ typedef struct _sdmmc_storage_t
 	sdmmc_t *sdmmc;
 	u32 rca;
 	int has_sector_access;
-	u32 sec_cnt;
+	u64 sec_cnt;
 	int is_low_voltage;
 	u32 partition;
 	int initialized;
@@ -198,8 +198,8 @@ typedef struct _sdmmc_storage_t
 } sdmmc_storage_t;
 
 int  sdmmc_storage_end(sdmmc_storage_t *storage);
-int  sdmmc_storage_read(sdmmc_storage_t *storage, u32 sector, u32 num_sectors, void *buf);
-int  sdmmc_storage_write(sdmmc_storage_t *storage, u32 sector, u32 num_sectors, void *buf);
+int  sdmmc_storage_read(sdmmc_storage_t *storage, u64 sector, u32 num_sectors, void *buf);
+int  sdmmc_storage_write(sdmmc_storage_t *storage, u64 sector, u32 num_sectors, void *buf);
 int  sdmmc_storage_init_mmc(sdmmc_storage_t *storage, sdmmc_t *sdmmc, u32 bus_width, u32 type);
 int  sdmmc_storage_set_mmc_partition(sdmmc_storage_t *storage, u32 partition);
 void sdmmc_storage_init_wait_sd();
