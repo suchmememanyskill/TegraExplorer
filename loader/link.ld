@@ -11,8 +11,15 @@ SECTIONS {
 	.data : {
 		*(.data*);
 		*(.rodata*);
-		*(._payload_00);
-		*(._payload_01);
+		*(._payload);
+
+		/*
+		 * To mitigate bad injectors/chainloaders,
+		 * miss-align binary size to account for version info.
+		 * !If version text is not appended, then use ". = ALIGN(4)"!
+		 */
+		 data_end_ua = .;
+		 . = ((data_end_ua + 0x6 + 4 - 1) & ~(4 - 1)) - 6;
 	}
 	__ldr_end = .;
 	. = ALIGN(0x10);
