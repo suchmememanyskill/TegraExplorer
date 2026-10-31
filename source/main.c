@@ -253,12 +253,6 @@ void ipl_main()
 
 	if (!TConf.minervaEnabled) //!TODO: Add Tegra210B01 support to minerva.
 		h_cfg.errors |= ERR_LIBSYS_MTC;
-	
-	/* Train DRAM on mariko via Fusee-Train */
-	if(hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01) {
-		bool did_training = false;
-		MarikoTrainMemory(&did_training);
-	}
 
 	display_init();
 
@@ -305,6 +299,12 @@ void ipl_main()
 	if (FileExists("sd:/startup.te"))
 		RunScript("sd:/", newFSEntry("startup.te"));
 
+	/* Train DRAM on mariko via Fusee-Train */
+	if(hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01) {
+		bool did_training = false;
+		MarikoTrainMemory(&did_training);
+	}
+	
 	EnterMainMenu();
 
 	// Halt BPMP if we managed to get out of execution.

@@ -9,6 +9,9 @@
 #include <string.h>
 #include <mem/minerva.h>
 #include <soc/timer.h>
+#include <mem/mariko_mtc.h>
+#include <soc/t210.h>
+#include <soc/hw_init.h>
 
 const char *sizeDefs[] = {
     "B ",
@@ -82,6 +85,8 @@ int newMenu(Vector_t* vec, int startIndex, int screenLenX, int screenLenY, u8 op
 
             if (redrawScreen){
                 minerva_periodic_training();
+                if(hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01)
+                    MarikoPeriodicTraining();
                 gfx_boxGrey(startX, startY, startX + screenLenX * 16, startY + screenLenY * 16, (options & USELIGHTGREY) ? 0x33 : 0x1B);
             }
                 
