@@ -31,6 +31,7 @@
 #include <rtc/max77620-rtc.h>
 #include <soc/bpmp.h>
 #include <soc/hw_init.h>
+#include <soc/t210.h>
 #include "storage/emummc.h"
 #include "storage/nx_emmc.h"
 #include <storage/sd.h>
@@ -55,7 +56,7 @@
 #include "fs/fsutils.h"
 #include "fs/fstypes.h"
 #include "fs/menus/filemenu.h"
-
+#include <mem/mariko_mtc.h>
 
 hekate_config h_cfg;
 boot_cfg_t __attribute__((section ("._boot_cfg"))) b_cfg;
@@ -252,6 +253,12 @@ void ipl_main()
 
 	if (!TConf.minervaEnabled) //!TODO: Add Tegra210B01 support to minerva.
 		h_cfg.errors |= ERR_LIBSYS_MTC;
+	
+	/* Train DRAM on mariko via Fusee-Train */
+	if(hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01) {
+		bool did_training = false;
+		MarikoTrainMemory(&did_training);
+	}
 
 	display_init();
 
