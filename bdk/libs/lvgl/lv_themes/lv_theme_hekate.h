@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 CTCaer
+ * Copyright (c) 2018-2026 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -35,6 +35,17 @@ extern "C" {
 /*********************
  *      DEFINES
  *********************/
+#define COLOR_BG_BASE_MIN      0x0B0B0B
+#define COLOR_BG_BASE_MAX      0xC7C7C7
+
+#define COLOR_HOS_BG_DARKER    LV_COLOR_HEX(0x1B1B1B)
+#define COLOR_HOS_BG_DARK      LV_COLOR_HEX(0x222222)
+#define COLOR_HOS_BG           LV_COLOR_HEX(0x2D2D2D)
+#define COLOR_HOS_BG_RGB       0x2D2D2D
+#define COLOR_HOS_BG_LIGHT     LV_COLOR_HEX(0x3D3D3D)
+#define COLOR_HOS_BG_LIGHTER   LV_COLOR_HEX(0x4D4D4D)
+
+#define COLOR_HOS_TURQUOISE_EX(hue) (hue ? lv_color_hsv_to_rgb(hue, 100, 100) : lv_color_hsv_to_rgb(53, 8, 90)) // 0x00FFC9
 
 /**********************
  *      TYPEDEFS
@@ -44,13 +55,15 @@ extern "C" {
  * GLOBAL PROTOTYPES
  **********************/
 
+extern uint32_t theme_bg_color;
+
 /**
  * Initialize the material theme
  * @param hue [0..360] hue value from HSV color space to define the theme's base color
  * @param font pointer to a font (NULL to use the default)
  * @return pointer to the initialized theme
  */
-lv_theme_t * lv_theme_hekate_init(uint16_t hue, lv_font_t *font);
+lv_theme_t * lv_theme_hekate_init(uint32_t bg_color, uint16_t hue, lv_font_t *font);
 
 /**
  * Get a pointer to the theme

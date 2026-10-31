@@ -27,7 +27,7 @@ ClassFunction(printIntVariable) {
 ClassFunction(intToStr) {
 #ifndef WIN32
 	char buff[64] = { 0 };
-	s_printf(buff, "%d", getIntValue(caller));
+	s_printf(buff, "%lld", getIntValue(caller));
 	return newStringVariablePtr(CpyStr(buff), 0, 1);
 #else
 	return newIntVariablePtr(0);

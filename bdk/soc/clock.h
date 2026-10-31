@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2020 CTCaer
+ * Copyright (c) 2018-2025 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -47,6 +47,7 @@
 #define CLK_RST_CONTROLLER_PLLM_MISC1 0x98
 #define CLK_RST_CONTROLLER_PLLM_MISC2 0x9C
 #define CLK_RST_CONTROLLER_PLLP_BASE 0xA0
+#define CLK_RST_CONTROLLER_PLLP_OUTB 0xA8
 #define CLK_RST_CONTROLLER_PLLA_BASE 0xB0
 #define CLK_RST_CONTROLLER_PLLA_OUT 0xB4
 #define CLK_RST_CONTROLLER_PLLA_MISC1 0xB8
@@ -117,7 +118,10 @@
 #define CLK_RST_CONTROLLER_LVL2_CLK_GATE_OVRD 0x3A4
 #define CLK_RST_CONTROLLER_CLK_SOURCE_MSELECT 0x3B4
 #define CLK_RST_CONTROLLER_CLK_SOURCE_I2C4 0x3C4
+#define CLK_RST_CONTROLLER_CLK_SOURCE_AHUB 0x3D0
+#define CLK_RST_CONTROLLER_CLK_SOURCE_ACTMON 0x3E8
 #define CLK_RST_CONTROLLER_CLK_SOURCE_EXTPERIPH1 0x3EC
+#define CLK_RST_CONTROLLER_CLK_SOURCE_EXTPERIPH2 0x3F0
 #define CLK_RST_CONTROLLER_CLK_SOURCE_SYS 0x400
 #define CLK_RST_CONTROLLER_CLK_SOURCE_SOR1 0x410
 #define CLK_RST_CONTROLLER_CLK_SOURCE_SE 0x42C
@@ -146,6 +150,7 @@
 #define CLK_RST_CONTROLLER_PLLC_MISC_2 0x5D0
 #define CLK_RST_CONTROLLER_PLLC4_OUT 0x5E4
 #define CLK_RST_CONTROLLER_PLLMB_BASE 0x5E8
+#define CLK_RST_CONTROLLER_PLLMB_MISC1 0x5EC
 #define CLK_RST_CONTROLLER_CLK_SOURCE_XUSB_FS 0x608
 #define CLK_RST_CONTROLLER_CLK_SOURCE_XUSB_CORE_DEV 0x60C
 #define CLK_RST_CONTROLLER_CLK_SOURCE_XUSB_SS 0x610
@@ -153,8 +158,12 @@
 #define CLK_RST_CONTROLLER_CLK_SOURCE_I2C6 0x65C
 #define CLK_RST_CONTROLLER_CLK_SOURCE_EMC_DLL 0x664
 #define CLK_RST_CONTROLLER_CLK_SOURCE_UART_FST_MIPI_CAL 0x66C
+#define CLK_RST_CONTROLLER_CLK_SOURCE_VIC 0x678
 #define CLK_RST_CONTROLLER_CLK_SOURCE_SDMMC_LEGACY_TM 0x694
+#define CLK_RST_CONTROLLER_CLK_SOURCE_NVDEC 0x698
+#define CLK_RST_CONTROLLER_CLK_SOURCE_NVJPG 0x69C
 #define CLK_RST_CONTROLLER_CLK_SOURCE_NVENC 0x6A0
+#define CLK_RST_CONTROLLER_CLK_SOURCE_APE 0x6C0
 #define CLK_RST_CONTROLLER_CLK_SOURCE_USB2_HSIC_TRK 0x6CC
 #define CLK_RST_CONTROLLER_SE_SUPER_CLK_DIVIDER 0x704
 #define CLK_RST_CONTROLLER_CLK_SOURCE_UARTAPE 0x710
@@ -162,18 +171,16 @@
 #define CLK_NO_SOURCE 0x0
 #define CLK_NOT_USED  0x0
 
+#define CLK_CLR_OFFSET 0x4
+
 /*! PLL control and status bits */
-#define PLLX_BASE_LOCK       BIT(27)
-#define PLLX_BASE_REF_DIS    BIT(29)
-#define PLLX_BASE_ENABLE     BIT(30)
-#define PLLX_BASE_BYPASS     BIT(31)
+#define PLL_BASE_LOCK        BIT(27)
+#define PLL_BASE_REF_DIS     BIT(29)
+#define PLL_BASE_ENABLE      BIT(30)
+#define PLL_BASE_BYPASS      BIT(31)
+
 #define PLLX_MISC_LOCK_EN    BIT(18)
 #define PLLX_MISC3_IDDQ      BIT(3)
-
-#define PLLCX_BASE_LOCK      BIT(27)
-#define PLLCX_BASE_REF_DIS   BIT(29)
-#define PLLCX_BASE_ENABLE    BIT(30)
-#define PLLCX_BASE_BYPASS    BIT(31)
 
 #define PLLA_OUT0_RSTN_CLR   BIT(0)
 #define PLLA_OUT0_CLKEN      BIT(1)
@@ -191,6 +198,10 @@
 
 #define UTMIPLL_LOCK         BIT(31)
 
+/*! Clock source */
+#define CLK_SRC_DIV(d)     ((d) ? ((u32)(((d) - 1) * 2)) : 0)
+#define CLK_I2C_SRC_DIV(d) ((d) ? ((u32)(((d) - 1))) : 0)
+
 /*! PTO_CLK_CNT */
 #define PTO_REF_CLK_WIN_CFG_MASK 0xF
 #define PTO_REF_CLK_WIN_CFG_16P  0xF
@@ -202,8 +213,8 @@
 #define PTO_DIV_SEL_MASK         (3 << 23)
 #define PTO_DIV_SEL_GATED        (0 << 23)
 #define PTO_DIV_SEL_DIV1         (1 << 23)
-#define PTO_DIV_SEL_DIV2_RISING  (2 << 23)
-#define PTO_DIV_SEL_DIV2_FALLING (3 << 23)
+#define PTO_DIV_SEL_DIV4_RISING  (2 << 23)
+#define PTO_DIV_SEL_DIV4_FALLING (3 << 23)
 #define PTO_DIV_SEL_CPU_EARLY    (0 << 23)
 #define PTO_DIV_SEL_CPU_LATE     (1 << 23)
 
@@ -220,138 +231,232 @@
 /*! PTO IDs. */
 typedef enum _clock_pto_id_t
 {
-	CLK_PTO_PCLK_SYS =          0x06,
-	CLK_PTO_HCLK_SYS =          0x07,
+	CLK_PTO_PCLK_SYS          = 0x06,
+	CLK_PTO_HCLK_SYS          = 0x07,
+	CLK_PTO_DMIC1             = 0x08,
+	CLK_PTO_DMIC2             = 0x09,
+	CLK_PTO_HDMI_SLOWCLK_DIV2 = 0x0A,
+	CLK_PTO_JTAG_REG          = 0x0B,
+	CLK_PTO_UTMIP_240_A       = 0x0C,
+	CLK_PTO_UTMIP_240_B       = 0x0D,
 
-	CLK_PTO_UTMIP_240 =         0x0C,
+	CLK_PTO_CCLK_G            = 0x12,
+	CLK_PTO_CCLK_G_DIV2       = 0x13,
+	CLK_PTO_MIPIBIF           = 0x14,
 
-	CLK_PTO_CCLK_G =            0x12,
-	CLK_PTO_CCLK_G_DIV2 =       0x13,
+	CLK_PTO_SPI1              = 0x17,
+	CLK_PTO_SPI2              = 0x18,
+	CLK_PTO_SPI3              = 0x19,
+	CLK_PTO_SPI4              = 0x1A,
+	CLK_PTO_MAUD              = 0x1B,
+	CLK_PTO_SCLK              = 0x1C,
 
-	CLK_PTO_SPI1 =              0x17,
-	CLK_PTO_SPI2 =              0x18,
-	CLK_PTO_SPI3 =              0x19,
-	CLK_PTO_SPI4 =              0x1A,
-	CLK_PTO_MAUD =              0x1B,
-	CLK_PTO_SCLK =              0x1C,
+	CLK_PTO_SDMMC1            = 0x20,
+	CLK_PTO_SDMMC2            = 0x21,
+	CLK_PTO_SDMMC3            = 0x22,
+	CLK_PTO_SDMMC4            = 0x23,
+	CLK_PTO_EMC               = 0x24,
 
-	CLK_PTO_SDMMC1 =            0x20,
-	CLK_PTO_SDMMC2 =            0x21,
-	CLK_PTO_SDMMC3 =            0x22,
-	CLK_PTO_SDMMC4 =            0x23,
-	CLK_PTO_EMC =               0x24,
+	CLK_PTO_DMIC3             = 0x2A,
+	CLK_PTO_CCLK_LP           = 0x2B,
+	CLK_PTO_CCLK_LP_DIV2      = 0x2C,
 
-	CLK_PTO_CCLK_LP =           0x2B,
-	CLK_PTO_CCLK_LP_DIV2 =      0x2C,
+	CLK_PTO_MSELECT           = 0x2F,
 
-	CLK_PTO_MSELECT =           0x2F,
+	CLK_PTO_VI_SENSOR2        = 0x33,
+	CLK_PTO_VI_SENSOR         = 0x34,
+	CLK_PTO_VIC               = 0x35,
+	CLK_PTO_VIC_SKIP          = 0x36,
+	CLK_PTO_ISP_SKIP          = 0x37,
+	CLK_PTO_ISPB_SE2_SKIP     = 0x38,
+	CLK_PTO_NVDEC_SKIP        = 0x39,
+	CLK_PTO_NVENC_SKIP        = 0x3A,
+	CLK_PTO_NVJPG_SKIP        = 0x3B,
+	CLK_PTO_TSEC_SKIP         = 0x3C,
+	CLK_PTO_TSECB_SKIP        = 0x3D,
+	CLK_PTO_SE_SKIP           = 0x3E,
+	CLK_PTO_VI_SKIP           = 0x3F,
 
-	CLK_PTO_VIC =               0x36,
+	CLK_PTO_PLLX_OBS          = 0x40,
+	CLK_PTO_PLLC_OBS          = 0x41,
+	CLK_PTO_PLLM_OBS          = 0x42,
+	CLK_PTO_PLLP_OBS          = 0x43,
+	CLK_PTO_PLLA_OBS          = 0x44,
+	CLK_PTO_PLLMB_OBS         = 0x45,
+	CLK_PTO_SATA_OOB          = 0x46,
 
-	CLK_PTO_NVDEC =             0x39,
+	CLK_PTO_FCPU_DVFS_DIV12_CPU = 0x48,
 
-	CLK_PTO_NVENC =             0x3A,
-	CLK_PTO_NVJPG =             0x3B,
-	CLK_PTO_TSEC =              0x3C,
-	CLK_PTO_TSECB =             0x3D,
-	CLK_PTO_SE =                0x3E,
+	CLK_PTO_EQOS_AXI          = 0x4C,
+	CLK_PTO_EQOS_PTP_REF      = 0x4D,
+	CLK_PTO_EQOS_TX           = 0x4E,
+	CLK_PTO_EQOS_RX           = 0x4F,
 
-	CLK_PTO_DSIA_LP =           0x62,
+	CLK_PTO_CILAB             = 0x52,
+	CLK_PTO_CILCD             = 0x53,
 
-	CLK_PTO_ISP =               0x64,
-	CLK_PTO_MC =                0x6A,
+	CLK_PTO_CILEF             = 0x55,
+	CLK_PTO_PLLA1_PTO_OBS     = 0x56,
+	CLK_PTO_PLLC4_PTO_OBS     = 0x57,
 
-	CLK_PTO_ACTMON =            0x6B,
-	CLK_PTO_CSITE =             0x6C,
+	CLK_PTO_PLLC2_PTO_OBS     = 0x59,
+	CLK_PTO_PLLC3_PTO_OBS     = 0x5B,
 
-	CLK_PTO_HOST1X =            0x6F,
+	CLK_PTO_DSIA_LP           = 0x62,
+	CLK_PTO_DSIB_LP           = 0x63,
+	CLK_PTO_ISP               = 0x64,
+	CLK_PTO_PEX_PAD           = 0x65,
 
-	CLK_PTO_SE_2 =              0x74, // Same as CLK_PTO_SE.
-	CLK_PTO_SOC_THERM =         0x75,
+	CLK_PTO_MC                = 0x6A,
 
-	CLK_PTO_TSEC_2 =            0x77, // Same as CLK_PTO_TSEC.
+	CLK_PTO_ACTMON            = 0x6B,
+	CLK_PTO_CSITE             = 0x6C,
+	CLK_PTO_VI_I2C            = 0x6D,
 
-	CLK_PTO_ACLK =              0x7C,
-	CLK_PTO_QSPI =              0x7D,
+	CLK_PTO_HOST1X            = 0x6F,
 
-	CLK_PTO_I2S1 =              0x80,
-	CLK_PTO_I2S2 =              0x81,
-	CLK_PTO_I2S3 =              0x82,
-	CLK_PTO_I2S4 =              0x83,
-	CLK_PTO_I2S5 =              0x84,
-	CLK_PTO_AHUB =              0x85,
-	CLK_PTO_APE =               0x86,
+	CLK_PTO_QSPI_2X           = 0x71,
+	CLK_PTO_NVDEC             = 0x72,
+	CLK_PTO_NVJPG             = 0x73,
+	CLK_PTO_SE                = 0x74,
+	CLK_PTO_SOC_THERM         = 0x75,
 
-	CLK_PTO_DVFS_SOC =          0x88,
-	CLK_PTO_DVFS_REF =          0x89,
+	CLK_PTO_TSEC              = 0x77,
+	CLK_PTO_TSECB             = 0x78,
+	CLK_PTO_VI                = 0x79,
+	CLK_PTO_LA                = 0x7A,
+	CLK_PTO_SCLK_SKIP         = 0x7B,
 
-	CLK_PTO_SPDIF =             0x8F,
-	CLK_PTO_SPDIF_IN =          0x90,
+	CLK_PTO_ADSP_SKIP         = 0x7C,
+	CLK_PTO_QSPI              = 0x7D,
+
+	CLK_PTO_SDMMC2_SHAPER     = 0x7E,
+	CLK_PTO_SDMMC4_SHAPER     = 0x7F,
+	CLK_PTO_I2S1              = 0x80,
+	CLK_PTO_I2S2              = 0x81,
+	CLK_PTO_I2S3              = 0x82,
+	CLK_PTO_I2S4              = 0x83,
+	CLK_PTO_I2S5              = 0x84,
+	CLK_PTO_AHUB              = 0x85,
+	CLK_PTO_APE               = 0x86,
+
+	CLK_PTO_DVFS_SOC          = 0x88,
+	CLK_PTO_DVFS_REF          = 0x89,
+	CLK_PTO_ADSP_CLK          = 0x8A,
+	CLK_PTO_ADSP_DIV2_CLK     = 0x8B,
+
+	CLK_PTO_SPDIF_OUT         = 0x8F,
+	CLK_PTO_SPDIF_IN          = 0x90,
 	CLK_PTO_UART_FST_MIPI_CAL = 0x91,
+	CLK_PTO_SYS2HSIO_SATA_CLK = 0x92,
+	CLK_PTO_PWM               = 0x93,
+	CLK_PTO_I2C1              = 0x94,
+	CLK_PTO_I2C2              = 0x95,
+	CLK_PTO_I2C3              = 0x96,
+	CLK_PTO_I2C4              = 0x97,
+	CLK_PTO_I2C5              = 0x98,
+	CLK_PTO_I2C6              = 0x99,
+	CLK_PTO_I2C_SLOW          = 0x9A,
+	CLK_PTO_UARTAPE           = 0x9B,
 
-	CLK_PTO_PWM =               0x93,
-	CLK_PTO_I2C1 =              0x94,
-	CLK_PTO_I2C2 =              0x95,
-	CLK_PTO_I2C3 =              0x96,
-	CLK_PTO_I2C4 =              0x97,
-	CLK_PTO_I2C5 =              0x98,
-	CLK_PTO_I2C6 =              0x99,
-	CLK_PTO_I2C_SLOW =          0x9A,
-	CLK_PTO_UARTAPE =           0x9B,
+	CLK_PTO_EXTPERIPH1        = 0x9D,
+	CLK_PTO_EXTPERIPH2        = 0x9E,
+	CLK_PTO_EXTPERIPH3        = 0x9F,
+	CLK_PTO_ENTROPY           = 0xA0,
+	CLK_PTO_UARTA             = 0xA1,
+	CLK_PTO_UARTB             = 0xA2,
+	CLK_PTO_UARTC             = 0xA3,
+	CLK_PTO_UARTD             = 0xA4,
+	CLK_PTO_OWR               = 0xA5,
+	CLK_PTO_TSENSOR           = 0xA6,
+	CLK_PTO_HDA2CODEC_2X      = 0xA7,
+	CLK_PTO_HDA               = 0xA8,
+	CLK_PTO_EMC_LATENCY       = 0xA9,
+	CLK_PTO_EMC_DLL           = 0xAA,
+	CLK_PTO_SDMMC_LEGACY_TM   = 0xAB,
+	CLK_PTO_DBGAPB            = 0xAC,
 
-	CLK_PTO_EXTPERIPH1 =        0x9D,
-	CLK_PTO_EXTPERIPH2 =        0x9E,
+	CLK_PTO_SOR0              = 0xC0,
+	CLK_PTO_SOR1              = 0xC1,
+	CLK_PTO_HDMI              = 0xC2,
 
-	CLK_PTO_ENTROPY =           0xA0,
-	CLK_PTO_UARTA =             0xA1,
-	CLK_PTO_UARTB =             0xA2,
-	CLK_PTO_UARTC =             0xA3,
-	CLK_PTO_UARTD =             0xA4,
-	CLK_PTO_OWR =               0xA5,
+	CLK_PTO_DISP2             = 0xC4,
+	CLK_PTO_DISP1             = 0xC5,  // Branches: 0xD5, 0xE5, 0xF5.
 
-	CLK_PTO_HDA2CODEC_2X =      0xA7,
-	CLK_PTO_HDA =               0xA8,
+	CLK_PTO_PLLD_OBS          = 0xCA,  // Branches: 0xDA, 0xEA, 0xFA.
+	CLK_PTO_PLLD2_PTO_OBS     = 0xCC,
+	CLK_PTO_PLLDP_OBS         = 0xCE,
+	CLK_PTO_PLLE_OBS          = 0x10A,
+	CLK_PTO_PLLU_OBS          = 0x10C, // Branches: 0x14C 0x18C 0x1CC.
+	CLK_PTO_PLLREFE_OBS       = 0x10E,
 
-	CLK_PTO_SDMMC_LEGACY_TM =   0xAB,
+	CLK_PTO_XUSB_FALCON       = 0x110, // Branches: 0x150 0x190 0x1D0.
+	CLK_PTO_XUSB_CLK480M_HSIC = 0x111, // Branches: 0x151 0x191 0x1D1.
+	CLK_PTO_USB_L0_RX         = 0x112,
+	CLK_PTO_USB_L3_RX         = 0x113,
+	CLK_PTO_USB_RX            = 0x114,
+	CLK_PTO_USB3_L0_TXCLKREF  = 0x115,
+	CLK_PTO_PEX_TXCLKREF_SWITCH_TMS  = 0x116,
+	CLK_PTO_PEX_TXCLKREF_SWITCH_GRP0 = 0x117,
+	CLK_PTO_PEX_TXCLKREF_SWITCH_GRP1 = 0x118,
+	CLK_PTO_PEX_TXCLKREF_SWITCH_GRP2 = 0x119,
+	CLK_PTO_PEX_L4_RX         = 0x11A,
+	CLK_PTO_PEX_TXCLKREF      = 0x11B,
+	CLK_PTO_PEX_TXCLKREF_DIV2 = 0x11C,
+	CLK_PTO_PEX_TXCLKREF2     = 0x11D,
+	CLK_PTO_PEX_L0_RX         = 0x11E,
+	CLK_PTO_PEX_L1_RX         = 0x11F,
+	CLK_PTO_PEX_L2_RX         = 0x120,
+	CLK_PTO_PEX_L3_RX         = 0x121,
+	CLK_PTO_SATA_TXCLKREF     = 0x122,
+	CLK_PTO_SATA_TXCLKREF_DIV2 = 0x123,
+	CLK_PTO_USB_L5_RX         = 0x124,
+	CLK_PTO_SATA_TX           = 0x125,
+	CLK_PTO_SATA_L0_RX        = 0x126,
 
-	CLK_PTO_SOR0 =              0xC0,
-	CLK_PTO_SOR1 =              0xC1,
+	CLK_PTO_USB3_L1_TXCLKREF  = 0x129,
+	CLK_PTO_USB3_L7_TXCLKREF  = 0x12A,
+	CLK_PTO_USB3_L7_RX        = 0x12B,
+	CLK_PTO_USB3_TX           = 0x12C,
+	CLK_PTO_UTMIP_PLL_PAD     = 0x12D, // Branches: 0x16D 0x1AD 0x1ED.
 
-	CLK_PTO_DISP2 =             0xC4,
-	CLK_PTO_DISP1 =             0xC5,
+	CLK_PTO_XUSB_FS           = 0x136, // Branches: 0x176 0x1B6 0x1F6.
+	CLK_PTO_XUSB_SS_HOST_DEV  = 0x137, // Branches: 0x177 0x1B7 0x1F7.
+	CLK_PTO_XUSB_CORE_HOST    = 0x138, // Branches: 0x178 0x1B8 0x1F8.
+	CLK_PTO_XUSB_CORE_DEV     = 0x139, // Branches: 0x179 0x1B9 0x1F9.
 
-	CLK_PTO_XUSB_FALCON =       0x110,
-
-	CLK_PTO_XUSB_FS =           0x136,
-	CLK_PTO_XUSB_SS_HOST_DEV =  0x137,
-	CLK_PTO_XUSB_CORE_HOST =    0x138,
-	CLK_PTO_XUSB_CORE_DEV =     0x139,
+	CLK_PTO_USB3_L2_TXCLKREF  = 0x13C,
+	CLK_PTO_USB3_L3_TXCLKREF  = 0x13D,
+	CLK_PTO_USB_L4_RX         = 0x13E,
+	CLK_PTO_USB_L6_RX         = 0x13F,
 
 	/*
 	 * PLL need PTO enabled in MISC registers.
 	 * Normal div is 2 so result is multiplied with it.
 	 */
-	CLK_PTO_PLLC_DIV2 =              0x01,
-	CLK_PTO_PLLM_DIV2 =              0x02,
-	CLK_PTO_PLLP_DIV2 =              0x03,
-	CLK_PTO_PLLA_DIV2 =              0x04,
-	CLK_PTO_PLLX_DIV2 =              0x05,
+	CLK_PTO_PLLC_DIV2    = 0x01,
+	CLK_PTO_PLLM_DIV2    = 0x02,
+	CLK_PTO_PLLP_DIV2    = 0x03,
+	CLK_PTO_PLLA_DIV2    = 0x04,
+	CLK_PTO_PLLX_DIV2    = 0x05,
 
-	CLK_PTO_PLLMB_DIV2 =             0x25,
+	CLK_PTO_PLLMB_DIV2   = 0x25,
 
-	CLK_PTO_PLLC4_DIV2 =             0x51,
+	CLK_PTO_PLLC4_DIV2   = 0x51,
 
-	CLK_PTO_PLLA1_DIV2 =             0x55,
-	CLK_PTO_PLLC2_DIV2 =             0x58,
-	CLK_PTO_PLLC3_DIV2 =             0x5A,
+	CLK_PTO_PLLA1_DIV2   = 0x55,
+	CLK_PTO_PLLC2_DIV2   = 0x58,
+	CLK_PTO_PLLC3_DIV2   = 0x5A,
 
-	CLK_PTO_PLLD_DIV2 =              0xCB,
-	CLK_PTO_PLLD2_DIV2 =             0xCD,
-	CLK_PTO_PLLDP_DIV2 =             0xCF,
+	CLK_PTO_PLLD_DIV2    = 0xCB,  // Branches: 0xDB, 0xEB, 0xFB.
+	CLK_PTO_PLLD2_DIV2   = 0xCD,
+	CLK_PTO_PLLDP_DIV2   = 0xCF,
 
-	CLK_PTO_PLLU_DIV2 =              0x10D,
+	CLK_PTO_PLLE_DIV2    = 0x10B,
 
-	CLK_PTO_PLLREFE_DIV2 =           0x10F,
+	CLK_PTO_PLLU_DIV2    = 0x10D, // Branches: 0x14D 0x18D 0x1CD.
+
+	CLK_PTO_PLLREFE_DIV2 = 0x10F,
 } clock_pto_id_t;
 
 /*
@@ -367,109 +472,85 @@ typedef enum _clock_pto_id_t
 
 enum CLK_L_DEV
 {
-	CLK_L_CPU     = 0, // Only reset. Deprecated.
-	CLK_L_BPMP    = 1, // Only reset.
-	CLK_L_SYS     = 2, // Only reset.
-	CLK_L_ISPB    = 3,
-	CLK_L_RTC     = 4,
-	CLK_L_TMR     = 5,
-	CLK_L_UARTA   = 6,
-	CLK_L_UARTB   = 7,
-	CLK_L_GPIO    = 8,
-	CLK_L_SDMMC2  = 9,
-	CLK_L_SPDIF   = 10,
-	CLK_L_I2S2    = 11, // I2S1
-	CLK_L_I2C1    = 12,
-	CLK_L_NDFLASH = 13, // HIDDEN.
-	CLK_L_SDMMC1  = 14,
-	CLK_L_SDMMC4  = 15,
-	CLK_L_TWC     = 16, // HIDDEN.
-	CLK_L_PWM     = 17,
-	CLK_L_I2S3    = 18,
-	CLK_L_EPP     = 19, // HIDDEN.
-	CLK_L_VI      = 20,
-	CLK_L_2D      = 21, // HIDDEN.
-	CLK_L_USBD    = 22,
-	CLK_L_ISP     = 23,
-	CLK_L_3D      = 24, // HIDDEN.
-	CLK_L_IDE     = 25, // RESERVED.
-	CLK_L_DISP2   = 26,
-	CLK_L_DISP1   = 27,
-	CLK_L_HOST1X  = 28,
-	CLK_L_VCP     = 29, // HIDDEN.
-	CLK_L_I2S1    = 30, // I2S0
-	CLK_L_BPMP_CACHE_CTRL = 31, // CONTROLLER
+	CLK_L_CPU             =  0, // Deprecated.
+	CLK_L_BPMP            =  1, // Only reset.
+	CLK_L_SYS             =  2, // Only reset.
+	CLK_L_ISPB            =  3,
+	CLK_L_RTC             =  4, // Only enable.
+	CLK_L_TMR             =  5,
+	CLK_L_UARTA           =  6,
+	CLK_L_UARTB           =  7,
+	CLK_L_GPIO            =  8,
+	CLK_L_SDMMC2          =  9,
+	CLK_L_SPDIF           = 10, // Only enable.
+	CLK_L_I2S2            = 11, // Only enable.
+	CLK_L_I2C1            = 12,
+	CLK_L_SDMMC1          = 14,
+	CLK_L_SDMMC4          = 15,
+	CLK_L_TWC             = 16, // 3-Wire Controller. Deprecated.
+	CLK_L_PWM             = 17,
+	CLK_L_I2S3            = 18, // Only enable.
+	CLK_L_VI              = 20,
+	CLK_L_USBD            = 22,
+	CLK_L_ISP             = 23,
+	CLK_L_DISP2           = 26,
+	CLK_L_DISP1           = 27,
+	CLK_L_HOST1X          = 28,
+	CLK_L_I2S1            = 30, // Only enable.
+	CLK_L_BPMP_CACHE_CTRL = 31, // Controller.
 };
 
 enum CLK_H_DEV
 {
-	CLK_H_MEM      = 0, // MC.
-	CLK_H_AHBDMA   = 1,
-	CLK_H_APBDMA   = 2,
-	//CLK_H_       = 3,
-	CLK_H_KBC      = 4, // HIDDEN.
-	CLK_H_STAT_MON = 5,
-	CLK_H_PMC      = 6,
-	CLK_H_FUSE     = 7,
-	CLK_H_KFUSE    = 8,
-	CLK_H_SPI1     = 9,
-	CLK_H_SNOR     = 10, // HIDDEN.
-	CLK_H_JTAG2TBC = 11,
+	CLK_H_MEM      =  0, // MC.
+	CLK_H_AHBDMA   =  1,
+	CLK_H_APBDMA   =  2,
+	CLK_H_STAT_MON =  5,
+	CLK_H_PMC      =  6, // Only enable.
+	CLK_H_FUSE     =  7,
+	CLK_H_KFUSE    =  8,
+	CLK_H_SPI1     =  9,
 	CLK_H_SPI2     = 12,
-	CLK_H_XIO      = 13, // HIDDEN.
+	CLK_H_XIO      = 13, // Misc IO. Deprecated?
 	CLK_H_SPI3     = 14,
 	CLK_H_I2C5     = 15,
 	CLK_H_DSI      = 16,
-	CLK_H_TVO      = 17, // RESERVED.
-	CLK_H_HSI      = 18, // HIDDEN.
-	CLK_H_HDMI     = 19, // HIDDEN.
 	CLK_H_CSI      = 20,
-	CLK_H_TVDAC    = 21, // RESERVED.
 	CLK_H_I2C2     = 22,
 	CLK_H_UARTC    = 23,
 	CLK_H_MIPI_CAL = 24,
 	CLK_H_EMC      = 25,
 	CLK_H_USB2     = 26,
-	CLK_H_USB3     = 27, // HIDDEN.
-	CLK_H_MPE      = 28, // HIDDEN.
-	CLK_H_VDE      = 29, // HIDDEN.
-	CLK_H_BSEA     = 30, // HIDDEN.
 	CLK_H_BSEV     = 31,
 };
 
 enum CLK_U_DEV
 {
-	CLK_U_SPEEDO         = 0, // RESERVED.
-	CLK_U_UARTD          = 1,
-	CLK_U_UARTE          = 2, // HIDDEN.
-	CLK_U_I2C3           = 3,
-	CLK_U_SPI4           = 4,
-	CLK_U_SDMMC3         = 5,
-	CLK_U_PCIE           = 6,
-	CLK_U_OWR            = 7, // RESERVED.
-	CLK_U_AFI            = 8,
-	CLK_U_CSITE          = 9,
+	//CLK_U_SPEEDO         =  0, // RESERVED. Old speedo ring oscillator.
+	CLK_U_UARTD          =  1,
+	CLK_U_I2C3           =  3,
+	CLK_U_SPI4           =  4,
+	CLK_U_SDMMC3         =  5,
+	CLK_U_PCIE           =  6,
+	CLK_U_OWR            =  7, // 1-Wire Controller. Deprecated.
+	CLK_U_AFI            =  8,
+	CLK_U_CSITE          =  9,
 	CLK_U_PCIEXCLK       = 10, // Only reset.
-	CLK_U_BPMPUCQ        = 11, // HIDDEN.
-	CLK_U_LA             = 12,
-	CLK_U_TRACECLKIN     = 13, // HIDDEN.
+	CLK_U_LA             = 12, // DFD.
 	CLK_U_SOC_THERM      = 14,
-	CLK_U_DTV            = 15,
-	CLK_U_NAND_SPEED     = 16, // HIDDEN.
+	CLK_U_DTV            = 15, // Deprecated.
 	CLK_U_I2C_SLOW       = 17,
 	CLK_U_DSIB           = 18,
 	CLK_U_TSEC           = 19,
-	CLK_U_IRAMA          = 20,
-	CLK_U_IRAMB          = 21,
-	CLK_U_IRAMC          = 22,
+	CLK_U_IRAMA          = 20, // Only enable.
+	CLK_U_IRAMB          = 21, // Only enable.
+	CLK_U_IRAMC          = 22, // Only enable.
 	CLK_U_IRAMD          = 23, // EMUCIF ON RESET
-	CLK_U_BPMP_CACHE_RAM = 24,
+	CLK_U_BPMP_CACHE_RAM = 24, // Only enable.
 	CLK_U_XUSB_HOST      = 25,
-	CLK_U_CLK_M_DOUBLER  = 26,
-	CLK_U_MSENC          = 27, // HIDDEN.
-	CLK_U_SUS_OUT        = 28,
-	CLK_U_DEV2_OUT       = 29,
-	CLK_U_DEV1_OUT       = 30,
+	CLK_U_SUS_OUT        = 28, // Only enable. VI  MCLK. Deprecated?
+	CLK_U_DEV2_OUT       = 29, // Only enable. DAP MCLK. Deprecated?
+	CLK_U_DEV1_OUT       = 30, // Only enable. DAP MCLK. Deprecated?
 	CLK_U_XUSB_DEV       = 31,
 };
 
@@ -477,133 +558,109 @@ enum CLK_V_DEV
 {
 	CLK_V_CPUG          = 0,
 	CLK_V_CPULP         = 1, // Reserved.
-	CLK_V_3D2           = 2, // HIDDEN.
 	CLK_V_MSELECT       = 3,
-	CLK_V_TSENSOR       = 4,
-	CLK_V_I2S4          = 5,
-	CLK_V_I2S5          = 6,
+	CLK_V_TSENSOR       = 4, // Only enable.
+	CLK_V_I2S4          = 5, // Only enable.
+	CLK_V_I2S5          = 6, // Only enable.
 	CLK_V_I2C4          = 7,
-	CLK_V_SPI5          = 8, // HIDDEN.
-	CLK_V_SPI6          = 9, // HIDDEN.
-	CLK_V_AHUB          = 10, // AUDIO.
-	CLK_V_APB2APE       = 11, // APBIF.
-	CLK_V_DAM0          = 12, // HIDDEN.
-	CLK_V_DAM1          = 13, // HIDDEN.
-	CLK_V_DAM2          = 14, // HIDDEN.
+	CLK_V_AHUB          = 10, // AUDIO. Only enable.
+	CLK_V_APB2APE       = 11, // APBIF. Only enable.
 	CLK_V_HDA2CODEC_2X  = 15,
 	CLK_V_ATOMICS       = 16,
-	//CLK_V_            = 17,
-	//CLK_V_            = 18,
-	//CLK_V_            = 19,
-	//CLK_V_            = 20,
-	//CLK_V_            = 21,
-	CLK_V_SPDIF_DOUBLER = 22,
+	CLK_V_SPDIF_DOUBLER = 22, // Only enable.
 	CLK_V_ACTMON        = 23,
 	CLK_V_EXTPERIPH1    = 24,
 	CLK_V_EXTPERIPH2    = 25,
 	CLK_V_EXTPERIPH3    = 26,
-	CLK_V_SATA_OOB      = 27,
-	CLK_V_SATA          = 28,
+	CLK_V_SATA_OOB      = 27, // Only on T210.
+	CLK_V_SATA          = 28, // Only on T210.
 	CLK_V_HDA           = 29,
-	CLK_V_TZRAM         = 30, // HIDDEN.
-	CLK_V_SE            = 31, // HIDDEN.
+	CLK_V_TZRAM         = 30,
+	CLK_V_SE            = 31,
 };
 
 enum CLK_W_DEV
 {
-	CLK_W_HDA2HDMICODEC = 0,
-	CLK_W_RESERVED0     = 1, //satacoldrstn
-	CLK_W_PCIERX0       = 2,
-	CLK_W_PCIERX1       = 3,
-	CLK_W_PCIERX2       = 4,
-	CLK_W_PCIERX3       = 5,
-	CLK_W_PCIERX4       = 6,
-	CLK_W_PCIERX5       = 7,
-	CLK_W_CEC           = 8,
-	CLK_W_PCIE2_IOBIST  = 9,
-	CLK_W_EMC_IOBIST    = 10,
-	CLK_W_HDMI_IOBIST   = 11, // HIDDEN.
-	CLK_W_SATA_IOBIST   = 12,
-	CLK_W_MIPI_IOBIST   = 13,
+	CLK_W_HDA2HDMICODEC =  0,
+	CLK_W_SATACOLD      =  1, // Enable reserved. Unused.
+	CLK_W_PCIERX0       =  2, // Reset reserved.
+	CLK_W_PCIERX1       =  3, // Reset reserved.
+	CLK_W_PCIERX2       =  4, // Reset reserved.
+	CLK_W_PCIERX3       =  5, // Reset reserved.
+	CLK_W_PCIERX4       =  6, // Reset reserved.
+	CLK_W_PCIERX5       =  7, // Reset reserved.
+	CLK_W_CEC           =  8,
+	CLK_W_PCIE2_IOBIST  =  9, // Reset reserved.
+	CLK_W_EMC_IOBIST    = 10, // Reset reserved.
+	CLK_W_SATA_IOBIST   = 12, // Reset reserved.
+	CLK_W_MIPI_IOBIST   = 13, // Reset reserved.
 	CLK_W_XUSB_PADCTL   = 14, // Only reset.
-	CLK_W_XUSB          = 15,
-	CLK_W_CILAB         = 16,
-	CLK_W_CILCD         = 17,
-	CLK_W_CILEF         = 18,
-	CLK_W_DSIA_LP       = 19,
-	CLK_W_DSIB_LP       = 20,
+	CLK_W_XUSB          = 15, // Only enable.
+	CLK_W_CILAB         = 16, // Only enable.
+	CLK_W_CILCD         = 17, // Only enable.
+	CLK_W_CILEF         = 18, // Only enable.
+	CLK_W_DSIA_LP       = 19, // Only enable.
+	CLK_W_DSIB_LP       = 20, // Only enable.
 	CLK_W_ENTROPY       = 21,
-	CLK_W_DDS           = 22, // HIDDEN.
-	//CLK_W_            = 23,
 	CLK_W_DP2           = 24, // HIDDEN.
-	CLK_W_AMX0          = 25, // HIDDEN.
-	CLK_W_ADX0          = 26, // HIDDEN.
 	CLK_W_DVFS          = 27,
 	CLK_W_XUSB_SS       = 28,
-	CLK_W_EMC_LATENCY   = 29,
-	CLK_W_MC1           = 30,
-	//CLK_W_            = 31,
+	CLK_W_EMC_LATENCY   = 29, // Only enable.
+	CLK_W_MC1           = 30, // Only enable.
 };
 
 enum CLK_X_DEV
 {
-	CLK_X_SPARE             = 0,
-	CLK_X_DMIC1             = 1,
-	CLK_X_DMIC2             = 2,
-	CLK_X_ETR               = 3,
-	CLK_X_CAM_MCLK          = 4,
-	CLK_X_CAM_MCLK2         = 5,
-	CLK_X_I2C6              = 6,
-	CLK_X_MC_CAPA           = 7, // MC DAISY CHAIN1
-	CLK_X_MC_CBPA           = 8, // MC DAISY CHAIN2
-	CLK_X_MC_CPU            = 9,
-	CLK_X_MC_BBC            = 10,
-	CLK_X_VIM2_CLK          = 11,
-	//CLK_X_                = 12,
-	CLK_X_MIPIBIF           = 13, //RESERVED
-	CLK_X_EMC_DLL           = 14,
-	//CLK_X_                = 15,
-	CLK_X_HDMI_AUDIO        = 16, // HIDDEN.
-	CLK_X_UART_FST_MIPI_CAL = 17,
+	CLK_X_SPARE             =  0,
+	CLK_X_DMIC1             =  1, // Only enable.
+	CLK_X_DMIC2             =  2, // Only enable.
+	CLK_X_ETR               =  3, // DFD.
+	CLK_X_CAM_MCLK          =  4, // Only enable.
+	CLK_X_CAM_MCLK2         =  5, // Only enable.
+	CLK_X_I2C6              =  6,
+	CLK_X_MC_CAPA           =  7, // MC Clients daisy chain 1. Only enable.
+	CLK_X_MC_CBPA           =  8, // MC Clients daisy chain 2. Only enable.
+	CLK_X_MC_CPU            =  9, // MC CPU.      Only enable.
+	CLK_X_MC_BBC            = 10, // MC Backbone. Only enable.
+	CLK_X_VIM2_CLK          = 11, // Only enable.
+	CLK_X_MIPIBIF           = 13,
+	CLK_X_EMC_DLL           = 14, // Only enable.
+	CLK_X_UART_FST_MIPI_CAL = 17, // Only enable.
 	CLK_X_VIC               = 18,
-	//CLK_X_                = 19,
-	CLK_X_ADX1              = 20, // HIDDEN.
 	CLK_X_DPAUX             = 21,
 	CLK_X_SOR0              = 22,
 	CLK_X_SOR1              = 23,
 	CLK_X_GPU               = 24,
-	CLK_X_DBGAPB            = 25,
-	CLK_X_HPLL_ADSP         = 26,
-	CLK_X_PLLP_ADSP         = 27,
-	CLK_X_PLLA_ADSP         = 28,
-	CLK_X_PLLG_REF          = 29,
-	//CLK_X_ = 30,
-	//CLK_X_ = 31,
+	CLK_X_DBGAPB            = 25, // Only enable.
+	CLK_X_HPLL_ADSP         = 26, // Only enable.
+	CLK_X_PLLP_ADSP         = 27, // Only enable.
+	CLK_X_PLLA_ADSP         = 28, // Only enable.
+	CLK_X_PLLG_REF          = 29, // Only enable.
+	CLK_X_EQOS              = 30, // T210B01 only.
 };
 
 enum CLK_Y_DEV
 {
-	CLK_Y_SPARE1          = 0,
-	CLK_Y_SDMMC_LEGACY_TM = 1,
-	CLK_Y_NVDEC           = 2,
-	CLK_Y_NVJPG           = 3,
-	CLK_Y_AXIAP           = 4,
-	CLK_Y_DMIC3           = 5,
-	CLK_Y_APE             = 6,
-	CLK_Y_ADSP            = 7,
-	CLK_Y_MC_CDPA         = 8, // MC DAISY CHAIN4
-	CLK_Y_MC_CCPA         = 9, // MC DAISY CHAIN3
-	CLK_Y_MAUD            = 10,
-	//CLK_Y_              = 11,
+	CLK_Y_SPARE1          =  0,
+	CLK_Y_SDMMC_LEGACY_TM =  1, // Only enable.
+	CLK_Y_NVDEC           =  2,
+	CLK_Y_NVJPG           =  3,
+	CLK_Y_AXIAP           =  4, // DFD.
+	CLK_Y_DMIC3           =  5, // Only enable.
+	CLK_Y_APE             =  6,
+	CLK_Y_ADSP            =  7,
+	CLK_Y_MC_CDPA         =  8, // MC Clients daisy chain 4. Only enable.
+	CLK_Y_MC_CCPA         =  9, // MC Clients daisy chain 3. Only enable.
+	CLK_Y_MAUD            = 10, // Only enable.
 	CLK_Y_SATA_USB_UPHY   = 12, // Only reset.
 	CLK_Y_PEX_USB_UPHY    = 13, // Only reset.
 	CLK_Y_TSECB           = 14,
 	CLK_Y_DPAUX1          = 15,
 	CLK_Y_VI_I2C          = 16,
-	CLK_Y_HSIC_TRK        = 17,
-	CLK_Y_USB2_TRK        = 18,
+	CLK_Y_HSIC_TRK        = 17, // Only enable.
+	CLK_Y_USB2_TRK        = 18, // Only enable.
 	CLK_Y_QSPI            = 19,
-	CLK_Y_UARTAPE         = 20,
+	CLK_Y_UARTAPE         = 20, // Only enable.
 	CLK_Y_ADSPINTF        = 21, // Only reset.
 	CLK_Y_ADSPPERIPH      = 22, // Only reset.
 	CLK_Y_ADSPDBG         = 23, // Only reset.
@@ -611,26 +668,26 @@ enum CLK_Y_DEV
 	CLK_Y_ADSPSCU         = 25, // Only reset.
 	CLK_Y_ADSPNEON        = 26,
 	CLK_Y_NVENC           = 27,
-	CLK_Y_IQC2            = 28,
-	CLK_Y_IQC1            = 29,
-	CLK_Y_SOR_SAFE        = 30,
-	CLK_Y_PLLP_OUT_CPU    = 31,
+	CLK_Y_IQC2            = 28, // Only enable. (Audio.)
+	CLK_Y_IQC1            = 29, // Only enable. (Audio.)
+	CLK_Y_SOR_SAFE        = 30, // Only enable.
+	CLK_Y_PLLP_OUT_CPU    = 31, // Only enable.
 };
 
 /*! Generic clock descriptor. */
-typedef struct _clock_t
+typedef struct _clk_rst_t
 {
-	u16 reset;
-	u16 enable;
+	u16 reset;  // Reset  SET.
+	u16 enable; // Enable SET.
 	u16 source;
-	u8 index;
-	u8 clk_src;
+	u8 index:5;
+	u8 clk_src:3;
 	u8 clk_div;
-} clock_t;
+} clk_rst_t;
 
 /*! Generic clock enable/disable. */
-void clock_enable(const clock_t *clk);
-void clock_disable(const clock_t *clk);
+void clock_enable(const clk_rst_t *clk);
+void clock_disable(const clk_rst_t *clk);
 
 /*! Clock control for specific hardware portions. */
 void clock_enable_fuse(bool enable);
@@ -645,6 +702,12 @@ void clock_enable_host1x();
 void clock_disable_host1x();
 void clock_enable_tsec();
 void clock_disable_tsec();
+void clock_enable_nvdec();
+void clock_disable_nvdec();
+void clock_enable_nvjpg();
+void clock_disable_nvjpg();
+void clock_enable_vic();
+void clock_disable_vic();
 void clock_enable_sor_safe();
 void clock_disable_sor_safe();
 void clock_enable_sor0();
@@ -659,16 +722,30 @@ void clock_enable_coresight();
 void clock_disable_coresight();
 void clock_enable_pwm();
 void clock_disable_pwm();
+void clock_enable_apbdma();
+void clock_disable_apbdma();
+void clock_enable_ahbdma();
+void clock_disable_ahbdma();
+void clock_enable_actmon();
+void clock_disable_actmon();
+void clock_enable_extperiph1();
+void clock_disable_extperiph1();
+void clock_enable_extperiph2();
+void clock_disable_extperiph2();
+
+void clock_enable_plld(u32 divp, u32 divn, bool lowpower, bool tegra_t210);
+void clock_enable_plld_sdm(u32 divp, u32 divn, u16 sdm, bool tegra_t210);
 void clock_enable_pllx();
 void clock_enable_pllc(u32 divn);
 void clock_disable_pllc();
 void clock_enable_pllu();
 void clock_disable_pllu();
 void clock_enable_utmipll();
-void clock_sdmmc_config_clock_source(u32 *pclock, u32 id, u32 val);
+
+void clock_sdmmc_config_clock_source(u32 *pclock, u32 id, u32 clock);
 void clock_sdmmc_get_card_clock_div(u32 *pclock, u16 *pdivisor, u32 type);
-int  clock_sdmmc_is_not_reset_and_enabled(u32 id);
-void clock_sdmmc_enable(u32 id, u32 val);
+int  clock_sdmmc_is_active(u32 id);
+void clock_sdmmc_enable(u32 id, u32 clock);
 void clock_sdmmc_disable(u32 id);
 
 u32 clock_get_osc_freq();

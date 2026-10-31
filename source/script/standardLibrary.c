@@ -24,9 +24,10 @@
 #include "../storage/emummc.h"
 #include <utils/util.h>
 #include "../fs/fsutils.h"
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include "../storage/emmcfile.h"
 #include <soc/fuse.h>
+#include <soc/timer.h>
 #endif
 // Takes [int, function]. Returns elseable.
 ClassFunction(stdIf) {

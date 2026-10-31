@@ -2,8 +2,7 @@
  * Copyright (c) 2018 naehrwert
  * Copyright (c) 2018 shuffle2
  * Copyright (c) 2018 balika011
- * Copyright (c) 2019-2021 CTCaer
- * Copyright (c) 2021 shchmue
+ * Copyright (c) 2019-2025 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,11 +19,15 @@
 
 #include <string.h>
 
+#include <mem/heap.h>
 #include <sec/se.h>
 #include <sec/se_t210.h>
+#include <soc/clock.h>
 #include <soc/fuse.h>
 #include <soc/hw_init.h>
+#include <soc/pmc.h>
 #include <soc/t210.h>
+#include <soc/timer.h>
 #include <utils/types.h>
 
 static const u32 evp_thunk_template[] = {
@@ -43,12 +46,19 @@ static const u32 evp_thunk_template[] = {
 	0xe3822001, //   ORR     R2, R2, #1
 	0xe8bd0003, //   LDMFD   SP!, {R0,R1}
 	0xe12fff12, //   BX      R2
+	// idx: 15:
 	0x001007b0, // off_1007EC DCD evp_thunk_template
 	0x001007f8, // off_1007F0 DCD thunk_end
 	0x40004c30, // off_1007F4 DCD iram_evp_thunks
 	// thunk_end is here
 };
-static const u32 evp_thunk_template_len = sizeof(evp_thunk_template);
+
+static const u32 evp_thunk_func_offsets_t210b01[] = {
+	0x0010022c, // off_100268 DCD evp_thunk_template
+	0x00100174, // off_10026C DCD thunk_end
+	0x40004164, // off_100270 DCD iram_evp_thunks
+	// thunk_end is here
+};
 
 // treated as 12bit values
 static const u32 hash_vals[] = {1, 2, 4, 8, 0, 3, 5, 6, 7, 9, 10, 11};
@@ -79,31 +89,43 @@ u32 fuse_read_odm_keygen_rev()
 	return 0;
 }
 
-u32 fuse_read_bootrom_rev()
+static bool _dramid_8gb = false;
+
+void fuse_force_8gb_dramid()
 {
-	u32 rev = FUSE(FUSE_SOC_SPEEDO_1_CALIB);
-	if (hw_get_chip_id() == GP_HIDREV_MAJOR_T210)
-		return rev;
-	else
-		return rev | (1 << 12);
+	// Override fuse DRAM ID with a 8GB ID.
+	_dramid_8gb = true;
 }
 
 u32 fuse_read_dramid(bool raw_id)
 {
-	u32 dramid = (fuse_read_odm(4) & 0xF8) >> 3;
+	bool tegra_t210 = hw_get_chip_id() == GP_HIDREV_MAJOR_T210;
+	u32  odm4       = fuse_read_odm(4);
+
+	u32 dramid = (odm4 & 0xF8) >> 3;
+
+	// Get extended dram id info.
+	if (!tegra_t210)
+		dramid |= (odm4 & 0x7000) >> 7;
 
 	if (raw_id)
 		return dramid;
 
-	if (hw_get_chip_id() == GP_HIDREV_MAJOR_T210)
+	if (tegra_t210)
 	{
-		if (dramid > 6)
+		if (dramid > 7)
 			dramid = 0;
+
+		if (_dramid_8gb)
+			dramid = 7;
 	}
 	else
 	{
-		if (dramid > 28)
+		if (dramid > 34)
 			dramid = 8;
+
+		if (_dramid_8gb)
+			dramid = 28;
 	}
 
 	return dramid;
@@ -162,37 +184,56 @@ int fuse_set_sbk()
 
 void fuse_wait_idle()
 {
-	u32 ctrl;
-	do
-	{
-		ctrl = FUSE(FUSE_CTRL);
-	} while (((ctrl >> 16) & 0x1f) != 4);
+	while (((FUSE(FUSE_CTRL) >> 16) & 0x1F) != FUSE_STATUS_IDLE)
+		;
+}
+
+void fuse_sense()
+{
+	clock_enable_fuse(false);
+
+	FUSE(FUSE_CTRL) = (FUSE(FUSE_CTRL) & (~FUSE_CMD_MASK)) | FUSE_SENSE;
+	usleep(1);
+
+	fuse_wait_idle();
+
+	FUSE(FUSE_PRIV2INTFC) = FUSE_PRIV2INTFC_SKIP_RECORDS | FUSE_PRIV2INTFC_START_DATA;
+	usleep(1);
+
+	while (!(FUSE(FUSE_CTRL) & BIT(30)) || ((FUSE(FUSE_CTRL) >> 16) & 0x1F) != FUSE_STATUS_IDLE)
+		;
+
+
+  	clock_enable_fuse(true);
 }
 
 u32 fuse_read(u32 addr)
 {
 	FUSE(FUSE_ADDR) = addr;
-	FUSE(FUSE_CTRL) = (FUSE(FUSE_ADDR) & ~FUSE_CMD_MASK) | FUSE_READ;
+	FUSE(FUSE_CTRL) = (FUSE(FUSE_CTRL) & ~FUSE_CMD_MASK) | FUSE_READ;
+
 	fuse_wait_idle();
 
 	return FUSE(FUSE_RDATA);
 }
 
-void fuse_read_array(u32 *words)
+u32 fuse_read_array(u32 *words)
 {
-	u32 array_size = (hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01) ? 256 : 192;
+	u32 array_size = (hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01) ?
+					 FUSE_ARRAY_WORDS_NUM_B01 : FUSE_ARRAY_WORDS_NUM;
 
 	for (u32 i = 0; i < array_size; i++)
 		words[i] = fuse_read(i);
+
+	return array_size;
 }
 
-static u32 _parity32_even(u32 *words, u32 count)
+static u32 _parity32_even(const u32 *words, u32 count)
 {
 	u32 acc = words[0];
 	for (u32 i = 1; i < count; i++)
-	{
 		acc ^= words[i];
-	}
+
 	u32 lo = ((acc & 0xffff) ^ (acc >> 16)) & 0xff;
 	u32 hi = ((acc & 0xffff) ^ (acc >> 16)) >> 8;
 	u32 x = hi ^ lo;
@@ -208,26 +249,26 @@ static int _patch_hash_one(u32 *word)
 	u32 bits20_31 = *word & 0xfff00000;
 	u32 parity_bit = _parity32_even(&bits20_31, 1);
 	u32 hash = 0;
+
 	for (u32 i = 0; i < 12; i++)
 	{
 		if (*word & (1 << (20 + i)))
-		{
 			hash ^= hash_vals[i];
-		}
 	}
+
 	if (hash == 0)
 	{
 		if (parity_bit == 0)
-		{
 			return 0;
-		}
+
 		*word ^= 1 << 24;
+
 		return 1;
 	}
+
 	if (parity_bit == 0)
-	{
 		return 3;
-	}
+
 	for (u32 i = 0; i < ARRAY_SIZE(hash_vals); i++)
 	{
 		if (hash_vals[i] == hash)
@@ -236,6 +277,7 @@ static int _patch_hash_one(u32 *word)
 			return 1;
 		}
 	}
+
 	return 2;
 }
 
@@ -256,9 +298,7 @@ static int _patch_hash_multi(u32 *words, u32 count)
 			for (u32 bitpos = 0; bitpos < 32; bitpos++)
 			{
 				if ((w >> bitpos) & 1)
-				{
 					hash ^= 0x4000 + i * 32 + bitpos;
-				}
 			}
 		}
 	}
@@ -270,16 +310,14 @@ static int _patch_hash_multi(u32 *words, u32 count)
 	if (hash == 0)
 	{
 		if (parity_bit == 0)
-		{
 			return 0;
-		}
+
 		words[0] ^= 0x8000;
 		return 1;
 	}
 	if (parity_bit == 0)
-	{
 		return 3;
-	}
+
 	u32 bitcount = hash - 0x4000;
 	if (bitcount < 16 || bitcount >= count * 32)
 	{
@@ -287,14 +325,11 @@ static int _patch_hash_multi(u32 *words, u32 count)
 		for (u32 bitpos = 0; bitpos < 15; bitpos++)
 		{
 			if ((hash >> bitpos) & 1)
-			{
 				num_set++;
-			}
 		}
 		if (num_set != 1)
-		{
 			return 2;
-		}
+
 		words[0] ^= hash;
 		return 1;
 	}
@@ -307,29 +342,35 @@ int fuse_read_ipatch(void (*ipatch)(u32 offset, u32 value))
 	u32 words[80];
 	u32 word_count;
 	u32 word_addr;
-	u32 word0 = 0;
+	u32 word0;
 	u32 total_read = 0;
 
 	word_count = FUSE(FUSE_FIRST_BOOTROM_PATCH_SIZE);
 	word_count &= 0x7F;
-	word_addr = 191;
+	word_addr = FUSE_ARRAY_WORDS_NUM - 1;
 
 	while (word_count)
 	{
 		total_read += word_count;
 		if (total_read >= ARRAY_SIZE(words))
-		{
 			break;
-		}
 
 		for (u32 i = 0; i < word_count; i++)
+		{
 			words[i] = fuse_read(word_addr--);
+			// Parse extra T210B01 fuses when the difference is reached.
+			if (hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01 &&
+				word_addr == ((FUSE_ARRAY_WORDS_NUM - 1) -
+							  (FUSE_ARRAY_WORDS_NUM_B01 - FUSE_ARRAY_WORDS_NUM) / sizeof(u32)))
+			{
+				word_addr = FUSE_ARRAY_WORDS_NUM_B01 - 1;
+			}
+		}
 
 		word0 = words[0];
 		if (_patch_hash_multi(words, word_count) >= 2)
-		{
 			return 1;
-		}
+
 		u32 ipatch_count = (words[0] >> 16) & 0xF;
 		if (ipatch_count)
 		{
@@ -342,13 +383,14 @@ int fuse_read_ipatch(void (*ipatch)(u32 offset, u32 value))
 				ipatch(addr, data);
 			}
 		}
+
 		words[0] = word0;
 		if ((word0 >> 25) == 0)
 			break;
+
 		if (_patch_hash_one(&word0) >= 2)
-		{
 			return 3;
-		}
+
 		word_count = word0 >> 25;
 	}
 
@@ -360,33 +402,48 @@ int fuse_read_evp_thunk(u32 *iram_evp_thunks, u32 *iram_evp_thunks_len)
 	u32 words[80];
 	u32 word_count;
 	u32 word_addr;
-	u32 word0 = 0;
+	u32 word0;
 	u32 total_read = 0;
 	int evp_thunk_written = 0;
 	void *evp_thunk_dst_addr = 0;
+	bool t210b01 = hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01;
+	u32 *evp_thunk_tmp = (u32 *)malloc(sizeof(evp_thunk_template));
 
+	memcpy(evp_thunk_tmp, evp_thunk_template, sizeof(evp_thunk_template));
 	memset(iram_evp_thunks, 0, *iram_evp_thunks_len);
+
+	if (t210b01)
+		memcpy(&evp_thunk_tmp[15], evp_thunk_func_offsets_t210b01, sizeof(evp_thunk_func_offsets_t210b01));
 
 	word_count = FUSE(FUSE_FIRST_BOOTROM_PATCH_SIZE);
 	word_count &= 0x7F;
-	word_addr = 191;
+	word_addr = FUSE_ARRAY_WORDS_NUM - 1;
 
 	while (word_count)
 	{
 		total_read += word_count;
 		if (total_read >= ARRAY_SIZE(words))
-		{
 			break;
-		}
 
 		for (u32 i = 0; i < word_count; i++)
+		{
 			words[i] = fuse_read(word_addr--);
+			// Parse extra T210B01 fuses when the difference is reached.
+			if (hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01 &&
+				word_addr == ((FUSE_ARRAY_WORDS_NUM - 1) -
+							  (FUSE_ARRAY_WORDS_NUM_B01 - FUSE_ARRAY_WORDS_NUM) / sizeof(u32)))
+			{
+				word_addr = FUSE_ARRAY_WORDS_NUM_B01 - 1;
+			}
+		}
 
 		word0 = words[0];
 		if (_patch_hash_multi(words, word_count) >= 2)
 		{
+			free(evp_thunk_tmp);
 			return 1;
 		}
+
 		u32 ipatch_count = (words[0] >> 16) & 0xF;
 		u32 insn_count = word_count - ipatch_count - 1;
 		if (insn_count)
@@ -395,10 +452,10 @@ int fuse_read_evp_thunk(u32 *iram_evp_thunks, u32 *iram_evp_thunks_len)
 			{
 				evp_thunk_dst_addr = (void *)iram_evp_thunks;
 
-				memcpy(evp_thunk_dst_addr, (void *)evp_thunk_template, evp_thunk_template_len);
-				evp_thunk_dst_addr += evp_thunk_template_len;
+				memcpy(evp_thunk_dst_addr, (void *)evp_thunk_tmp, sizeof(evp_thunk_template));
+				evp_thunk_dst_addr += sizeof(evp_thunk_template);
 				evp_thunk_written = 1;
-				*iram_evp_thunks_len = evp_thunk_template_len;
+				*iram_evp_thunks_len = sizeof(evp_thunk_template);
 
 				//write32(TEGRA_EXCEPTION_VECTORS_BASE + 0x208, iram_evp_thunks);
 			}
@@ -408,15 +465,21 @@ int fuse_read_evp_thunk(u32 *iram_evp_thunks, u32 *iram_evp_thunks_len)
 			evp_thunk_dst_addr += thunk_patch_len;
 			*iram_evp_thunks_len += thunk_patch_len;
 		}
+
 		words[0] = word0;
 		if ((word0 >> 25) == 0)
 			break;
+
 		if (_patch_hash_one(&word0) >= 2)
 		{
+			free(evp_thunk_tmp);
 			return 3;
 		}
+
 		word_count = word0 >> 25;
 	}
+
+	free(evp_thunk_tmp);
 
 	return 0;
 }
@@ -429,7 +492,7 @@ bool fuse_check_patched_rcm()
 
 	// Check if RCM is ipatched.
 	u32 word_count = FUSE(FUSE_FIRST_BOOTROM_PATCH_SIZE) & 0x7F;
-	u32 word_addr = 191;
+	u32 word_addr = FUSE_ARRAY_WORDS_NUM - 1;
 
 	while (word_count)
 	{

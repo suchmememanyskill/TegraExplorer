@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2021 CTCaer
+ * Copyright (c) 2018-2025 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -24,16 +24,22 @@
 #define DSI_VIDEO_DISABLED 0
 #define DSI_VIDEO_ENABLED  1
 
+#define WINDOW_A 0
+#define WINDOW_B 1
+#define WINDOW_C 2
+#define WINDOW_D 3
+
 /*! Display registers. */
-#define _DIREG(reg) ((reg) * 4)
+// All Display/DSI/MIPI register defines and macros are index based (not offset).
+// DC_CMD/DC_COM/WINC Non-shadowed. DC_DISP/DC_WIN/DC_WINBUF Shadowed.
 
 // Display controller scratch registers.
 #define DC_D_WINBUF_DD_SCRATCH_REGISTER_0 0xED
 #define DC_D_WINBUF_DD_SCRATCH_REGISTER_1 0xEE
 #define DC_T_WINBUF_TD_SCRATCH_REGISTER_0 0x16D
 #define DC_T_WINBUF_TD_SCRATCH_REGISTER_1 0x16E
-#define DC_COM_SCRATCH_REGISTER_A 0x325
-#define DC_COM_SCRATCH_REGISTER_B 0x326
+#define DC_COM_SCRATCH_REGISTER_A         0x325
+#define DC_COM_SCRATCH_REGISTER_B         0x326
 #define DC_A_WINBUF_AD_SCRATCH_REGISTER_0 0xBED
 #define DC_A_WINBUF_AD_SCRATCH_REGISTER_1 0xBEE
 #define DC_B_WINBUF_BD_SCRATCH_REGISTER_0 0xDED
@@ -43,13 +49,17 @@
 
 // DC_CMD non-shadowed command/sync registers.
 #define DC_CMD_GENERAL_INCR_SYNCPT 0x00
+#define  SYNCPT_GENERAL_INDX(x) (((x) & 0xFF) << 0)
+#define  SYNCPT_GENERAL_COND(x) (((x) & 0xFF) << 8)
+#define  COND_REG_WR_SAFE 3
 
 #define DC_CMD_GENERAL_INCR_SYNCPT_CNTRL 0x01
 #define  SYNCPT_CNTRL_SOFT_RESET BIT(0)
 #define  SYNCPT_CNTRL_NO_STALL   BIT(8)
 
 #define DC_CMD_CONT_SYNCPT_VSYNC 0x28
-#define  SYNCPT_VSYNC_ENABLE BIT(8)
+#define  SYNCPT_VSYNC_INDX(x) (((x) & 0xFF) << 0)
+#define  SYNCPT_VSYNC_ENABLE  BIT(8)
 
 #define DC_CMD_DISPLAY_COMMAND_OPTION0 0x031
 
@@ -72,19 +82,25 @@
 #define DC_CMD_INT_MASK 0x38
 #define DC_CMD_INT_ENABLE 0x39
 #define  DC_CMD_INT_FRAME_END_INT BIT(1)
+#define  DC_CMD_INT_V_BLANK_INT   BIT(2)
+#define DC_CMD_INT_POLARITY 0x3B
 
 #define DC_CMD_STATE_ACCESS 0x40
-#define  READ_MUX  BIT(0)
-#define  WRITE_MUX BIT(2)
+#define  READ_MUX_ASSEMBLY  0x0
+#define  WRITE_MUX_ASSEMBLY 0x0
+#define  READ_MUX_ACTIVE    BIT(0)
+#define  WRITE_MUX_ACTIVE   BIT(2)
 
 #define DC_CMD_STATE_CONTROL 0x41
 #define  GENERAL_ACT_REQ BIT(0)
+#define  WIN_ACT_REQ     1
 #define  WIN_A_ACT_REQ   BIT(1)
 #define  WIN_B_ACT_REQ   BIT(2)
 #define  WIN_C_ACT_REQ   BIT(3)
 #define  WIN_D_ACT_REQ   BIT(4)
 #define  CURSOR_ACT_REQ  BIT(7)
 #define  GENERAL_UPDATE  BIT(8)
+#define  WIN_UPDATE      9
 #define  WIN_A_UPDATE    BIT(9)
 #define  WIN_B_UPDATE    BIT(10)
 #define  WIN_C_UPDATE    BIT(11)
@@ -93,12 +109,19 @@
 #define  NC_HOST_TRIG    BIT(24)
 
 #define DC_CMD_DISPLAY_WINDOW_HEADER 0x42
+#define  WINDOW_SELECT   4
 #define  WINDOW_A_SELECT BIT(4)
 #define  WINDOW_B_SELECT BIT(5)
 #define  WINDOW_C_SELECT BIT(6)
 #define  WINDOW_D_SELECT BIT(7)
 
-#define DC_CMD_REG_ACT_CONTROL 0x043
+#define DC_CMD_REG_ACT_CONTROL 0x43
+#define  GENERAL_ACT_HCNTR_SEL BIT(0)
+#define  WIN_A_ACT_HCNTR_SEL   BIT(2)
+#define  WIN_B_ACT_HCNTR_SEL   BIT(4)
+#define  WIN_C_ACT_HCNTR_SEL   BIT(6)
+#define  CURSOR_ACT_HCNTR_SEL  BIT(7)
+#define  WIN_D_ACT_HCNTR_SEL   BIT(10)
 
 // DC_D_WIN_DD window D instance of DC_WIN
 #define DC_D_WIN_DD_WIN_OPTIONS 0x80
@@ -124,6 +147,32 @@
 #define DC_COM_CRC_CONTROL 0x300
 #define DC_COM_PIN_OUTPUT_ENABLE(x) (0x302 + (x))
 #define DC_COM_PIN_OUTPUT_POLARITY(x) (0x306 + (x))
+#define  LSC0_OUTPUT_POLARITY_LOW BIT(24)
+
+// CMU registers.
+#define DC_COM_CMU_CSC_KRR    0x32A
+#define DC_COM_CMU_CSC_KGR    0x32B
+#define DC_COM_CMU_CSC_KBR    0x32C
+#define DC_COM_CMU_CSC_KRG    0x32D
+#define DC_COM_CMU_CSC_KGG    0x32E
+#define DC_COM_CMU_CSC_KBG    0x32F
+#define DC_COM_CMU_CSC_KRB    0x330
+#define DC_COM_CMU_CSC_KGB    0x331
+#define DC_COM_CMU_CSC_KBB    0x332
+#define DC_COM_CMU_LUT1       0x336
+#define  LUT1_ADDR(x)      ((x) & 0xFF)
+#define  LUT1_DATA(x)      (((x) & 0xFFF) << 16)
+#define  LUT1_READ_DATA(x) (((x) >> 16) & 0xFFF)
+#define DC_COM_CMU_LUT2       0x337
+#define  LUT2_ADDR(x)      ((x) & 0x3FF)
+#define  LUT2_DATA(x)      (((x) & 0xFF) << 16)
+#define  LUT2_READ_DATA(x) (((x) >> 16) & 0xFF)
+#define DC_COM_CMU_LUT1_READ  0x338
+#define  LUT1_READ_ADDR(x) (((x) & 0xFF) << 8)
+#define  LUT1_READ_EN      BIT(0)
+#define DC_COM_CMU_LUT2_READ  0x339
+#define  LUT2_READ_ADDR(x) (((x) & 0x3FF) << 8)
+#define  LUT2_READ_EN      BIT(0)
 
 #define DC_COM_DSC_TOP_CTL 0x33E
 
@@ -139,15 +188,32 @@
 
 #define DC_DISP_DISP_MEM_HIGH_PRIORITY 0x403
 #define DC_DISP_DISP_MEM_HIGH_PRIORITY_TIMER 0x404
+
 #define DC_DISP_DISP_TIMING_OPTIONS 0x405
+#define  VSYNC_H_POSITION(x) (((x) & 0x1FFF) << 0)
+
 #define DC_DISP_REF_TO_SYNC 0x406
+#define  H_REF_TO_SYNC(x) (((x) & 0x1FFF) <<  0) // Min 0 pixel clock.
+#define  V_REF_TO_SYNC(x) (((x) & 0x1FFF) << 16) // Min 1 line  clock.
+
 #define DC_DISP_SYNC_WIDTH 0x407
+#define  H_SYNC_WIDTH(x) (((x) & 0x1FFF) <<  0) // Min 1 pixel clock.
+#define  V_SYNC_WIDTH(x) (((x) & 0x1FFF) << 16) // Min 1 line  clock.
+
 #define DC_DISP_BACK_PORCH 0x408
+#define  H_BACK_PORCH(x) (((x) & 0x1FFF) <<  0)
+#define  V_BACK_PORCH(x) (((x) & 0x1FFF) << 16)
+
 #define DC_DISP_ACTIVE 0x409
+#define  H_DISP_ACTIVE(x) (((x) & 0x1FFF) <<  0) // Min 16 pixel clock.
+#define  V_DISP_ACTIVE(x) (((x) & 0x1FFF) << 16) // Min 16 line  clock.
+
 #define DC_DISP_FRONT_PORCH 0x40A
+#define  H_FRONT_PORCH(x) (((x) & 0x1FFF) <<  0) // Min -=PS_=-H_REF_TO_SYNC + 1
+#define  V_FRONT_PORCH(x) (((x) & 0x1FFF) << 16) // Min -=PS_=-V_REF_TO_SYNC + 1
 
 #define DC_DISP_DISP_CLOCK_CONTROL 0x42E
-#define  SHIFT_CLK_DIVIDER(x)    ((x) & 0xff)
+#define  SHIFT_CLK_DIVIDER(x)    ((x) & 0xFF)
 #define  PIXEL_CLK_DIVIDER_PCD1  (0 << 8)
 #define  PIXEL_CLK_DIVIDER_PCD1H (1 << 8)
 #define  PIXEL_CLK_DIVIDER_PCD2  (2 << 8)
@@ -178,11 +244,7 @@
 #define  DISP_ORDER_BLUE_RED        (1 << 9)
 
 #define DC_DISP_DISP_COLOR_CONTROL 0x430
-#define  DITHER_CONTROL_MASK    (3 << 8)
-#define  DITHER_CONTROL_DISABLE (0 << 8)
-#define  DITHER_CONTROL_ORDERED (2 << 8)
-#define  DITHER_CONTROL_ERRDIFF (3 << 8)
-#define  BASE_COLOR_SIZE_MASK   (0xf << 0)
+#define  BASE_COLOR_SIZE_MASK   (0xF << 0)
 #define  BASE_COLOR_SIZE_666    (0 << 0)
 #define  BASE_COLOR_SIZE_111    (1 << 0)
 #define  BASE_COLOR_SIZE_222    (2 << 0)
@@ -192,6 +254,13 @@
 #define  BASE_COLOR_SIZE_565    (6 << 0)
 #define  BASE_COLOR_SIZE_332    (7 << 0)
 #define  BASE_COLOR_SIZE_888    (8 << 0)
+#define  DITHER_CONTROL_MASK    (3 << 8)
+#define  DITHER_CONTROL_DISABLE (0 << 8)
+#define  DITHER_CONTROL_ORDERED (2 << 8)
+#define  DITHER_CONTROL_ERRDIFF (3 << 8)
+#define  DISP_COLOR_SWAP        BIT(16)
+#define  BLANK_COLOR_WHITE      BIT(17)
+#define  CMU_ENABLE             BIT(20)
 
 #define DC_DISP_SHIFT_CLOCK_OPTIONS 0x431
 #define  SC0_H_QUALIFIER_NONE	BIT(0)
@@ -212,7 +281,8 @@
 #define DC_DISP_CURSOR_BACKGROUND    0x43D
 #define  CURSOR_COLOR(r,g,b) (((r) & 0xFF) | (((g) & 0xFF) << 8) | (((b) & 0xFF) << 16))
 
-#define DC_DISP_CURSOR_START_ADDR    0x43E
+#define DC_DISP_CURSOR_START_ADDR       0x43E
+#define DC_DISP_CURSOR_START_ADDR_NS    0x43F
 #define  CURSOR_CLIPPING(w) ((w) << 28)
 #define   CURSOR_CLIP_WIN_A 1
 #define   CURSOR_CLIP_WIN_B 2
@@ -221,10 +291,10 @@
 #define  CURSOR_SIZE_64  (1 << 24)
 #define  CURSOR_SIZE_128 (2 << 24)
 #define  CURSOR_SIZE_256 (3 << 24)
-#define DC_DISP_CURSOR_POSITION      0x440
-#define DC_DISP_BLEND_BACKGROUND_COLOR 0x4E4
-#define DC_DISP_CURSOR_START_ADDR_HI 0x4EC
-#define DC_DISP_BLEND_CURSOR_CONTROL 0x4F1
+#define DC_DISP_CURSOR_POSITION         0x440
+#define DC_DISP_CURSOR_START_ADDR_HI    0x4EC
+#define DC_DISP_CURSOR_START_ADDR_HI_NS 0x4ED
+#define DC_DISP_BLEND_CURSOR_CONTROL    0x4F1
 #define  CURSOR_BLEND_2BIT     (0 << 24)
 #define  CURSOR_BLEND_R8G8B8A8 (1 << 24)
 #define  CURSOR_BLEND_SRC_FACTOR(n) ((n) << 8)
@@ -234,37 +304,52 @@
 #define   CURSOR_BLEND_NK1 2
 // End of cursor cfg regs.
 
-#define DC_DISP_DC_MCCIF_FIFOCTRL 0x480
-#define DC_DISP_SD_BL_PARAMETERS 0x4D7
-#define DC_DISP_SD_BL_CONTROL 0x4DC
+#define DC_DISP_DC_MCCIF_FIFOCTRL      0x480
+#define DC_DISP_SD_BL_PARAMETERS       0x4D7
+#define DC_DISP_SD_BL_CONTROL          0x4DC
 #define DC_DISP_BLEND_BACKGROUND_COLOR 0x4E4
 
-#define DC_WIN_CSC_YOF 0x611
-#define DC_WIN_CSC_KYRGB 0x612
-#define DC_WIN_CSC_KUR 0x613
-#define DC_WIN_CSC_KVR 0x614
-#define DC_WIN_CSC_KUG 0x615
-#define DC_WIN_CSC_KVG 0x616
-#define DC_WIN_CSC_KUB 0x617
-#define DC_WIN_CSC_KVB 0x618
+#define DC_DISP_DISPLAY_SPARE0         0x4F7 // Used by SW/HW.
+#define DC_DISP_DISPLAY_SPARE1         0x4F8
+
+#define DC_WINC_COLOR_PALETTE 0x500
+#define  COLOR_PALETTE_IDX(off) (DC_WINC_COLOR_PALETTE + (off))
+#define  COLOR_PALETTE_RGB(rgb) (byte_swap_32(rgb) >> 8)
+#define DC_WINC_PALETTE_COLOR_EXT 0x600
+
+#define DC_WINC_H_FILTER_P(p) (0x601 + (p))
+#define DC_WINC_V_FILTER_P(p) (0x619 + (p))
+#define DC_WINC_H_FILTER_HI_P(p) (0x629 + (p))
+
+#define DC_WINC_CSC_YOF 0x611
+#define DC_WINC_CSC_KYRGB 0x612
+#define DC_WINC_CSC_KUR 0x613
+#define DC_WINC_CSC_KVR 0x614
+#define DC_WINC_CSC_KUG 0x615
+#define DC_WINC_CSC_KVG 0x616
+#define DC_WINC_CSC_KUB 0x617
+#define DC_WINC_CSC_KVB 0x618
 #define DC_WIN_AD_WIN_OPTIONS 0xB80
 #define DC_WIN_BD_WIN_OPTIONS 0xD80
 #define DC_WIN_CD_WIN_OPTIONS 0xF80
 
 // The following registers are A/B/C shadows of the 0xB80/0xD80/0xF80 registers (see DISPLAY_WINDOW_HEADER).
 #define DC_WIN_WIN_OPTIONS 0x700
-#define  H_DIRECTION  BIT(0)
-#define  V_DIRECTION  BIT(2)
-#define  SCAN_COLUMN  BIT(4)
-#define  COLOR_EXPAND BIT(6)
-#define  CSC_ENABLE   BIT(18)
-#define  WIN_ENABLE   BIT(30)
+#define  H_DIRECTION          BIT(0)
+#define  V_DIRECTION          BIT(2)
+#define  SCAN_COLUMN          BIT(4)
+#define  COLOR_EXPAND         BIT(6)
+#define  H_FILTER_ENABLE      BIT(8)
+#define  V_FILTER_ENABLE      BIT(10)
+#define  COLOR_PALETTE_ENABLE BIT(16)
+#define  CSC_ENABLE           BIT(18)
+#define  DV_ENABLE            BIT(20)
+#define  WIN_ENABLE           BIT(30)
+#define  H_FILTER_EXPAND      BIT(31)
 
 #define DC_WIN_BUFFER_CONTROL 0x702
 #define  BUFFER_CONTROL_HOST  0
 #define  BUFFER_CONTROL_VI    1
-#define  BUFFER_CONTROL_EPP   2
-#define  BUFFER_CONTROL_MPEGE 3
 #define  BUFFER_CONTROL_SB2D  4
 
 #define DC_WIN_COLOR_DEPTH 0x703
@@ -290,34 +375,55 @@
 #define  WIN_COLOR_DEPTH_YUV422R        0x17
 #define  WIN_COLOR_DEPTH_YCbCr422RA     0x18
 #define  WIN_COLOR_DEPTH_YUV422RA       0x19
+#define  WIN_COLOR_DEPTH_X1R5G5B5       0x1E
+#define  WIN_COLOR_DEPTH_R5G5B5X1       0x1F
+#define  WIN_COLOR_DEPTH_X1B5G5R5       0x20
+#define  WIN_COLOR_DEPTH_B5G5R5X1       0x21
+#define  WIN_COLOR_DEPTH_YCbCr444P      0x29
+#define  WIN_COLOR_DEPTH_YCrCb420SP     0x2A
+#define  WIN_COLOR_DEPTH_YCbCr420SP     0x2B
+#define  WIN_COLOR_DEPTH_YCrCb422SP     0x2C
+#define  WIN_COLOR_DEPTH_YCbCr422SP     0x2D
+#define  WIN_COLOR_DEPTH_YUV444P        0x34
+#define  WIN_COLOR_DEPTH_YVU420SP       0x35
+#define  WIN_COLOR_DEPTH_YUV420SP       0x36
+#define  WIN_COLOR_DEPTH_YVU422SP       0x37
+#define  WIN_COLOR_DEPTH_YUV422SP       0x38
+#define  WIN_COLOR_DEPTH_YVU444SP       0x3B
+#define  WIN_COLOR_DEPTH_YUV444SP       0x3C
 
 #define DC_WIN_POSITION 0x704
-#define  H_POSITION(x) (((x) & 0xFfff) <<  0)
-#define  V_POSITION(x) (((x) & 0x1fff) << 16)
+#define  H_POSITION(x) (((x) & 0xFFFF) <<  0) // Support negative.
+#define  V_POSITION(x) (((x) & 0xFFFF) << 16) // Support negative.
 
 #define DC_WIN_SIZE 0x705
-#define  H_SIZE(x) (((x) & 0x1fff) <<  0)
-#define  V_SIZE(x) (((x) & 0x1fff) << 16)
+#define  H_SIZE(x) (((x) & 0x1FFF) <<  0)
+#define  V_SIZE(x) (((x) & 0x1FFF) << 16)
 
 #define DC_WIN_PRESCALED_SIZE 0x706
-#define  H_PRESCALED_SIZE(x) (((x) & 0x7fff) <<  0)
-#define  V_PRESCALED_SIZE(x) (((x) & 0x1fff) << 16)
+#define  H_PRESCALED_SIZE(x) (((x) & 0x7FFF) <<  0)
+#define  V_PRESCALED_SIZE(x) (((x) & 0x1FFF) << 16)
 
 #define DC_WIN_H_INITIAL_DDA 0x707
 #define DC_WIN_V_INITIAL_DDA 0x708
 
 #define DC_WIN_DDA_INC 0x709
-#define  H_DDA_INC(x) (((x) & 0xffff) <<  0)
-#define  V_DDA_INC(x) (((x) & 0xffff) << 16)
+#define  H_DDA_INC(x) (((x) & 0xFFFF) <<  0)
+#define  V_DDA_INC(x) (((x) & 0xFFFF) << 16)
 
 #define DC_WIN_LINE_STRIDE 0x70A
 #define  LINE_STRIDE(x)	   (x)
-#define  UV_LINE_STRIDE(x) (((x) & 0xffff) << 16)
+#define  UV_LINE_STRIDE(x) (((x) & 0xFFFF) << 16)
+
 #define DC_WIN_DV_CONTROL 0x70E
+#define DV_CTRL_R(r) (((r) & 7) << 16)
+#define DV_CTRL_G(g) (((g) & 7) << 8)
+#define DV_CTRL_B(b) (((b) & 7) << 0)
 
 #define DC_WINBUF_BLEND_LAYER_CONTROL 0x716
-#define  WIN_K1(x) (((x) & 0xff) << 8)
-#define  WIN_K2(x) (((x) & 0xff) << 16)
+#define  WIN_BLEND_DEPTH(x) (((x) & 0xFF) << 0)
+#define  WIN_K1(x) (((x) & 0xFF) << 8)
+#define  WIN_K2(x) (((x) & 0xFF) << 16)
 #define  WIN_BLEND_ENABLE (0 << 24)
 #define  WIN_BLEND_BYPASS (1 << 24)
 
@@ -348,8 +454,8 @@
 #define  WIN_BLEND_FACT_DST_ALPHA_MATCH_SEL_K2               (3 << 12)
 
 #define DC_WINBUF_BLEND_ALPHA_1BIT 0x719
-#define  WIN_ALPHA_1BIT_WEIGHT0(x) (((x) & 0xff) << 0)
-#define  WIN_ALPHA_1BIT_WEIGHT1(x) (((x) & 0xff) << 8)
+#define  WIN_ALPHA_1BIT_WEIGHT0(x) (((x) & 0xFF) << 0)
+#define  WIN_ALPHA_1BIT_WEIGHT1(x) (((x) & 0xFF) << 8)
 
 /*! The following registers are A/B/C shadows of the 0xBC0/0xDC0/0xFC0 registers (see DISPLAY_WINDOW_HEADER). */
 #define DC_WINBUF_START_ADDR 0x800
@@ -361,9 +467,12 @@
 #define  BLOCK	(2 << 0)
 #define  BLOCK_HEIGHT(x) (((x) & 0x7) << 4)
 
-/*! Display serial interface registers. */
-#define _DSIREG(reg) ((reg) * 4)
+#define DC_WINBUF_MEMFETCH_CONTROL 0x82B
 
+/* Scratch register to store DCS backlight level (custom). */
+#define DC_DCS_BACKLIGHT_LEVEL DC_COM_SCRATCH_REGISTER_B
+
+/*! Display serial interface registers. */
 #define DSI_INCR_SYNCPT_CNTRL 0x1
 #define  DSI_INCR_SYNCPT_SOFT_RESET BIT(0)
 #define  DSI_INCR_SYNCPT_NO_STALL   BIT(8)
@@ -386,6 +495,7 @@
 #define  DSI_HOST_CONTROL_FIFO_SEL     BIT(4)
 #define  DSI_HOST_CONTROL_HS           BIT(5)
 #define  DSI_HOST_CONTROL_RAW          BIT(6)
+#define  DSI_HOST_CONTROL_TX_TRIG_MASK (3 << 12)
 #define  DSI_HOST_CONTROL_TX_TRIG_SOL  (0 << 12)
 #define  DSI_HOST_CONTROL_TX_TRIG_FIFO (1 << 12)
 #define  DSI_HOST_CONTROL_TX_TRIG_HOST (2 << 12)
@@ -414,6 +524,7 @@
 
 #define DSI_STATUS 0x15
 #define  DSI_STATUS_RX_FIFO_SIZE 0x1F
+#define  DSI_STATUS_TX_FIFO_SIZE 0x20 // Actual depth is 64.
 
 #define DSI_INIT_SEQ_CONTROL 0x1A
 #define DSI_INIT_SEQ_DATA_0 0x1B
@@ -433,30 +544,34 @@
 #define DSI_PKT_SEQ_5_LO 0x2D
 #define DSI_PKT_SEQ_5_HI 0x2E
 #define DSI_DCS_CMDS 0x33
+
 #define DSI_PKT_LEN_0_1 0x34
 #define DSI_PKT_LEN_2_3 0x35
 #define DSI_PKT_LEN_4_5 0x36
 #define DSI_PKT_LEN_6_7 0x37
+#define  PKT0_LEN(x) (((x) & 0xFFFF) <<  0)
+#define  PKT1_LEN(x) (((x) & 0xFFFF) << 16)
+
 #define DSI_PHY_TIMING_0 0x3C
 #define DSI_PHY_TIMING_1 0x3D
 #define DSI_PHY_TIMING_2 0x3E
 #define DSI_BTA_TIMING 0x3F
 
 #define DSI_TIMEOUT_0 0x44
-#define  DSI_TIMEOUT_HTX(x) (((x) & 0xffff) <<  0)
-#define  DSI_TIMEOUT_LRX(x) (((x) & 0xffff) << 16)
+#define  DSI_TIMEOUT_HTX(x) (((x) & 0xFFFF) <<  0)
+#define  DSI_TIMEOUT_LRX(x) (((x) & 0xFFFF) << 16)
 
 #define DSI_TIMEOUT_1 0x45
-#define  DSI_TIMEOUT_TA(x) (((x) & 0xffff) <<  0)
-#define  DSI_TIMEOUT_PR(x) (((x) & 0xffff) << 16)
+#define  DSI_TIMEOUT_TA(x) (((x) & 0xFFFF) <<  0)
+#define  DSI_TIMEOUT_PR(x) (((x) & 0xFFFF) << 16)
 
 #define DSI_TO_TALLY 0x46
 
 #define DSI_PAD_CONTROL_0 0x4B
 #define  DSI_PAD_CONTROL_VS1_PDIO_CLK   BIT(8)
-#define  DSI_PAD_CONTROL_VS1_PDIO(x)    (((x) & 0xf) <<  0)
+#define  DSI_PAD_CONTROL_VS1_PDIO(x)    (((x) & 0xF) <<  0)
 #define  DSI_PAD_CONTROL_VS1_PULLDN_CLK BIT(24)
-#define  DSI_PAD_CONTROL_VS1_PULLDN(x)  (((x) & 0xf) << 16)
+#define  DSI_PAD_CONTROL_VS1_PULLDN(x)  (((x) & 0xF) << 16)
 
 #define DSI_PAD_CONTROL_CD 0x4C
 #define DSI_VIDEO_MODE_CONTROL 0x4E
@@ -593,6 +708,7 @@
 #define MIPI_DCS_GET_SCANLINE          0x45
 #define MIPI_DCS_SET_TEAR_SCANLINE_WIDTH 0x46
 #define MIPI_DCS_GET_SCANLINE_WIDTH    0x47
+#define MIPI_DSI_AREA_COLOR_MODE       0x4C
 #define MIPI_DCS_SET_BRIGHTNESS        0x51 // DCS_CONTROL_DISPLAY_BRIGHTNESS_CTRL. 1 byte. 0-7: DBV.
 #define MIPI_DCS_GET_BRIGHTNESS        0x52 // 1 byte. 0-7: DBV.
 #define MIPI_DCS_SET_CONTROL_DISPLAY   0x53 // 1 byte. 2: BL, 3: DD, 5: BCTRL.
@@ -606,7 +722,9 @@
 #define MIPI_DCS_READ_DDB_CONTINUE     0xA8 // 0x100 size.
 
 /*! MIPI DCS Panel Private CMDs. */
-#define MIPI_DCS_PRIV_UNK_A0            0xA0
+#define MIPI_DCS_PRIV_SM_SET_COLOR_MODE 0xA0 // 43 bytes.
+#define MIPI_DCS_PRIV_SM_SET_REG_OFFSET 0xB0
+#define MIPI_DCS_PRIV_SM_SET_ELVSS      0xB1 // OLED backlight tuning. Byte7: PWM transition time in frames.
 #define MIPI_DCS_PRIV_SET_POWER_CONTROL 0xB1
 #define MIPI_DCS_PRIV_SET_EXTC          0xB9 // Enable extended commands.
 #define MIPI_DCS_PRIV_UNK_BD            0xBD
@@ -614,6 +732,9 @@
 #define MIPI_DCS_PRIV_UNK_D6            0xD6
 #define MIPI_DCS_PRIV_UNK_D8            0xD8
 #define MIPI_DCS_PRIV_UNK_D9            0xD9
+#define MIPI_DCS_PRIV_SM_DISPLAY_ID     0xDD
+											 //                          LVL1 LVL2 LVL3 UNK0 UNK1
+#define MIPI_DCS_PRIV_SM_SET_REGS_LOCK  0xE2 // Samsung: Lock (default): 5A5A A5A5 A5A5 A500 A500. Lock/Unlock: A5/5A. LVL1 group is normal registers.
 #define MIPI_DCS_PRIV_READ_EXTC_CMD_SPI 0xFE // Read EXTC Command In SPI. 1 byte. 0-6: EXT_SPI_CNT, 7:EXT_SP.
 #define MIPI_DCS_PRIV_SET_EXTC_CMD_REG  0xFF // EXTC Command Set enable register. 5 bytes. Pass: FF 98 06 04, PAGE.
 
@@ -648,32 +769,58 @@
 #define DCS_GAMMA_CURVE_GC2_1_0             BIT(2)
 #define DCS_GAMMA_CURVE_GC3_1_0             BIT(3) // Are there more?
 
+#define DCS_CONTROL_DISPLAY_SM_FLASHLIGHT   BIT(2)
 #define DCS_CONTROL_DISPLAY_BACKLIGHT_CTRL  BIT(2)
-#define DCS_CONTROL_DISPLAY_DIMMING_CTRL    BIT(3)
+#define DCS_CONTROL_DISPLAY_DIMMING_CTRL    BIT(3) // Transition fading.
 #define DCS_CONTROL_DISPLAY_BRIGHTNESS_CTRL BIT(5)
+#define DCS_CONTROL_DISPLAY_HBM_CTRL0       BIT(6)
+#define DCS_CONTROL_DISPLAY_HBM_CTRL1       BIT(7)
 
-#define PANEL_OLED_BL_COEFF  82 // 82%.
-#define PANEL_OLED_BL_OFFSET 45 // Least legible backlight duty.
+#define DCS_SM_COLOR_MODE_SATURATED 0x00 // Disabled. Based on Vivid but over-saturated.
+#define DCS_SM_COLOR_MODE_WASHED    0x45
+#define DCS_SM_COLOR_MODE_BASIC     0x03 // Real natural profile.
+#define DCS_SM_COLOR_MODE_POR_RESET 0x20 // Reset value on power on.
+#define DCS_SM_COLOR_MODE_NATURAL   0x23 // Not actually natural.. Extra saturation.
+#define DCS_SM_COLOR_MODE_VIVID     0x65 // Saturated.
+#define DCS_SM_COLOR_MODE_NIGHT0    0x43 // Based on Washed Out.
+#define DCS_SM_COLOR_MODE_NIGHT1    0x15 // Based on Basic.
+#define DCS_SM_COLOR_MODE_NIGHT2    0x35 // Based on Natural.
+#define DCS_SM_COLOR_MODE_NIGHT3    0x75 // Based on Vivid.
+
+#define DCS_SM_COLOR_MODE_ENABLE    BIT(0)
+
+#define PANEL_SM_BL_CANDELA_MAX 2047
 
 /* Switch Panels:
  *
- * 6.2" panels for Icosa and Iowa skus:
+ * 6.2" panels for Icosa and Iowa SKUs:
  * [10] 81 [26]: JDI LPM062M326A
  * [10] 96 [09]: JDI LAM062M109A
  * [20] 93 [0F]: InnoLux P062CCA-AZ1 (Rev A1)
  * [20] 95 [0F]: InnoLux P062CCA-AZ2 (Rev B1)
- * [20] 96 [0F]: InnoLux P062CCA-AZ3 [UNCONFIRMED MODEL REV]
- * [20] 98 [0F]: InnoLux P062CCA-??? [UNCONFIRMED MODEL REV]
+ * [20] 96 [0F]: InnoLux P062CCA-??? (Rev XX) [UNCONFIRMED MODEL+REV]
+ * [20] 97 [0F]: InnoLux P062CCA-??? (Rev XX) [UNCONFIRMED MODEL+REV]
+ * [20] 98 [0F]: InnoLux P062CCA-??? (Rev XX) [UNCONFIRMED MODEL+REV]
+ * [20] 99 [0F]: InnoLux P062CCA-??? (Rev XX) [UNCONFIRMED MODEL+REV]
+ * [30] 93 [0F]: AUO A062TAN00 (59.06A33.000)
  * [30] 94 [0F]: AUO A062TAN01 (59.06A33.001)
  * [30] 95 [0F]: AUO A062TAN02 (59.06A33.002)
+ * [30] 97 [0F]: AUO A062TAN02 (59.06A33.002) [From photo of assumed same panel]
+ * [30] 98 [0F]: AUO A062TAN0? [UNCONFIRMED MODEL]
  * [30] XX [0F]: AUO A062TAN03 (59.06A33.003) [UNCONFIRMED ID]
  *
- * 5.5" panels for Hoag skus:
- * [20] 94 [10]: InnoLux 2J055IA-27A (Rev B1)
- * [30] 93 [10]: AUO A055TAN01 (59.05A30.001)
- * [40] XX [10]: Vendor 40 [UNCONFIRMED ID]
  *
- * 7.0" OLED panels for Aula skus:
+ * 5.5" panels for Hoag SKU:
+ * [20] 94 [10]: InnoLux 2J055IA-27A (Rev B1) (6203B001P4000)
+ * [20] 95 [10]: InnoLux 2J055IA-27A (Rev XX) [UNCONFIRMED MODEL+REV]
+ * [20] 96 [10]: InnoLux 2J055IA-27A (Rev XX) [UNCONFIRMED MODEL+REV]
+ * [30] 93 [10]: AUO A055TAN01 (59.05A30.001)
+ * [30] 94 [10]: AUO A055TAN02 (59.05A30.002)
+ * [30] 95 [10]: AUO A055TAN03 (59.05A30.003)
+ * [40] 94 [10]: Sharp LQ055T1SW10 (Rev P)
+ *
+ *
+ * 7.0" OLED panels for Aula SKU:
  * [50] 9B [20]: Samsung AMS699VC01-0 (Rev 2.5)
  */
 
@@ -687,7 +834,7 @@
  * 10h: Japan Display Inc.
  * 20h: InnoLux Corporation
  * 30h: AU Optronics
- * 40h: Unknown0
+ * 40h: Sharp
  * 50h: Samsung
  *
  * Boards, Panel Size:
@@ -699,44 +846,88 @@
 enum
 {
 	PANEL_JDI_XXX062M     = 0x10,
-	PANEL_JDI_LAM062M109A = 0x0910,
-	PANEL_JDI_LPM062M326A = 0x2610,
+	PANEL_JDI_LAM062M109A = 0x0910, // SI.
+	PANEL_JDI_LPM062M326A = 0x2610, // LTPS.
 	PANEL_INL_P062CCA_AZ1 = 0x0F20,
 	PANEL_AUO_A062TAN01   = 0x0F30,
 	PANEL_INL_2J055IA_27A = 0x1020,
 	PANEL_AUO_A055TAN01   = 0x1030,
-	PANEL_V40_55_UNK      = 0x1040,
-	PANEL_SAM_AMS699VC01  = 0x2050
+	PANEL_SHP_LQ055T1SW10 = 0x1040,
+	PANEL_SAM_AMS699VC01  = 0x2050,
+
+	// Found on 6/2" clones. Unknown markings. Clone of AUO A062TAN01.
+	// Quality seems JDI like. Has bad low backlight scaling. ID: [83] 94 [0F]. Sometimes reports [30] 94 [0F]. Both IDs have correct CRC16.
+	PANEL_OEM_CLONE_6_2   = 0x0F83,
+	// Found on 5.5" clones with AUO A055TAN02 (59.05A30.001) fake markings.
+	PANEL_OEM_CLONE_5_5   = 0x00B3,
+	// Found on 5.5" clones with AUO A055TAN02 (59.05A30.001) fake markings.
+	PANEL_OEM_CLONE       = 0x0000
+	//0x0F40 [40] 94 [0F], 5.5" clone
 };
 
 void display_init();
 void display_backlight_pwm_init();
 void display_end();
 
+#define DI_REFRESH_RATE_MIN 45
+#define DI_REFRESH_RATE_MAX 65
+
+void display_set_refresh_rate(u32 hz);
+u32  display_get_refresh_rate();
+
+typedef struct _display_frame_stats_t
+{
+	u32 frames;
+	u32 elapsed_us;
+	u32 rate_mhz;
+	u32 nominal_us;
+	u32 min_us;
+	u32 max_us;
+	u32 late;
+	bool timed_out;
+} display_frame_stats_t;
+
+void display_measure_frames(u32 frames, display_frame_stats_t *stats);
+
+/*! Interrupt management. */
+void display_enable_interrupt(u32 intr);
+void display_disable_interrupt(u32 intr);
+void display_wait_interrupt(u32 intr);
+
 /*! Get/Set Display panel ID. */
+u32  display_get_verbose_panel_id();
 u16  display_get_decoded_panel_id();
 void display_set_decoded_panel_id(u32 id);
+
+/*! MIPI DCS register management */
+int  display_dsi_read(u8 cmd, u32 len, void *data);
+int  display_dsi_vblank_read(u8 cmd, u32 len, void *data);
+void display_dsi_write(u8 cmd, u32 len, void *data);
+void display_dsi_vblank_write(u8 cmd, u32 len, void *data);
 
 /*! Show one single color on the display. */
 void display_color_screen(u32 color);
 
-/*! Switches screen backlight ON/OFF. */
+/*! Screen backlight ON/OFF or set via duty and fading. */
 void display_backlight(bool enable);
 void display_backlight_brightness(u32 brightness, u32 step_delay);
-u32  display_get_backlight_brightness();
 
-/*! Init display in full 1280x720 resolution (B8G8R8A8, line stride 768, framebuffer size = 1280*768*4 bytes). */
-u32 *display_init_framebuffer_pitch();
-u32 *display_init_framebuffer_pitch_inv();
-u32 *display_init_framebuffer_block();
-u32 *display_init_framebuffer_log();
-void display_activate_console();
-void display_deactivate_console();
-void display_init_cursor(void *crs_fb, u32 size);
-void display_set_pos_cursor(u32 x, u32 y);
-void display_deinit_cursor();
+u32 *display_init_window_a_pitch();
+u32 *display_init_window_a_pitch_vic();
+u32 *display_init_window_a_pitch_inv();
+u32 *display_init_window_a_block();
+u32 *display_init_window_d_console();
 
-void display_dsi_write(u8 cmd, u32 len, void *data, bool video_enabled);
-int  display_dsi_read(u8 cmd, u32 len, void *data, bool video_enabled);
+void display_window_disable(u32 window);
+
+void display_set_framebuffer(u32 window,  void *fb);
+void display_move_framebuffer(u32 window, void *fb);
+
+void display_window_d_console_enable();
+void display_window_d_console_disable();
+
+void display_cursor_init(void *crs_fb, u32 size);
+void display_cursor_set_pos(u32 x, u32 y);
+void display_cursor_deinit();
 
 #endif

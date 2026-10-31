@@ -1,7 +1,7 @@
 /*
  * BPMP-Lite Cache/MMU and Frequency driver for Tegra X1
  *
- * Copyright (c) 2019-2021 CTCaer
+ * Copyright (c) 2019-2025 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -47,21 +47,40 @@ typedef enum
 {
 	BPMP_CLK_NORMAL,      // 408MHz  0% - 136MHz APB.
 	BPMP_CLK_HIGH_BOOST,  // 544MHz 33% - 136MHz APB.
+	BPMP_CLK_HIGH2_BOOST, // 563MHz 38% - 141MHz APB.
 	BPMP_CLK_SUPER_BOOST, // 576MHz 41% - 144MHz APB.
 	BPMP_CLK_HYPER_BOOST, // 589MHz 44% - 147MHz APB.
-	//BPMP_CLK_DEV_BOOST, // 608MHz 49% - 152MHz APB.
-	BPMP_CLK_MAX
+	BPMP_CLK_DEV_BOOST,   // 608MHz 49% - 152MHz APB. Nyx BPMP OC option only.
+	BPMP_CLK_NUM
 } bpmp_freq_t;
 
-#define BPMP_CLK_LOWER_BOOST   BPMP_CLK_SUPER_BOOST
-#define BPMP_CLK_DEFAULT_BOOST BPMP_CLK_HYPER_BOOST
+typedef enum
+{
+	BPMP_STATE_STANDBY = 0, // 32KHz.
+	BPMP_STATE_IDLE    = 1,
+	BPMP_STATE_RUN     = 2,
+
+	BPMP_STATE_IRQ     = BIT(2),
+	BPMP_STATE_FIQ     = BIT(3),
+} bpmp_state_t;
+
+#define BPMP_CLK_BIN0_BOOST    BPMP_CLK_HYPER_BOOST
+#define BPMP_CLK_BIN1_BOOST    BPMP_CLK_SUPER_BOOST
+#define BPMP_CLK_BIN2_BOOST    BPMP_CLK_HIGH2_BOOST
+#define BPMP_CLK_BIN3_BOOST    BPMP_CLK_HIGH_BOOST
+
+#define BPMP_CLK_LOWEST_BOOST  BPMP_CLK_BIN3_BOOST
+#define BPMP_CLK_LOWER_BOOST   BPMP_CLK_BIN1_BOOST
+#define BPMP_CLK_DEFAULT_BOOST BPMP_CLK_BIN0_BOOST
 
 void bpmp_mmu_maintenance(u32 op, bool force);
-void bpmp_mmu_set_entry(int idx, bpmp_mmu_entry_t *entry, bool apply);
+void bpmp_mmu_set_entry(int idx, const bpmp_mmu_entry_t *entry, bool apply);
 void bpmp_mmu_enable();
 void bpmp_mmu_disable();
+void bpmp_clk_rate_relaxed(bool enable);
 void bpmp_clk_rate_get();
-bpmp_freq_t bpmp_clk_rate_set(bpmp_freq_t fid);
+void bpmp_clk_rate_set(bpmp_freq_t fid);
+void bpmp_state_set(bpmp_state_t state);
 void bpmp_usleep(u32 us);
 void bpmp_msleep(u32 ms);
 void bpmp_halt();

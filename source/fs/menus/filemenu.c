@@ -11,7 +11,7 @@
 #include <libs/fatfs/ff.h>
 #include "../../utils/utils.h"
 #include "../../keys/nca.h"
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include "../../storage/emummc.h"
 #include "../../script/eval.h"
 #include "../../script/parser.h"
@@ -106,6 +106,7 @@ void RunScript(char *path, FSEntry_t entry){
     setStaticVars(&ret.staticVarHolder);
     initRuntimeVars();
     Variable_t* res = eval(ret.main.operations.data, ret.main.operations.count, 1);
+    (void)res;
     exitRuntimeVars();
     exitStaticVars(&ret.staticVarHolder);
     exitFunction(ret.main.operations.data, ret.main.operations.count);

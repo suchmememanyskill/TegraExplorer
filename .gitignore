@@ -16,3 +16,4 @@ source/script/.vs
 source/script/builtin.c
 
 source/script/builtin.h
+loader/payload.h

@@ -11,7 +11,7 @@
 #include <libs/fatfs/ff.h>
 #include "../../utils/utils.h"
 #include "../../keys/nca.h"
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include "../fscopy.h"
 
 MenuEntry_t FolderMenuEntries[] = {

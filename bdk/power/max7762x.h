@@ -21,6 +21,14 @@
 #include <utils/types.h>
 
 /*
+ * SDx actual min is 625 mV. Multipliers 0/1 reserved.
+ * SD0 max is 1400 mV
+ * SD1 max is 1550 mV
+ * SD2 max is 3787.5 mV
+ * SD3 max is 3787.5 mV
+ */
+
+/*
 * Switch Power domains (max77620):
 * Name  | Usage         | uV step | uV min | uV default | uV max  | Init
 *-------+---------------+---------+--------+------------+---------+------------------
@@ -38,6 +46,27 @@
 *  ldo7 | XUSB          | 50000   | 800000 | 1050000    | 1050000 | 1.05V  (pcv)
 *  ldo8 | XUSB, DP, MCU | 50000   | 800000 | 1050000    | 2800000 | 1.05V/2.8V (pcv)
 */
+
+
+// GPIOs T210: 3: 3.3V, 5: CPU PMIC, 6: GPU PMIC, 7: DSI/VI 1.2V powered by ldo0.
+
+/*
+ * OTP:  T210 - T210B01:
+ * SD0:  1.0V   1.05V - SoC. EN Based on FPSSRC.
+ * SD1:  1.15V  1.1V  - DRAM for T210. EN Based on FPSSRC.
+ * SD2:  1.35V  1.35V
+ * SD3:  1.8V   1.8V
+ * All powered off?
+ * LDO0:   --   --    - Display
+ * LDO1: 1.05V  1.05V
+ * LDO2:   --   --    - SD
+ * LDO3: 3.1V   3.1V  - GC ASIC
+ * LDO4: 1.0V   0.8V  - Needed for RTC domain on T210.
+ * LDO5: 3.1V   3.1V
+ * LDO6: 2.8V   2.9V  - Touch.
+ * LDO7: 1.05V  1.0V
+ * LDO8: 1.05V  1.0V
+ */
 
 /*
 * MAX77620_AME_GPIO: control GPIO modes (bits 0 - 7 correspond to GPIO0 - GPIO7); 0 -> GPIO, 1 -> alt-mode
@@ -58,22 +87,22 @@
 #define REGULATOR_LDO6 10
 #define REGULATOR_LDO7 11
 #define REGULATOR_LDO8 12
-#define REGULATOR_CPU0 13
-#define REGULATOR_GPU0 14
-#define REGULATOR_CPU1 15
-//#define REGULATOR_GPU1 16
-//#define REGULATOR_GPU1 17
-#define REGULATOR_MAX  15
+#define REGULATOR_CPU0 13 // T210 CPU.
+#define REGULATOR_GPU0 14 // T210 CPU.
+#define REGULATOR_CPU1 15 // T210B01 CPU.
+#define REGULATOR_RAM0 16 // T210B01 RAM for PHASE211.
+//#define REGULATOR_GPU1 17 // T210B01 CPU.
+#define REGULATOR_MAX  REGULATOR_RAM0
 
 #define MAX77621_CPU_I2C_ADDR 0x1B
 #define MAX77621_GPU_I2C_ADDR 0x1C
 
-#define MAX77621_VOUT_REG     0x00
-#define MAX77621_VOUT_DVS_REG 0x01
-#define MAX77621_CONTROL1_REG 0x02
-#define MAX77621_CONTROL2_REG 0x03
-#define MAX77621_CHIPID1_REG  0x04
-#define MAX77621_CHIPID2_REG  0x05
+#define MAX77621_REG_VOUT     0x00
+#define MAX77621_REG_VOUT_DVS 0x01
+#define MAX77621_REG_CONTROL1 0x02
+#define MAX77621_REG_CONTROL2 0x03
+#define MAX77621_REG_CHIPID1  0x04
+#define MAX77621_REG_CHIPID2  0x05
 
 /* MAX77621_VOUT_DVC_DVS */
 #define MAX77621_DVC_DVS_VOLT_MASK    0x7F
@@ -106,11 +135,10 @@
 #define MAX77621_INDUCTOR_PLUS_60_PER 3
 #define MAX77621_INDUCTOR_MASK        3
 
-#define MAX77621_CKKADV_TRIP_75mV_PER_US          0x0
-#define MAX77621_CKKADV_TRIP_150mV_PER_US         BIT(2)
-#define MAX77621_CKKADV_TRIP_75mV_PER_US_HIST_DIS BIT(3)
-#define MAX77621_CKKADV_TRIP_DISABLE              (BIT(2) | BIT(3))
-#define MAX77621_CKKADV_TRIP_MASK                 (BIT(2) | BIT(3))
+#define MAX77621_CKKADV_TRIP_75mV_PER_US          (0  << 2)
+#define MAX77621_CKKADV_TRIP_150mV_PER_US         (1u << 2)
+#define MAX77621_CKKADV_TRIP_DISABLE              (3u << 2)
+#define MAX77621_CKKADV_TRIP_MASK                 (3u << 2)
 
 #define MAX77621_FT_ENABLE       BIT(4)
 #define MAX77621_DISCH_ENABLE    BIT(5)
@@ -118,18 +146,17 @@
 #define MAX77621_T_JUNCTION_120  BIT(7)
 
 #define MAX77621_CPU_CTRL1_POR_DEFAULT  (MAX77621_RAMP_50mV_PER_US)
-#define MAX77621_CPU_CTRL1_HOS_DEFAULT  (MAX77621_AD_ENABLE                        | \
-										 MAX77621_NFSR_ENABLE                      | \
-										 MAX77621_SNS_ENABLE                       | \
+#define MAX77621_CPU_CTRL1_HOS_DEFAULT  (MAX77621_AD_ENABLE               | \
+										 MAX77621_NFSR_ENABLE             | \
+										 MAX77621_SNS_ENABLE              | \
 										 MAX77621_RAMP_12mV_PER_US)
-#define MAX77621_CPU_CTRL2_POR_DEFAULT  (MAX77621_T_JUNCTION_120                   | \
-										 MAX77621_FT_ENABLE                        | \
-										 MAX77621_CKKADV_TRIP_75mV_PER_US_HIST_DIS | \
-										 MAX77621_CKKADV_TRIP_150mV_PER_US         | \
+#define MAX77621_CPU_CTRL2_POR_DEFAULT  (MAX77621_T_JUNCTION_120          | \
+										 MAX77621_FT_ENABLE               | \
+										 MAX77621_CKKADV_TRIP_DISABLE     | \
 										 MAX77621_INDUCTOR_NOMINAL)
-#define MAX77621_CPU_CTRL2_HOS_DEFAULT  (MAX77621_T_JUNCTION_120                   | \
-										 MAX77621_WDTMR_ENABLE                     | \
-										 MAX77621_CKKADV_TRIP_75mV_PER_US          | \
+#define MAX77621_CPU_CTRL2_HOS_DEFAULT  (MAX77621_T_JUNCTION_120          | \
+										 MAX77621_WDTMR_ENABLE            | \
+										 MAX77621_CKKADV_TRIP_75mV_PER_US | \
 										 MAX77621_INDUCTOR_NOMINAL)
 
 #define MAX77621_CTRL_HOS_CFG 0
@@ -137,7 +164,7 @@
 
 int  max77620_regulator_get_status(u32 id);
 int  max77620_regulator_config_fps(u32 id);
-int  max7762x_regulator_set_voltage(u32 id, u32 mv);
+int  max7762x_regulator_set_voltage(u32 id, u32 uv);
 int  max7762x_regulator_enable(u32 id, bool enable);
 void max77620_config_gpio(u32 id, bool enable);
 void max77620_config_default();

@@ -17,7 +17,7 @@
 #ifndef LV_CONF_H
 #define LV_CONF_H
 
-#include <utils/types.h>
+#include <soc/timer.h>
 #include <memory_map.h>
 /*===================
    Dynamic memory
@@ -116,8 +116,8 @@
 #define LV_INDEV_POINT_MARKER           0                      /*Mark the pressed points  (required: USE_LV_REAL_DRAW = 1)*/
 #define LV_INDEV_DRAG_LIMIT             10                     /*Drag threshold in pixels */
 #define LV_INDEV_DRAG_THROW             20                     /*Drag throw slow-down in [%]. Greater value means faster slow-down */
-#define LV_INDEV_LONG_PRESS_TIME        400                    /*Long press time in milliseconds*/
-#define LV_INDEV_LONG_PRESS_REP_TIME    1000 //Fix keyb        /*Repeated trigger period in long press [ms] */
+#define LV_INDEV_LONG_PRESS_TIME        5000                   /*Long press time in milliseconds*/
+#define LV_INDEV_LONG_PRESS_REP_TIME    1000 //Fix lv_kb       /*Repeated trigger period in long press [ms] */
 
 /*Color settings*/
 #define LV_COLOR_DEPTH         32                /*Color depth: 1/8/16/32*/
@@ -147,10 +147,10 @@
 #define LV_COMPILER_VLA_SUPPORTED            1  /* 1: Variable length array is supported*/
 
 /*HAL settings*/
-#define LV_TICK_CUSTOM               1                       /*1: use a custom tick source (removing the need to manually update the tick with `lv_tick_inc`) */
+#define LV_TICK_CUSTOM               1                      /*1: use a custom tick source (removing the need to manually update the tick with `lv_tick_inc`) */
 #if LV_TICK_CUSTOM == 1
-#define LV_TICK_CUSTOM_INCLUDE       <utils/util.h>          /*Header for the sys time function*/
-#define LV_TICK_CUSTOM_SYS_TIME_EXPR (get_tmr_ms())          /*Expression evaluating to current systime in ms*/
+#define LV_TICK_CUSTOM_INCLUDE       <soc/timer.h>          /*Header for the sys time function*/
+#define LV_TICK_CUSTOM_SYS_TIME_EXPR ((u32)get_tmr_ms())         /*Expression evaluating to current systime in ms*/
 #endif     /*LV_TICK_CUSTOM*/
 
 
@@ -296,6 +296,9 @@
 
 /*Message box (dependencies: lv_rect, lv_btnm, lv_label)*/
 #define USE_LV_MBOX     1
+#if USE_LV_MBOX != 0
+#  define LV_MBOX_CLOSE_ANIM_TIME 200     /*ms*/
+#endif
 
 /*Text area (dependencies: lv_label, lv_page)*/
 #define USE_LV_TA       1
@@ -340,10 +343,10 @@
 #define USE_LV_BTNM     1
 
 /*Keyboard (dependencies: lv_btnm)*/
-#define USE_LV_KB       0
+#define USE_LV_KB       1
 
 /*Check box (dependencies: lv_btn, lv_label)*/
-#define USE_LV_CB       1
+#define USE_LV_CB       0
 
 /*List (dependencies: lv_page, lv_btn, lv_label, (lv_img optionally for icons ))*/
 #define USE_LV_LIST     1
@@ -367,7 +370,7 @@
 #define USE_LV_SLIDER    1
 
 /*Switch (dependencies: lv_slider)*/
-#define USE_LV_SW        1
+#define USE_LV_SW        0
 
 #endif /*LV_CONF_H*/
 

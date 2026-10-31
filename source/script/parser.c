@@ -15,7 +15,7 @@
 
 #ifndef WIN32
 #include "../tegraexplorer/tconf.h"
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #endif
 
 static inline int isValidWord(char c) {
@@ -128,7 +128,7 @@ u8 nextToken(char** inPtr, void** val) {
 					#ifdef WIN32
 					u8 gotSd = 0;
 					#else
-					u8 gotSd = sd_mount();
+					u8 gotSd = !sd_mount();
 					#endif
 					if (!gotSd){
 						printScriptError(SCRIPT_LEXER_FATAL, "Sd required.");

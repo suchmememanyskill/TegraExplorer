@@ -52,7 +52,7 @@ void save_ivfc_storage_init(integrity_verification_storage_ctx_t *ctx, integrity
 /* buffer must have size count + 0x20 for salt to by copied in at offset 0. */
 static ALWAYS_INLINE void save_ivfc_storage_do_hash(integrity_verification_storage_ctx_t *ctx, uint8_t *out_hash, void *buffer, uint64_t count) {
     memcpy(buffer, ctx->salt, sizeof(ctx->salt));
-    se_calc_sha256_oneshot(out_hash, buffer, count + sizeof(ctx->salt));
+    se_sha_hash_256_oneshot(out_hash, buffer, count + sizeof(ctx->salt));
     out_hash[0x1F] |= 0x80;
 }
 

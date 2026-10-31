@@ -38,7 +38,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <mem/heap.h>
 #include <rtc/max77620-rtc.h>
 #include <sec/se.h>
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include <utils/ini.h>
 #include <utils/sprintf.h>
 
@@ -101,12 +101,12 @@ static bool save_process_header(save_ctx_t *ctx) {
     uint8_t hash[0x20] __attribute__((aligned(4)));
     uint32_t hashed_data_offset = sizeof(ctx->header.layout) + sizeof(ctx->header.cmac) + sizeof(ctx->header._0x10);
     uint32_t hashed_data_size = sizeof(ctx->header) - hashed_data_offset;
-    se_calc_sha256_oneshot(hash, (uint8_t *)&ctx->header + hashed_data_offset, hashed_data_size);
+    se_sha_hash_256_oneshot(hash, (uint8_t *)&ctx->header + hashed_data_offset, hashed_data_size);
     ctx->header_hash_validity = memcmp(hash, ctx->header.layout.hash, sizeof(hash)) == 0 ? VALIDITY_VALID : VALIDITY_INVALID;
 
     uint8_t cmac[0x10] __attribute__((aligned(4)));
     se_aes_key_set(10, ctx->save_mac_key, 0x10);
-    se_aes_cmac(10, cmac, 0x10, &ctx->header.layout, sizeof(ctx->header.layout));
+    se_aes_hash_cmac(10, cmac, &ctx->header.layout, sizeof(ctx->header.layout));
     if (memcmp(cmac, &ctx->header.cmac, 0x10) == 0) {
         ctx->header_cmac_validity = VALIDITY_VALID;
     } else {
@@ -326,10 +326,10 @@ bool save_commit(save_ctx_t *ctx) {
     uint32_t hashed_data_offset = sizeof(ctx->header.layout) + sizeof(ctx->header.cmac) + sizeof(ctx->header._0x10);
     uint32_t hashed_data_size = sizeof(ctx->header) - hashed_data_offset;
     uint8_t *header = (uint8_t *)&ctx->header;
-    se_calc_sha256_oneshot(ctx->header.layout.hash, header + hashed_data_offset, hashed_data_size);
+    se_sha_hash_256_oneshot(ctx->header.layout.hash, header + hashed_data_offset, hashed_data_size);
 
     se_aes_key_set(10, ctx->save_mac_key, 0x10);
-    se_aes_cmac(10, ctx->header.cmac, 0x10, &ctx->header.layout, sizeof(ctx->header.layout));
+    se_aes_hash_cmac(10, ctx->header.cmac, &ctx->header.layout, sizeof(ctx->header.layout));
 
     if (substorage_write(&ctx->base_storage, &ctx->header, 0, sizeof(ctx->header)) != sizeof(ctx->header)) {
         EPRINTF("Failed to write save header!");

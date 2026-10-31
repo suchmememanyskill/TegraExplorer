@@ -1,7 +1,7 @@
 /*
  * USB-PD driver for Nintendo Switch's TI BM92T36
  *
- * Copyright (c) 2020 CTCaer
+ * Copyright (c) 2020-2026 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -54,6 +54,15 @@
 
 #define STATUS1_INSERT      BIT(7)  // Cable inserted.
 
+#define VER_36     0x36
+#define MAN_ROHM  0x4B5
+#define DEV_BM92T 0x3B0
+
+#define PDO_TYPE_FIXED  0
+#define PDO_TYPE_BATT   1
+#define PDO_TYPE_VAR    2
+#define PDO_TYPE_APDO   3
+
 typedef struct _pd_object_t {
 	unsigned int amp:10;
 	unsigned int volt:10;
@@ -63,10 +72,30 @@ typedef struct _pd_object_t {
 
 static int _bm92t36_read_reg(u8 *buf, u32 size, u32 reg)
 {
+	memset(buf, 0, size);
 	return i2c_recv_buf_big(buf, size, I2C_1, BM92T36_I2C_ADDR, reg);
 }
 
-void bm92t36_get_sink_info(bool *inserted, usb_pd_objects_t *usb_pd)
+int bm92t36_get_version(u32 *value)
+{
+	u8 buf[2];
+	u16 version, man, dev;
+	_bm92t36_read_reg(buf, 2, FW_TYPE_REG);
+	version = (buf[0] << 4) | buf[1];
+	_bm92t36_read_reg(buf, 2, MAN_ID_REG);
+	man = (buf[1] << 8) | buf[0];
+	_bm92t36_read_reg(buf, 2, DEV_ID_REG);
+	dev = (buf[1] << 8) | buf[0];
+	if (value)
+		*value = (dev << 16) | version;
+
+	if (version == VER_36 && man == MAN_ROHM && dev == DEV_BM92T)
+	 	return 0;
+	else
+		return 1;
+}
+
+void bm92t36_get_source_info(bool *inserted, usb_pd_objects_t *usb_pd)
 {
 	u8 buf[32];
 	pd_object_t pdos[7];
@@ -74,7 +103,7 @@ void bm92t36_get_sink_info(bool *inserted, usb_pd_objects_t *usb_pd)
 	if (inserted)
 	{
 		_bm92t36_read_reg(buf, 2, STATUS1_REG);
-		*inserted = buf[0] & STATUS1_INSERT ? true : false;
+		*inserted = (buf[0] & STATUS1_INSERT) ? true : false;
 	}
 
 	if (usb_pd)
@@ -85,15 +114,25 @@ void bm92t36_get_sink_info(bool *inserted, usb_pd_objects_t *usb_pd)
 		memset(usb_pd, 0, sizeof(usb_pd_objects_t));
 		usb_pd->pdo_no = buf[0] / sizeof(pd_object_t);
 
+		if (usb_pd->pdo_no > 7)
+			usb_pd->pdo_no = 7;
+
+		u32 idx = 0;
 		for (u32 i = 0; i < usb_pd->pdo_no; i++)
 		{
-			usb_pd->pdos[i].amperage = pdos[i].amp * 10;
-			usb_pd->pdos[i].voltage = (pdos[i].volt * 50) / 1000;
+			// Parse fixed type pdos only.
+			if (pdos[i].type != PDO_TYPE_FIXED)
+				continue;
+
+			usb_pd->pdos[idx].amperage =  pdos[i].amp  * 10;
+			usb_pd->pdos[idx].voltage  = (pdos[i].volt * 50) / 1000;
+			idx++;
 		}
+		usb_pd->pdo_no = idx;
 
 		_bm92t36_read_reg(buf, 5, CURRENT_PDO_REG);
 		memcpy(pdos, &buf[1], 4);
-		usb_pd->selected_pdo.amperage = pdos[0].amp * 10;
-		usb_pd->selected_pdo.voltage = (pdos[0].volt * 50) / 1000;
+		usb_pd->selected_pdo.amperage =  pdos[0].amp  * 10;
+		usb_pd->selected_pdo.voltage  = (pdos[0].volt * 50) / 1000;
 	}
 }

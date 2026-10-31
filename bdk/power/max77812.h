@@ -17,8 +17,8 @@
 #ifndef _MAX77812_H_
 #define _MAX77812_H_
 
-#define MAX77812_PHASE31_CPU_I2C_ADDR  0x31 // 2 Outputs: 3-phase M1 + 1-phase M4.
-#define MAX77812_PHASE211_CPU_I2C_ADDR 0x33 // 3 Outputs: 2-phase M1 + 1-phase M3 + 1-phase M4.
+#define MAX77812_PHASE31_CPU_I2C_ADDR  0x31 // High power GPU. 2 Outputs: 3-phase M1 + 1-phase M4.
+#define MAX77812_PHASE211_CPU_I2C_ADDR 0x33 // Low  power GPU. 3 Outputs: 2-phase M1 + 1-phase M3 + 1-phase M4.
 
 #define MAX77812_REG_RSET			0x00
 #define MAX77812_REG_INT_SRC		0x01
@@ -66,22 +66,23 @@
 #define MAX77812_REG_M2_VOUT_S		0x2C
 #define MAX77812_REG_M3_VOUT_S		0x2D
 #define MAX77812_REG_M4_VOUT_S		0x2E
-#define MAX77812_REG_M1_CFG			0x2F
-#define MAX77812_REG_M2_CFG			0x30
-#define MAX77812_REG_M3_CFG			0x31
-#define MAX77812_REG_M4_CFG			0x32
-#define MAX77812_REG_GLB_CFG1		0x33
-#define MAX77812_REG_GLB_CFG2		0x34
+#define MAX77812_REG_M1_CFG			0x2F // HOS: M1_ILIM - 7.2A/4.8A.
+#define MAX77812_REG_M2_CFG			0x30 // HOS: M2_ILIM - 7.2A/4.8A.
+#define MAX77812_REG_M3_CFG			0x31 // HOS: M3_ILIM - 7.2A/4.8A.
+#define MAX77812_REG_M4_CFG			0x32 // HOS: M4_ILIM - 7.2A/4.8A.
+#define MAX77812_REG_GLB_CFG1		0x33 // HOS: B_SD_SR/B_SS_SR - 5mV/us.
+#define MAX77812_REG_GLB_CFG2		0x34 // HOS: B_RD_SR/B_RU_SR - 5mV/us
 #define MAX77812_REG_GLB_CFG3		0x35
 
-/*! Protected area and settings only for MAX77812_REG_VERSION 4 */
-#define MAX77812_REG_GLB_CFG4		0x36
-#define MAX77812_REG_GLB_CFG5		0x37
-#define MAX77812_REG_GLB_CFG6		0x38
-#define MAX77812_REG_GLB_CFG7		0x39
-#define MAX77812_REG_GLB_CFG8		0x3A
-#define MAX77812_REG_PROT_ACCESS	0xFD
-#define MAX77812_REG_MAX			0xFE
+/*! Protected area and settings only for MAX77812_ES2_VERSION */
+#define MAX77812_REG_GLB_CFG4		0x36 // QS: 0xBB.
+#define MAX77812_REG_GLB_CFG5		0x37 // QS: 0x39. ES2: Set to 0x3E.
+#define MAX77812_REG_GLB_CFG6		0x38 // QS: 0x88. ES2: Set to 0x90.
+#define MAX77812_REG_GLB_CFG7		0x39 // QS: 0x04.
+#define MAX77812_REG_GLB_CFG8		0x3A // QS: 0x3A. ES2: Set to 0x3A.
+
+#define MAX77812_REG_PROT_ACCESS	0xFD // 0x00: Lock, 0x5A: Unlock.
+#define MAX77812_REG_UNKNOWN		0xFE
 
 #define MAX77812_REG_EN_CTRL_MASK(n)		BIT(n)
 #define MAX77812_START_SLEW_RATE_MASK		0x07

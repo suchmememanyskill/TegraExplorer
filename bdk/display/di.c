@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2021 CTCaer
+ * Copyright (c) 2018-2025 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,95 +20,402 @@
 #include "di.h"
 #include <power/max77620.h>
 #include <power/max7762x.h>
-#include <mem/heap.h>
 #include <soc/clock.h>
 #include <soc/fuse.h>
 #include <soc/gpio.h>
 #include <soc/hw_init.h>
-#include <soc/i2c.h>
 #include <soc/pinmux.h>
 #include <soc/pmc.h>
+#include <soc/timer.h>
 #include <soc/t210.h>
 #include <utils/util.h>
 
 #include "di.inl"
 
-extern volatile nyx_storage_t *nyx_str;
+#define DI_H_TOTAL       1000u  // 72 sync + 72 back + 720 active + 136 front.
+#define DI_V_TOTAL       1300u  //  1 sync +  9 back + 1280 active + 10 front.
+#define DI_DSI_LANES        4u
+#define DI_SHIFT_CLK_DIV    3u  // SHIFT_CLK_DIVIDER(4) is divide by 3.
+#define DI_PLLD_DIVP        1u
+#define DI_OSC_FREQ  38400000u
 
-static u32 _display_id = 0;
-static bool nx_aula = false;
+#define DI_LANE_BYTE_CLK_60HZ 58500000u
+
+static bool _nx_aula      = false;
+static u32  _panel_id     = 0;
+static u32  _panel_id_raw = 0;
 
 static void _display_panel_and_hw_end(bool no_panel_deinit);
 
+static u32 _di_refresh_rate = 60;
+
+void display_set_refresh_rate(u32 hz)
+{
+	_di_refresh_rate = (hz >= DI_REFRESH_RATE_MIN && hz <= DI_REFRESH_RATE_MAX) ? hz : 60;
+}
+
+u32 display_get_refresh_rate()
+{
+	return _di_refresh_rate;
+}
+
+
+static u32 _di_div_round(u64 value, u64 divisor)
+{
+	return (u32)((value + (divisor / 2)) / divisor);
+}
+
+
+static u32 _di_frame_us(u32 us_at_60hz)
+{
+	return (u32)(((u64)us_at_60hz * 60u) / _di_refresh_rate);
+}
+
+
+static u32 _di_timing_field(u64 value_ps, u64 period_ps, u32 hwinc)
+{
+	u64 cycles = (value_ps + (period_ps / 2)) / period_ps;
+	u64 field  = (cycles > hwinc) ? (cycles - hwinc) : 0;
+
+	return (field > 0xFF) ? 0xFF : (u32)field;
+}
+
+
+static void _display_dsi_set_video_clock(bool tegra_t210)
+{
+	const u32 rate = _di_refresh_rate;
+
+	const u32 pixel_clk = DI_H_TOTAL * DI_V_TOTAL * rate;
+	const u32 byte_clk  = pixel_clk * DI_SHIFT_CLK_DIV;
+
+	const u32 n8192 = (u32)(((u64)byte_clk * (16384u << DI_PLLD_DIVP)) / DI_OSC_FREQ);
+	const u32 divn  = n8192 >> 13;
+	const u16 sdm   = (u16)(s16)((s32)(n8192 & 0x1FFF) - 4096);
+
+	clock_enable_plld_sdm(DI_PLLD_DIVP, divn, sdm, tegra_t210);
+
+	const u32 lane_byte_clk = (u32)(((u64)pixel_clk * DI_SHIFT_CLK_DIV) / DI_DSI_LANES);
+	const u64 period_ps     = _di_div_round(1000000000000ull, lane_byte_clk);
+	const u64 ui_ps         = _di_div_round(period_ps, 8);
+
+	const u64 clkpost    = 70000 + 52 * ui_ps;
+	const u64 clkprepare = 65000;
+	const u64 clktrail   = 80000;
+	const u64 clkzero    = 260000;
+	const u64 hsexit     = 120000;
+	const u64 hsprepare  = 65000 + 5 * ui_ps;
+	const u64 hszero     = 145000 + 5 * ui_ps;
+	const u64 lpx        = 100000; // tlpx   100 ns
+	const u64 tago       = 360000; // tago   360 ns
+	const u64 tasure     = 180000; // tasure 180 ns
+	const u64 taget      = 450000; // taget  450 ns
+
+	const u64 hstrail_a = 8 * ui_ps;
+	const u64 hstrail_b = 60000 + 4 * ui_ps;
+	const u64 hstrail   = (hstrail_a > hstrail_b) ? hstrail_a : hstrail_b;
+	u32 hstrail_field   = _di_timing_field(hstrail, period_ps, 0) + 3;
+
+	if (hstrail_field > 0xFF)
+		hstrail_field = 0xFF;
+
+	const u32 link_khz    = byte_clk / 1000;
+	const u32 half_period = 1000000000u / (link_khz * 2u);
+	const u32 wakeup      = half_period ? (((1000000000u / (half_period << 3)) >> 9) & 0xFF) : 0;
+
+	DSI(DSI_PHY_TIMING_0) = (_di_timing_field(hsexit, period_ps, 1)    << 24) |
+	                        (hstrail_field                             << 16) |
+	                        (_di_timing_field(hszero, period_ps, 3)    <<  8) |
+	                        (_di_timing_field(hsprepare, period_ps, 1));
+
+	DSI(DSI_PHY_TIMING_1) = (_di_timing_field(clktrail, period_ps, 1)  << 24) |
+	                        (_di_timing_field(clkpost, period_ps, 1)   << 16) |
+	                        (_di_timing_field(clkzero, period_ps, 1)   <<  8) |
+	                        (_di_timing_field(lpx, period_ps, 1));
+
+	DSI(DSI_PHY_TIMING_2) = (_di_timing_field(clkprepare, period_ps, 1) << 16) |
+	                        (1u                                         <<  8) |
+	                        wakeup;
+
+	DSI(DSI_BTA_TIMING)   = (_di_timing_field(taget, period_ps, 1)     << 16) |
+	                        (_di_timing_field(tasure, period_ps, 1)    <<  8) |
+	                        (_di_timing_field(tago, period_ps, 1));
+
+	u32 htx = (lane_byte_clk / rate) / 512 + 720;
+	if (htx > 0xFFFF)
+		htx = 0xFFFF;
+	DSI(DSI_TIMEOUT_0) = DSI_TIMEOUT_LRX(0x2000) | DSI_TIMEOUT_HTX(htx);
+
+	u32 pr = _di_div_round((u64)0x5A2F * lane_byte_clk, DI_LANE_BYTE_CLK_60HZ);
+	if (pr > 0xFFFF)
+		pr = 0xFFFF;
+	DSI(DSI_TIMEOUT_1) = DSI_TIMEOUT_PR(pr) | DSI_TIMEOUT_TA(0x2000);
+}
+
+void display_enable_interrupt(u32 intr)
+{
+	DISPLAY_A(DC_CMD_INT_ENABLE) |= intr;
+}
+
+void display_disable_interrupt(u32 intr)
+{
+	DISPLAY_A(DC_CMD_INT_ENABLE) &= ~intr;
+	DISPLAY_A(DC_CMD_INT_STATUS)  =  intr;
+}
+
+void display_wait_interrupt(u32 intr)
+{
+	DISPLAY_A(DC_CMD_INT_STATUS) = intr;
+
+	// Interrupts are masked. Poll status register for checking if fired.
+	while (!(DISPLAY_A(DC_CMD_INT_STATUS) & intr))
+		;
+}
+
+static bool _di_wait_frame_end(u32 timeout_us)
+{
+	DISPLAY_A(DC_CMD_INT_STATUS) = DC_CMD_INT_FRAME_END_INT;
+
+	const u32 start = get_tmr_us();
+
+	while (!(DISPLAY_A(DC_CMD_INT_STATUS) & DC_CMD_INT_FRAME_END_INT))
+	{
+		if ((get_tmr_us() - start) > timeout_us)
+			return false;
+	}
+
+	return true;
+}
+
+void display_measure_frames(u32 frames, display_frame_stats_t *stats)
+{
+	if (!stats)
+		return;
+
+	memset(stats, 0, sizeof(*stats));
+
+	if (!frames)
+		return;
+
+	const u32 nominal_us = 1000000u / _di_refresh_rate;
+	const u32 late_us    = nominal_us + (nominal_us / 2);
+
+	const u32 timeout_us = (nominal_us * 4) + 1000;
+
+	stats->nominal_us = nominal_us;
+	stats->min_us     = ~0u;
+
+	const u32 int_enable = DISPLAY_A(DC_CMD_INT_ENABLE);
+	display_enable_interrupt(DC_CMD_INT_FRAME_END_INT);
+
+	if (!_di_wait_frame_end(timeout_us))
+	{
+		stats->timed_out = true;
+		DISPLAY_A(DC_CMD_INT_ENABLE) = int_enable;
+
+		return;
+	}
+
+	const u32 start = get_tmr_us();
+	u32 prev = start;
+
+	for (u32 i = 0; i < frames; i++)
+	{
+		if (!_di_wait_frame_end(timeout_us))
+		{
+			stats->timed_out = true;
+			break;
+		}
+
+		const u32 now      = get_tmr_us();
+		const u32 interval = now - prev;
+		prev = now;
+
+		if (interval < stats->min_us)
+			stats->min_us = interval;
+		if (interval > stats->max_us)
+			stats->max_us = interval;
+		if (interval >= late_us)
+			stats->late++;
+
+		stats->frames++;
+	}
+
+	DISPLAY_A(DC_CMD_INT_ENABLE) = int_enable;
+
+	stats->elapsed_us = prev - start;
+
+	if (!stats->frames)
+		stats->min_us = 0;
+
+	if (stats->elapsed_us)
+		stats->rate_mhz = (u32)(((u64)stats->frames * 1000000000ull) / stats->elapsed_us);
+}
+
 static void _display_dsi_wait(u32 timeout, u32 off, u32 mask)
 {
-	u32 end = get_tmr_us() + timeout;
+	u32 end = get_tmr_us() + timeout * 1000;
 	while (get_tmr_us() < end && DSI(off) & mask)
 		;
 	usleep(5);
 }
 
+static void _display_dsi_soft_reset()
+{
+	// Disable DSI interface.
+	DSI(DSI_POWER_CONTROL) = 0;
+
+	// Settle time.
+	usleep(10);
+}
+
 static void _display_dsi_send_cmd(u8 cmd, u32 param, u32 wait)
 {
-	DSI(_DSIREG(DSI_WR_DATA)) = (param << 8) | cmd;
-	DSI(_DSIREG(DSI_TRIGGER)) = DSI_TRIGGER_HOST;
+	DSI(DSI_WR_DATA) = (param << 8) | cmd;
+	DSI(DSI_TRIGGER) = DSI_TRIGGER_HOST;
 
 	if (wait)
 		usleep(wait);
 }
 
+static void _display_dsi_wait_vblank(bool enable)
+{
+	if (enable)
+	{
+		// Enable vblank interrupt.
+		display_enable_interrupt(DC_CMD_INT_FRAME_END_INT);
+
+		// Use the 4th line to transmit the host cmd packet.
+		DSI(DSI_VIDEO_MODE_CONTROL) = DSI_CMD_PKT_VID_ENABLE | DSI_DSI_LINE_TYPE(4);
+
+		// Wait for vblank before starting the transfer.
+		display_wait_interrupt(DC_CMD_INT_FRAME_END_INT);
+	}
+	else
+	{
+		// Wait for vblank before resetting sync points.
+		display_wait_interrupt(DC_CMD_INT_FRAME_END_INT);
+		usleep(14);
+
+		// Reset all states of syncpt block.
+		DSI(DSI_INCR_SYNCPT_CNTRL) = DSI_INCR_SYNCPT_SOFT_RESET;
+		usleep(300); // Stabilization delay.
+
+		// Clear syncpt block reset.
+		DSI(DSI_INCR_SYNCPT_CNTRL) = 0;
+		usleep(300); // Stabilization delay.
+
+		// Restore video mode and host control.
+		DSI(DSI_VIDEO_MODE_CONTROL) = 0;
+
+		// Disable and clear vblank interrupt.
+		display_disable_interrupt(DC_CMD_INT_FRAME_END_INT);
+	}
+}
+
 static void _display_dsi_read_rx_fifo(u32 *data)
 {
-	u32 fifo_count = DSI(_DSIREG(DSI_STATUS)) & DSI_STATUS_RX_FIFO_SIZE;
+	u32 fifo_count = DSI(DSI_STATUS) & DSI_STATUS_RX_FIFO_SIZE;
+	if (fifo_count)
+		DSI(DSI_TRIGGER) = 0;
+
 	for (u32 i = 0; i < fifo_count; i++)
 	{
 		// Read or Drain RX FIFO.
 		if (data)
-			data[i] = DSI(_DSIREG(DSI_RD_DATA));
+			data[i] = DSI(DSI_RD_DATA);
 		else
-			(void)DSI(_DSIREG(DSI_RD_DATA));
+			(void)DSI(DSI_RD_DATA);
 	}
 }
 
-int display_dsi_read(u8 cmd, u32 len, void *data, bool video_enabled)
+int display_dsi_read(u8 cmd, u32 len, void *data)
+{
+	u32 fifo[DSI_STATUS_RX_FIFO_SIZE] = {0};
+
+	// Drain RX FIFO.
+	_display_dsi_read_rx_fifo(NULL);
+
+	// Set reply size.
+	_display_dsi_send_cmd(MIPI_DSI_SET_MAXIMUM_RETURN_PACKET_SIZE, len, 0);
+	_display_dsi_wait(250, DSI_TRIGGER, DSI_TRIGGER_HOST | DSI_TRIGGER_VIDEO);
+
+	// Request register read.
+	_display_dsi_send_cmd(MIPI_DSI_DCS_READ, cmd, 0);
+	_display_dsi_wait(250, DSI_TRIGGER, DSI_TRIGGER_HOST | DSI_TRIGGER_VIDEO);
+
+	// Transfer bus control to device for transmitting the reply.
+	DSI(DSI_HOST_CONTROL) |= DSI_HOST_CONTROL_IMM_BTA;
+
+	// Wait for reply to complete. DSI_HOST_CONTROL_IMM_BTA bit acts as a DSI host read busy.
+	_display_dsi_wait(150, DSI_HOST_CONTROL, DSI_HOST_CONTROL_IMM_BTA);
+
+	// Wait a bit for the reply.
+	usleep(5000);
+
+	// Read RX FIFO.
+	_display_dsi_read_rx_fifo(fifo);
+
+	// Parse packet and copy over the data.
+	if ((fifo[0] & 0xFF) == DSI_ESCAPE_CMD)
+	{
+		// Act based on reply type.
+		switch (fifo[1] & 0xFF)
+		{
+		case GEN_LONG_RD_RES:
+		case DCS_LONG_RD_RES:
+			memcpy(data, &fifo[2], MIN((fifo[1] >> 8) & 0xFFFF, len));
+			break;
+
+		case GEN_1_BYTE_SHORT_RD_RES:
+		case DCS_1_BYTE_SHORT_RD_RES:
+			memcpy(data, &fifo[2], 1);
+			break;
+
+		case GEN_2_BYTE_SHORT_RD_RES:
+		case DCS_2_BYTE_SHORT_RD_RES:
+			memcpy(data, &fifo[2], 2);
+			break;
+
+		case ACK_ERROR_RES:
+		default:
+			return 1;
+		}
+	}
+	else
+		return 1;
+
+	return 0;
+}
+
+int display_dsi_vblank_read(u8 cmd, u32 len, void *data)
 {
 	int res = 0;
 	u32 host_control = 0;
-	u32 cmd_timeout = video_enabled ? 0 : 250000;
 	u32 fifo[DSI_STATUS_RX_FIFO_SIZE] = {0};
 
 	// Drain RX FIFO.
 	_display_dsi_read_rx_fifo(NULL);
 
 	// Save host control and enable host cmd packets during video.
-	if (video_enabled)
-	{
-		host_control = DSI(_DSIREG(DSI_HOST_CONTROL));
+	host_control = DSI(DSI_HOST_CONTROL);
 
-		// Enable vblank interrupt.
-		DISPLAY_A(_DIREG(DC_CMD_INT_ENABLE)) = DC_CMD_INT_FRAME_END_INT;
-
-		// Use the 4th line to transmit the host cmd packet.
-		DSI(_DSIREG(DSI_VIDEO_MODE_CONTROL)) = DSI_CMD_PKT_VID_ENABLE | DSI_DSI_LINE_TYPE(4);
-
-		// Wait for vblank before starting the transfer.
-		DISPLAY_A(_DIREG(DC_CMD_INT_STATUS)) = DC_CMD_INT_FRAME_END_INT; // Clear interrupt.
-		while (!(DISPLAY_A(_DIREG(DC_CMD_INT_STATUS)) & DC_CMD_INT_FRAME_END_INT))
-			;
-	}
+	_display_dsi_wait_vblank(true);
 
 	// Set reply size.
 	_display_dsi_send_cmd(MIPI_DSI_SET_MAXIMUM_RETURN_PACKET_SIZE, len, 0);
-	_display_dsi_wait(cmd_timeout, _DSIREG(DSI_TRIGGER), DSI_TRIGGER_HOST | DSI_TRIGGER_VIDEO);
+	_display_dsi_wait(0, DSI_TRIGGER, DSI_TRIGGER_HOST | DSI_TRIGGER_VIDEO);
 
 	// Request register read.
 	_display_dsi_send_cmd(MIPI_DSI_DCS_READ, cmd, 0);
-	_display_dsi_wait(cmd_timeout, _DSIREG(DSI_TRIGGER), DSI_TRIGGER_HOST | DSI_TRIGGER_VIDEO);
+	_display_dsi_wait(0, DSI_TRIGGER, DSI_TRIGGER_HOST | DSI_TRIGGER_VIDEO);
+
+	_display_dsi_wait_vblank(false);
 
 	// Transfer bus control to device for transmitting the reply.
-	u32 high_speed = video_enabled ? DSI_HOST_CONTROL_HS : 0;
-	DSI(_DSIREG(DSI_HOST_CONTROL)) = DSI_HOST_CONTROL_TX_TRIG_HOST | DSI_HOST_CONTROL_IMM_BTA | DSI_HOST_CONTROL_CS | DSI_HOST_CONTROL_ECC | high_speed;
-	_display_dsi_wait(150000, _DSIREG(DSI_HOST_CONTROL), DSI_HOST_CONTROL_IMM_BTA);
+	DSI(DSI_HOST_CONTROL) |= DSI_HOST_CONTROL_IMM_BTA;
+
+	// Wait for reply to complete. DSI_HOST_CONTROL_IMM_BTA bit acts as a DSI host read busy.
+	_display_dsi_wait(150, DSI_HOST_CONTROL, DSI_HOST_CONTROL_IMM_BTA);
 
 	// Wait a bit for the reply.
 	usleep(5000);
@@ -146,47 +453,31 @@ int display_dsi_read(u8 cmd, u32 len, void *data, bool video_enabled)
 	else
 		res = 1;
 
-	// Disable host cmd packets during video and restore host control.
-	if (video_enabled)
-	{
-		// Wait for vblank before reseting sync points.
-		DISPLAY_A(_DIREG(DC_CMD_INT_STATUS)) = DC_CMD_INT_FRAME_END_INT; // Clear interrupt.
-		while (!(DISPLAY_A(_DIREG(DC_CMD_INT_STATUS)) & DC_CMD_INT_FRAME_END_INT))
-			;
-
-		// Reset all states of syncpt block.
-		DSI(_DSIREG(DSI_INCR_SYNCPT_CNTRL)) = DSI_INCR_SYNCPT_SOFT_RESET;
-		usleep(300); // Stabilization delay.
-
-		// Clear syncpt block reset.
-		DSI(_DSIREG(DSI_INCR_SYNCPT_CNTRL)) = 0;
-		usleep(300); // Stabilization delay.
-
-		// Restore video mode and host control.
-		DSI(_DSIREG(DSI_VIDEO_MODE_CONTROL)) = 0;
-		DSI(_DSIREG(DSI_HOST_CONTROL)) = host_control;
-
-		// Disable and clear vblank interrupt.
-		DISPLAY_A(_DIREG(DC_CMD_INT_ENABLE)) = 0;
-		DISPLAY_A(_DIREG(DC_CMD_INT_STATUS)) = DC_CMD_INT_FRAME_END_INT;
-	}
+	// Restore host control.
+	DSI(DSI_HOST_CONTROL) = host_control;
 
 	return res;
 }
 
-void display_dsi_write(u8 cmd, u32 len, void *data, bool video_enabled)
+void display_dsi_write(u8 cmd, u32 len, void *data)
 {
-	u8  *fifo8;
-	u32 *fifo32;
 	u32 host_control;
+	u32 fifo32[DSI_STATUS_TX_FIFO_SIZE] = {0};
+	u8 *fifo8 = (u8 *)fifo32;
 
-	// Enable host cmd packets during video and save host control.
-	if (video_enabled)
-		DSI(_DSIREG(DSI_VIDEO_MODE_CONTROL)) = DSI_CMD_PKT_VID_ENABLE;
-	host_control = DSI(_DSIREG(DSI_HOST_CONTROL));
+	// Prepare data for long write.
+	if (len >= 2)
+	{
+		memcpy(&fifo8[5], data, len);
+		memset(&fifo8[5] + len, 0, len % sizeof(u32));
+		len++; // Increase length by CMD.
+	}
+
+	// Save host control.
+	host_control = DSI(DSI_HOST_CONTROL);
 
 	// Enable host transfer trigger.
-	DSI(_DSIREG(DSI_HOST_CONTROL)) = host_control | DSI_HOST_CONTROL_TX_TRIG_HOST;
+	DSI(DSI_HOST_CONTROL) = (host_control & ~(DSI_HOST_CONTROL_TX_TRIG_MASK)) | DSI_HOST_CONTROL_TX_TRIG_HOST;
 
 	switch (len)
 	{
@@ -199,92 +490,63 @@ void display_dsi_write(u8 cmd, u32 len, void *data, bool video_enabled)
 		break;
 
 	default:
-		fifo32 = calloc(DSI_STATUS_RX_FIFO_SIZE * 8, 4);
-		fifo8 = (u8 *)fifo32;
 		fifo32[0] = (len << 8) | MIPI_DSI_DCS_LONG_WRITE;
 		fifo8[4] = cmd;
-		memcpy(&fifo8[5], data, len);
-		len += 4 + 1; // Increase length by CMD/length word and DCS CMD.
-		for (u32 i = 0; i < (ALIGN(len, 4) / 4); i++)
-			DSI(_DSIREG(DSI_WR_DATA)) = fifo32[i];
-		DSI(_DSIREG(DSI_TRIGGER)) = DSI_TRIGGER_HOST;
-		free(fifo32);
+		len += sizeof(u32); // Increase length by length word and DCS CMD.
+		for (u32 i = 0; i < (ALIGN(len, sizeof(u32)) / sizeof(u32)); i++)
+			DSI(DSI_WR_DATA) = fifo32[i];
+		DSI(DSI_TRIGGER) = DSI_TRIGGER_HOST;
 		break;
 	}
 
 	// Wait for the write to happen.
-	_display_dsi_wait(250000, _DSIREG(DSI_TRIGGER), DSI_TRIGGER_HOST);
+	_display_dsi_wait(250, DSI_TRIGGER, DSI_TRIGGER_HOST);
 
-	// Disable host cmd packets during video and restore host control.
-	if (video_enabled)
-		DSI(_DSIREG(DSI_VIDEO_MODE_CONTROL)) = 0;
-	DSI(_DSIREG(DSI_HOST_CONTROL)) = host_control;
+	// Restore host control.
+	DSI(DSI_HOST_CONTROL) = host_control;
 }
 
 void display_dsi_vblank_write(u8 cmd, u32 len, void *data)
 {
-	u8  *fifo8;
-	u32 *fifo32;
+	u32 fifo32[DSI_STATUS_TX_FIFO_SIZE] = {0};
+	u8 *fifo8 = (u8 *)fifo32;
 
-	// Enable vblank interrupt.
-	DISPLAY_A(_DIREG(DC_CMD_INT_ENABLE)) = DC_CMD_INT_FRAME_END_INT;
+	// Prepare data for long write.
+	if (len >= 2)
+	{
+		memcpy(&fifo8[5], data, len);
+		memset(&fifo8[5] + len, 0, len % sizeof(u32));
+		len++; // Increase length by CMD.
+	}
 
-	// Use the 4th line to transmit the host cmd packet.
-	DSI(_DSIREG(DSI_VIDEO_MODE_CONTROL)) = DSI_CMD_PKT_VID_ENABLE | DSI_DSI_LINE_TYPE(4);
-
-	// Wait for vblank before starting the transfer.
-	DISPLAY_A(_DIREG(DC_CMD_INT_STATUS)) = DC_CMD_INT_FRAME_END_INT; // Clear interrupt.
-	while (!(DISPLAY_A(_DIREG(DC_CMD_INT_STATUS)) & DC_CMD_INT_FRAME_END_INT))
-		;
+	_display_dsi_wait_vblank(true);
 
 	switch (len)
 	{
 	case 0:
-		DSI(_DSIREG(DSI_WR_DATA)) = (cmd << 8) | MIPI_DSI_DCS_SHORT_WRITE;
+		DSI(DSI_WR_DATA) = (cmd << 8) | MIPI_DSI_DCS_SHORT_WRITE;
 		break;
 
 	case 1:
-		DSI(_DSIREG(DSI_WR_DATA)) = ((cmd | (*(u8 *)data << 8)) << 8) | MIPI_DSI_DCS_SHORT_WRITE_PARAM;
+		DSI(DSI_WR_DATA) = ((cmd | (*(u8 *)data << 8)) << 8) | MIPI_DSI_DCS_SHORT_WRITE_PARAM;
 		break;
 
 	default:
-		fifo32 = calloc(DSI_STATUS_RX_FIFO_SIZE * 8, 4);
-		fifo8 = (u8 *)fifo32;
 		fifo32[0] = (len << 8) | MIPI_DSI_DCS_LONG_WRITE;
 		fifo8[4] = cmd;
-		memcpy(&fifo8[5], data, len);
-		len += 4 + 1; // Increase length by CMD/length word and DCS CMD.
-		for (u32 i = 0; i < (ALIGN(len, 4) / 4); i++)
-			DSI(_DSIREG(DSI_WR_DATA)) = fifo32[i];
-		free(fifo32);
+		len += sizeof(u32); // Increase length by length word and DCS CMD.
+		for (u32 i = 0; i < (ALIGN(len, sizeof(u32)) / sizeof(u32)); i++)
+			DSI(DSI_WR_DATA) = fifo32[i];
 		break;
 	}
 
-	// Wait for vblank before reseting sync points.
-	DISPLAY_A(_DIREG(DC_CMD_INT_STATUS)) = DC_CMD_INT_FRAME_END_INT; // Clear interrupt.
-	while (!(DISPLAY_A(_DIREG(DC_CMD_INT_STATUS)) & DC_CMD_INT_FRAME_END_INT))
-		;
-
-	// Reset all states of syncpt block.
-	DSI(_DSIREG(DSI_INCR_SYNCPT_CNTRL)) = DSI_INCR_SYNCPT_SOFT_RESET;
-	usleep(300); // Stabilization delay.
-
-	// Clear syncpt block reset.
-	DSI(_DSIREG(DSI_INCR_SYNCPT_CNTRL)) = 0;
-	usleep(300); // Stabilization delay.
-
-	// Restore video mode and host control.
-	DSI(_DSIREG(DSI_VIDEO_MODE_CONTROL)) = 0;
-
-	// Disable and clear vblank interrupt.
-	DISPLAY_A(_DIREG(DC_CMD_INT_ENABLE)) = 0;
-	DISPLAY_A(_DIREG(DC_CMD_INT_STATUS)) = DC_CMD_INT_FRAME_END_INT;
+	_display_dsi_wait_vblank(false);
 }
 
 void display_init()
 {
 	// Get Hardware type, as it's used in various DI functions.
-	nx_aula = fuse_read_hw_type() == FUSE_NX_HW_TYPE_AULA;
+	_nx_aula = fuse_read_hw_type() == FUSE_NX_HW_TYPE_AULA;
 
 	// Check if display is already initialized.
 	if (CLOCK(CLK_RST_CONTROLLER_CLK_OUT_ENB_L) & BIT(CLK_L_DISP1))
@@ -293,166 +555,157 @@ void display_init()
 	// Get Chip ID.
 	bool tegra_t210 = hw_get_chip_id() == GP_HIDREV_MAJOR_T210;
 
-	// T210B01: Power on SD2 regulator for supplying LDO0.
-	if (!tegra_t210)
-	{
-		// Set SD2 regulator voltage.
-		max7762x_regulator_set_voltage(REGULATOR_SD2, 1325000);
-
-		// Set slew rate and enable SD2 regulator.
-		i2c_send_byte(I2C_5, MAX77620_I2C_ADDR, MAX77620_REG_SD2_CFG, (1 << MAX77620_SD_SR_SHIFT) | MAX77620_SD_CFG1_FSRADE_SD_ENABLE);
-		max7762x_regulator_enable(REGULATOR_SD2, true);
-
-	}
-
-	// Enable power to display panel controller.
+	// Enable DSI AVDD.
 	max7762x_regulator_set_voltage(REGULATOR_LDO0, 1200000);
 	max7762x_regulator_enable(REGULATOR_LDO0, true);
-
-	if (tegra_t210)
-		max77620_config_gpio(7, MAX77620_GPIO_OUTPUT_ENABLE); // T210: LD0 -> GPIO7 -> Display panel.
 
 	// Enable Display Interface specific clocks.
 	CLOCK(CLK_RST_CONTROLLER_RST_DEV_H_CLR) = BIT(CLK_H_MIPI_CAL) | BIT(CLK_H_DSI);
 	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_H_SET) = BIT(CLK_H_MIPI_CAL) | BIT(CLK_H_DSI);
-
-	CLOCK(CLK_RST_CONTROLLER_RST_DEV_L_CLR) = BIT(CLK_L_HOST1X) | BIT(CLK_L_DISP1);
-	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_L_SET) = BIT(CLK_L_HOST1X) | BIT(CLK_L_DISP1);
+	CLOCK(CLK_RST_CONTROLLER_RST_DEV_L_CLR) = BIT(CLK_L_DISP1);
+	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_L_SET) = BIT(CLK_L_DISP1);
 
 	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_X_SET) = BIT(CLK_X_UART_FST_MIPI_CAL);
-	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_UART_FST_MIPI_CAL) = 10; // Set PLLP_OUT3 and div 6 (17MHz).
+	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_UART_FST_MIPI_CAL) = CLK_SRC_DIV(6); // Set PLLP_OUT3 and div 6 (17MHz).
 
 	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_W_SET) = BIT(CLK_W_DSIA_LP);
-	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_DSIA_LP) = 10;           // Set PLLP_OUT and div 6 (68MHz).
+	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_DSIA_LP) = CLK_SRC_DIV(6);           // Set PLLP_OUT  and div 6 (68MHz).
 
-	// Bring every IO rail out of deep power down.
+	// Bring every IO rail out of deep power down. (Though no rail bit is set.)
 	PMC(APBDEV_PMC_IO_DPD_REQ)  = PMC_IO_DPD_REQ_DPD_OFF;
 	PMC(APBDEV_PMC_IO_DPD2_REQ) = PMC_IO_DPD_REQ_DPD_OFF;
 
-	// Configure LCD pins.
-	PINMUX_AUX(PINMUX_AUX_NFC_EN)     &= ~PINMUX_TRISTATE; // PULL_DOWN
-	PINMUX_AUX(PINMUX_AUX_NFC_INT)    &= ~PINMUX_TRISTATE; // PULL_DOWN
-	PINMUX_AUX(PINMUX_AUX_LCD_RST)    &= ~PINMUX_TRISTATE; // PULL_DOWN
-
-	// Configure Backlight pins.
-	PINMUX_AUX(PINMUX_AUX_LCD_BL_PWM) &= ~PINMUX_TRISTATE; // PULL_DOWN | 1
-	PINMUX_AUX(PINMUX_AUX_LCD_BL_EN)  &= ~PINMUX_TRISTATE; // PULL_DOWN
-
-	if (nx_aula)
+	// Configure LCD/WLED driver pins.
+	if (!_nx_aula)
 	{
-		// Configure LCD RST pin.
-		gpio_config(GPIO_PORT_V, GPIO_PIN_2, GPIO_MODE_GPIO);
-		gpio_output_enable(GPIO_PORT_V, GPIO_PIN_2, GPIO_OUTPUT_ENABLE);
-	}
-	else
-	{
-		// Set LCD +-5V pins mode and direction
-		gpio_config(GPIO_PORT_I, GPIO_PIN_0 | GPIO_PIN_1, GPIO_MODE_GPIO);
-		gpio_output_enable(GPIO_PORT_I, GPIO_PIN_0 | GPIO_PIN_1, GPIO_OUTPUT_ENABLE);
+		// Configure LCD driver pins.
+		PINMUX_AUX(PINMUX_AUX_NFC_EN)     = PINMUX_PULL_DOWN;
+		PINMUX_AUX(PINMUX_AUX_NFC_INT)    = PINMUX_PULL_DOWN;
 
-		// Enable LCD power.
-		gpio_write(GPIO_PORT_I, GPIO_PIN_0, GPIO_HIGH); // LCD +5V enable.
-		usleep(10000);
-		gpio_write(GPIO_PORT_I, GPIO_PIN_1, GPIO_HIGH); // LCD -5V enable.
-		usleep(10000);
+		// Configure WLED driver pins.
+		PINMUX_AUX(PINMUX_AUX_LCD_BL_PWM) = PINMUX_PULL_DOWN;
+		PINMUX_AUX(PINMUX_AUX_LCD_BL_EN)  = PINMUX_PULL_DOWN;
 
-		// Configure Backlight PWM/EN and LCD RST pins (BL PWM, BL EN, LCD RST).
-		gpio_config(GPIO_PORT_V, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2, GPIO_MODE_GPIO);
-		gpio_output_enable(GPIO_PORT_V, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2, GPIO_OUTPUT_ENABLE);
+		// Enable LCD driver AVDD channels (+5.4V CH2 EN, -5.4V CH1 EN).
+		gpio_direction_output(GPIO_PORT_I, GPIO_PIN_0 | GPIO_PIN_1, GPIO_HIGH);
+		usleep(10000); // Wait minimum 4.2ms to stabilize.
 
-		 // Enable Backlight power.
+		// Configure WLED driver PWM/EN pins.
+		gpio_direction_output(GPIO_PORT_V, GPIO_PIN_0 | GPIO_PIN_1, GPIO_LOW);
+
+		// Enable WLED driver.
 		gpio_write(GPIO_PORT_V, GPIO_PIN_1, GPIO_HIGH);
 	}
+	// else
+	// {
+	// 	// Configure OLED status pin.
+	// 	PINMUX_AUX(PINMUX_AUX_WIFI_EN) = PINMUX_INPUT_ENABLE | PINMUX_TRISTATE;
+	// 	gpio_direction_input(GPIO_PORT_H, GPIO_PIN_0);
+	// }
+
+	// Configure Panel Reset pin.
+	PINMUX_AUX(PINMUX_AUX_LCD_RST) = PINMUX_PULL_DOWN;
+	gpio_direction_output(GPIO_PORT_V, GPIO_PIN_2, GPIO_LOW);
 
 	// Power up supply regulator for display interface.
-	MIPI_CAL(_DSIREG(MIPI_CAL_MIPI_BIAS_PAD_CFG2)) = 0;
+	MIPI_CAL(MIPI_CAL_MIPI_BIAS_PAD_CFG2) = 0;
+	MIPI_CAL(MIPI_CAL_MIPI_BIAS_PAD_CFG0) = 0;
 
 	if (!tegra_t210)
-	{
-		MIPI_CAL(_DSIREG(MIPI_CAL_MIPI_BIAS_PAD_CFG0)) = 0;
 		APB_MISC(APB_MISC_GP_DSI_PAD_CONTROL) = 0;
-	}
 
-	// Set DISP1 clock source and parent clock.
-	CLOCK(CLK_RST_CONTROLLER_CLK_SOURCE_DISP1) = 0x40000000; // PLLD_OUT.
-	u32 plld_div = (3 << 20) | (20 << 11) | 1; // DIVM: 1, DIVN: 20, DIVP: 3. PLLD_OUT: 768 MHz, PLLD_OUT0 (DSI): 97.5 MHz (offset).
-	CLOCK(CLK_RST_CONTROLLER_PLLD_BASE) = PLLCX_BASE_ENABLE | PLLCX_BASE_LOCK | plld_div;
+	// Set DISP1 clock source, parent clock and DSI/PCLK to command mode.
+	// T210:    DIVM: 1, DIVN: 20, DIVP: 3. PLLD_OUT: 100.0 MHz, PLLD_OUT0 (DSI-BCLK): 50.0 MHz. (PCLK: 16.66 MHz)
+	// T210B01: DIVM: 1, DIVN: 20, DIVP: 3. PLLD_OUT:  97.8 MHz, PLLD_OUT0 (DSI-BCLK): 48.9 MHz. (PCLK: 16.30 MHz)
+	clock_enable_plld(3, 20, true, tegra_t210);
 
-	if (tegra_t210)
-	{
-		CLOCK(CLK_RST_CONTROLLER_PLLD_MISC1) = 0x20;     // PLLD_SETUP.
-		CLOCK(CLK_RST_CONTROLLER_PLLD_MISC)  = 0x2D0AAA; // PLLD_ENABLE_CLK.
-	}
-	else
-	{
-		CLOCK(CLK_RST_CONTROLLER_PLLD_MISC1) = 0;
-		CLOCK(CLK_RST_CONTROLLER_PLLD_MISC)  = 0x2DFC00; // PLLD_ENABLE_CLK.
-	}
+	// Setup Display Interface initial configuration.
+	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_dc_init_config, ARRAY_SIZE(_di_dc_init_config));
 
-	// Setup Display Interface initial window configuration.
-	exec_cfg((u32 *)DISPLAY_A_BASE, _display_dc_setup_win_config, 94);
+	// Setup DSI init sequence packets.
+	reg_write_array((vu32 *)DSI_BASE, _di_dsi_seq_pkt_reset_config0,  ARRAY_SIZE(_di_dsi_seq_pkt_reset_config0));
+	DSI(tegra_t210 ? DSI_INIT_SEQ_DATA_15 : DSI_INIT_SEQ_DATA_15_B01) = 0;
+	reg_write_array((vu32 *)DSI_BASE, _di_dsi_seq_pkt_reset_config1,  ARRAY_SIZE(_di_dsi_seq_pkt_reset_config1));
 
-	// Setup display communication interfaces.
-	exec_cfg((u32 *)DSI_BASE, _display_dsi_init_config_part1, 8);
-	if (tegra_t210)
-		DSI(_DSIREG(DSI_INIT_SEQ_DATA_15)) = 0;
-	else
-		DSI(_DSIREG(DSI_INIT_SEQ_DATA_15_B01)) = 0;
-	exec_cfg((u32 *)DSI_BASE, _display_dsi_init_config_part2, 14);
+	// Reset pad trimmers for T210B01.
 	if (!tegra_t210)
-		exec_cfg((u32 *)DSI_BASE, _display_dsi_init_config_part3_t210b01, 7);
-	exec_cfg((u32 *)DSI_BASE, _display_dsi_init_config_part4, 10);
-	DSI(_DSIREG(DSI_PHY_TIMING_0)) = tegra_t210 ? 0x6070601 : 0x6070603;
-	exec_cfg((u32 *)DSI_BASE, _display_dsi_init_config_part5, 12);
-	DSI(_DSIREG(DSI_PHY_TIMING_0)) = tegra_t210 ? 0x6070601 : 0x6070603;
-	exec_cfg((u32 *)DSI_BASE, _display_dsi_init_config_part6, 14);
+		reg_write_array((vu32 *)DSI_BASE, _di_dsi_init_pads_t210b01, ARRAY_SIZE(_di_dsi_init_pads_t210b01));
+
+	// Setup init seq packet lengths, timings and power on DSI.
+	reg_write_array((vu32 *)DSI_BASE, _di_dsi_init_config, ARRAY_SIZE(_di_dsi_init_config));
+	usleep(10);
+
+	// DSI soft reset.
+	_display_dsi_soft_reset();
+
+	// Set DSI LP timings.
+	reg_write_array((vu32 *)DSI_BASE, _di_dsi_timing_lp_config, ARRAY_SIZE(_di_dsi_timing_lp_config));
 	usleep(10000);
 
-	// Enable LCD Reset.
+	// Enable Panel Reset.
 	gpio_write(GPIO_PORT_V, GPIO_PIN_2, GPIO_HIGH);
 	usleep(60000);
 
 	// Setup DSI device takeover timeout.
-	DSI(_DSIREG(DSI_BTA_TIMING)) = nx_aula ? 0x40103 : 0x50204;
+	DSI(DSI_BTA_TIMING) = _nx_aula ? 0x40103 : 0x50204;
 
 	// Get Display ID.
-	_display_id = 0xCCCCCC;
+	_panel_id_raw = 0xCCCCCC;
 	for (u32 i = 0; i < 3; i++)
 	{
-		if (!display_dsi_read(MIPI_DCS_GET_DISPLAY_ID, 3, &_display_id, DSI_VIDEO_DISABLED))
+		if (!display_dsi_read(MIPI_DCS_GET_DISPLAY_ID, 3, &_panel_id_raw))
 			break;
 
-		usleep(10000);
+		usleep(5000);
 	}
 
-	// Save raw Display ID to Nyx storage.
-	nyx_str->info.disp_id = _display_id;
-
 	// Decode Display ID.
-	_display_id = ((_display_id >> 8) & 0xFF00) | (_display_id & 0xFF);
+	_panel_id = ((_panel_id_raw >> 8) & 0xFF00) | (_panel_id_raw & 0xFF);
 
-	if ((_display_id & 0xFF) == PANEL_JDI_XXX062M)
-		_display_id = PANEL_JDI_XXX062M;
+	if ((_panel_id & 0xFF) == PANEL_JDI_XXX062M)
+		_panel_id = PANEL_JDI_XXX062M;
 
 	// For Aula ensure that we have a compatible panel id.
-	if (nx_aula && _display_id == 0xCCCC)
-		_display_id = PANEL_SAM_AMS699VC01;
+	if (_nx_aula)
+		_panel_id = PANEL_SAM_AMS699VC01;
 
 	// Initialize display panel.
-	switch (_display_id)
+	switch (_panel_id)
 	{
 	case PANEL_SAM_AMS699VC01:
 		_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE, MIPI_DCS_EXIT_SLEEP_MODE, 180000);
-		_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE_PARAM, 0xA0, 0); // Write 0 to 0xA0.
-		_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE_PARAM, MIPI_DCS_SET_CONTROL_DISPLAY | (DCS_CONTROL_DISPLAY_BRIGHTNESS_CTRL << 8), 0); // Enable brightness control.
-		DSI(_DSIREG(DSI_WR_DATA)) = 0x339;    // MIPI_DSI_DCS_LONG_WRITE: 3 bytes.
-		DSI(_DSIREG(DSI_WR_DATA)) = 0x000051; // MIPI_DCS_SET_BRIGHTNESS 0000: 0%. FF07: 100%.
-		DSI(_DSIREG(DSI_TRIGGER)) = DSI_TRIGGER_HOST;
+		// Set color mode to basic (natural). Stock is Saturated (0x00). (POR/Exit value is 0x20/0x00).
+		_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE_PARAM,
+							  MIPI_DCS_PRIV_SM_SET_COLOR_MODE | (DCS_SM_COLOR_MODE_BASIC << 8), 0);
+		// Enable backlight and smooth PWM.
+		_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE_PARAM,
+							  MIPI_DCS_SET_CONTROL_DISPLAY | ((DCS_CONTROL_DISPLAY_BRIGHTNESS_CTRL | DCS_CONTROL_DISPLAY_DIMMING_CTRL) << 8), 0);
+
+		// Unlock Level 2 registers.
+		DSI(DSI_WR_DATA) = 0x539;      // MIPI_DSI_DCS_LONG_WRITE: 5 bytes.
+		DSI(DSI_WR_DATA) = 0x5A5A5AE2; // MIPI_DCS_PRIV_SM_SET_REGS_LOCK: Unlock Level 2 registers.
+		DSI(DSI_WR_DATA) = 0x5A;
+		DSI(DSI_TRIGGER) = DSI_TRIGGER_HOST;
+
+		// Set registers offset and set PWM transition to 6 frames (100ms).
+		_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE_PARAM, MIPI_DCS_PRIV_SM_SET_REG_OFFSET | (7 << 8), 0);
+		_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE_PARAM, MIPI_DCS_PRIV_SM_SET_ELVSS      | (6 << 8), 0);
+
+		// Relock Level 2 registers.
+		DSI(DSI_WR_DATA) = 0x539;      // MIPI_DSI_DCS_LONG_WRITE: 5 bytes.
+		DSI(DSI_WR_DATA) = 0xA55A5AE2; // MIPI_DCS_PRIV_SM_SET_REGS_LOCK: Lock Level 2 registers.
+		DSI(DSI_WR_DATA) = 0xA5;
+		DSI(DSI_TRIGGER) = DSI_TRIGGER_HOST;
+
+		// Set backlight to 0%.
+		DSI(DSI_WR_DATA) = 0x339;    // MIPI_DSI_DCS_LONG_WRITE: 3 bytes.
+		DSI(DSI_WR_DATA) = 0x000051; // MIPI_DCS_SET_BRIGHTNESS 0000: 0%. FF07: 100%.
+		DSI(DSI_TRIGGER) = DSI_TRIGGER_HOST;
 		usleep(5000);
 		break;
 
 	case PANEL_JDI_XXX062M:
-		exec_cfg((u32 *)DSI_BASE, _display_init_config_jdi, 43);
+		reg_write_array((vu32 *)DSI_BASE, _di_dsi_panel_init_config_jdi, ARRAY_SIZE(_di_dsi_panel_init_config_jdi));
 		_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE, MIPI_DCS_EXIT_SLEEP_MODE, 180000);
 		break;
 
@@ -461,25 +714,25 @@ void display_init()
 		_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE, MIPI_DCS_EXIT_SLEEP_MODE, 180000);
 
 		// Unlock extension cmds.
-		DSI(_DSIREG(DSI_WR_DATA)) = 0x439;          // MIPI_DSI_DCS_LONG_WRITE: 4 bytes.
-		DSI(_DSIREG(DSI_WR_DATA)) = 0x9483FFB9;     // MIPI_DCS_PRIV_SET_EXTC. (Pass: FF 83 94).
-		DSI(_DSIREG(DSI_TRIGGER)) = DSI_TRIGGER_HOST;
+		DSI(DSI_WR_DATA) = 0x439;          // MIPI_DSI_DCS_LONG_WRITE: 4 bytes.
+		DSI(DSI_WR_DATA) = 0x9483FFB9;     // MIPI_DCS_PRIV_SET_EXTC. (Pass: FF 83 94).
+		DSI(DSI_TRIGGER) = DSI_TRIGGER_HOST;
 		usleep(5000);
 
 		// Set Power control.
-		DSI(_DSIREG(DSI_WR_DATA)) = 0x739;          // MIPI_DSI_DCS_LONG_WRITE: 7 bytes.
-		if (_display_id == PANEL_INL_P062CCA_AZ1)
-			DSI(_DSIREG(DSI_WR_DATA)) = 0x751548B1; // MIPI_DCS_PRIV_SET_POWER_CONTROL. (Not deep standby, BT5 / XDK, VRH gamma volt adj 53 / x40).
+		DSI(DSI_WR_DATA) = 0x739;          // MIPI_DSI_DCS_LONG_WRITE: 7 bytes.
+		if (_panel_id == PANEL_INL_P062CCA_AZ1)
+			DSI(DSI_WR_DATA) = 0x751548B1; // MIPI_DCS_PRIV_SET_POWER_CONTROL. (Not deep standby, BT5 / XDK, VRH gamma volt adj 53 / x40).
 		else // PANEL_AUO_A062TAN01.
-			DSI(_DSIREG(DSI_WR_DATA)) = 0x711148B1; // MIPI_DCS_PRIV_SET_POWER_CONTROL. (Not deep standby, BT1 / XDK, VRH gamma volt adj 49 / x40).
-		DSI(_DSIREG(DSI_WR_DATA)) = 0x143209;       // (NVRH gamma volt adj 9, Amplifier current small / x30, FS0 freq Fosc/80 / FS1 freq Fosc/32).
-		DSI(_DSIREG(DSI_TRIGGER)) = DSI_TRIGGER_HOST;
+			DSI(DSI_WR_DATA) = 0x711148B1; // MIPI_DCS_PRIV_SET_POWER_CONTROL. (Not deep standby, BT1 / XDK, VRH gamma volt adj 49 / x40).
+		DSI(DSI_WR_DATA) = 0x143209;       // (NVRH gamma volt adj 9, Amplifier current small / x30, FS0 freq Fosc/80 / FS1 freq Fosc/32).
+		DSI(DSI_TRIGGER) = DSI_TRIGGER_HOST;
 		usleep(5000);
 		break;
 
 	case PANEL_INL_2J055IA_27A:
 	case PANEL_AUO_A055TAN01:
-	case PANEL_V40_55_UNK:
+	case PANEL_SHP_LQ055T1SW10:
 	default: // Allow spare part displays to work.
 		_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE, MIPI_DCS_EXIT_SLEEP_MODE, 120000);
 		break;
@@ -488,92 +741,117 @@ void display_init()
 	// Unblank display.
 	_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE, MIPI_DCS_SET_DISPLAY_ON, 20000);
 
-	// Configure PLLD for DISP1.
-	plld_div = (1 << 20) | (24 << 11) | 1; // DIVM: 1, DIVN: 24, DIVP: 1. PLLD_OUT: 768 MHz, PLLD_OUT0 (DSI): 234 MHz (offset, it's ddr btw, so normally div2).
-	CLOCK(CLK_RST_CONTROLLER_PLLD_BASE) = PLLCX_BASE_ENABLE | PLLCX_BASE_LOCK | plld_div;
+	// Switch to DSI HS mode.
+	// At 60 Hz: DIVM: 1, DIVN: 24, DIVP: 1. PLLD_OUT: 468.0 MHz, PLLD_OUT0 (DSI-BCLK): 234.0 MHz. (PCLK: 78 MHz)
 
-	if (tegra_t210)
-		CLOCK(CLK_RST_CONTROLLER_PLLD_MISC1) = 0x20; // PLLD_SETUP.
-	else
-		CLOCK(CLK_RST_CONTROLLER_PLLD_MISC1) = 0;
-	CLOCK(CLK_RST_CONTROLLER_PLLD_MISC) = 0x2DFC00;  // Use new PLLD_SDM_DIN.
+	// Set HS PHY timing and finalize DSI packet sequence configuration.
+	reg_write_array((vu32 *)DSI_BASE, _di_dsi_seq_pkt_video_non_burst_no_eot_config, ARRAY_SIZE(_di_dsi_seq_pkt_video_non_burst_no_eot_config));
 
-	// Finalize DSI configuration.
-	DSI(_DSIREG(DSI_PAD_CONTROL_1)) = 0;
-	DSI(_DSIREG(DSI_PHY_TIMING_0)) = tegra_t210 ? 0x6070601 : 0x6070603;
-	exec_cfg((u32 *)DSI_BASE, _display_dsi_packet_config, 19);
-	// Set pixel clock dividers: 234 / 3 / 1 = 78 MHz (offset) for 60 Hz.
-	DISPLAY_A(_DIREG(DC_DISP_DISP_CLOCK_CONTROL)) = PIXEL_CLK_DIVIDER_PCD1 | SHIFT_CLK_DIVIDER(4); // 4: div3.
-	exec_cfg((u32 *)DSI_BASE, _display_dsi_mode_config, 10);
+	/*
+	 * PLLD and the D-PHY timings for the configured refresh rate, over the 60 Hz
+	 * constants just written. At 60 Hz every value is identical to them, so this
+	 * is a no-op there by construction rather than by a branch.
+	 */
+	_display_dsi_set_video_clock(tegra_t210);
+
+	// Set 1-by-1 pixel/clock. Pixel clock is PLLD_OUT0 / 3, i.e. 78 MHz at 60 Hz.
+	DISPLAY_A(DC_DISP_DISP_CLOCK_CONTROL) = PIXEL_CLK_DIVIDER_PCD1 | SHIFT_CLK_DIVIDER(4); // div3. Default: div4.
+
+	// Set DSI mode to HOST.
+	reg_write_array((vu32 *)DSI_BASE, _di_dsi_host_mode_config, ARRAY_SIZE(_di_dsi_host_mode_config));
 	usleep(10000);
 
-	// Calibrate display communication pads.
-	u32 loops = tegra_t210 ? 1 : 2; // Find out why this is done 2 times on Mariko.
-	exec_cfg((u32 *)MIPI_CAL_BASE, _display_mipi_pad_cal_config, 4);
-	for (u32 i = 0; i < loops; i++)
+	/*
+	 * Calibrate display communication pads.
+	 * When switching to the 16ff pad brick, the clock lane termination control
+	 * is separated from data lane termination. This change of the mipi cal
+	 * brings in a bug that the DSI pad clock termination code can't be loaded
+	 * in one time calibration on T210B01. Trigger calibration twice.
+	 */
+	reg_write_array((vu32 *)MIPI_CAL_BASE, _di_mipi_pad_cal_config, ARRAY_SIZE(_di_mipi_pad_cal_config));
+	for (u32 i = 0; i < 2; i++)
 	{
 		// Set MIPI bias pad config.
-		MIPI_CAL(_DSIREG(MIPI_CAL_MIPI_BIAS_PAD_CFG2)) = 0x10010;
-		MIPI_CAL(_DSIREG(MIPI_CAL_MIPI_BIAS_PAD_CFG1)) = tegra_t210 ? 0x300 : 0;
+		MIPI_CAL(MIPI_CAL_MIPI_BIAS_PAD_CFG2) = 0x10010;
+		MIPI_CAL(MIPI_CAL_MIPI_BIAS_PAD_CFG1) = tegra_t210 ? 0x300 : 0;
 
 		// Set pad trimmers and set MIPI DSI cal offsets.
 		if (tegra_t210)
 		{
-			exec_cfg((u32 *)DSI_BASE, _display_dsi_pad_cal_config_t210, 4);
-			exec_cfg((u32 *)MIPI_CAL_BASE, _display_mipi_dsi_cal_offsets_config_t210, 4);
+			reg_write_array((vu32 *)DSI_BASE,      _di_dsi_pad_cal_config_t210,          ARRAY_SIZE(_di_dsi_pad_cal_config_t210));
+			reg_write_array((vu32 *)MIPI_CAL_BASE, _di_mipi_dsi_cal_prod_config_t210,    ARRAY_SIZE(_di_mipi_dsi_cal_prod_config_t210));
 		}
 		else
 		{
-			exec_cfg((u32 *)DSI_BASE, _display_dsi_pad_cal_config_t210b01, 7);
-			exec_cfg((u32 *)MIPI_CAL_BASE, _display_mipi_dsi_cal_offsets_config_t210b01, 4);
+			reg_write_array((vu32 *)DSI_BASE,      _di_dsi_pad_cal_config_t210b01,       ARRAY_SIZE(_di_dsi_pad_cal_config_t210b01));
+			reg_write_array((vu32 *)MIPI_CAL_BASE, _di_mipi_dsi_cal_prod_config_t210b01, ARRAY_SIZE(_di_mipi_dsi_cal_prod_config_t210b01));
 		}
 
-		// Set the rest of MIPI cal offsets and apply calibration.
-		exec_cfg((u32 *)MIPI_CAL_BASE, _display_mipi_apply_dsi_cal_config, 12);
+		// Reset all unused MIPI cal offsets.
+		reg_write_array((vu32 *)MIPI_CAL_BASE, _di_mipi_dsi_cal_unused_config, ARRAY_SIZE(_di_mipi_dsi_cal_unused_config));
+
+		// Set Prescale/filter and start calibration.
+		MIPI_CAL(MIPI_CAL_MIPI_CAL_CTRL) = 0x2A000001;
 	}
 	usleep(10000);
 
-	// Enable video display controller.
-	exec_cfg((u32 *)DISPLAY_A_BASE, _display_video_disp_controller_enable_config, 113);
+	// Setup video mode.
+	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_dc_video_mode_config, ARRAY_SIZE(_di_dc_video_mode_config));
 }
 
 void display_backlight_pwm_init()
 {
-	if (_display_id == PANEL_SAM_AMS699VC01)
+	if (_panel_id == PANEL_SAM_AMS699VC01)
 		return;
 
+	// Enable PWM clock.
 	clock_enable_pwm();
 
-	PWM(PWM_CONTROLLER_PWM_CSR_0) = PWM_CSR_EN; // Enable PWM and set it to 25KHz PFM. 29.5KHz is stock.
+	// Enable PWM and set it to 25KHz PFM. 29.5KHz is stock.
+	PWM(PWM_CONTROLLER_PWM_CSR_0) = PWM_CSR_EN;
 
 	PINMUX_AUX(PINMUX_AUX_LCD_BL_PWM) = (PINMUX_AUX(PINMUX_AUX_LCD_BL_PWM) & ~PINMUX_FUNC_MASK) | 1; // Set PWM0 mode.
+	usleep(2);
+
 	gpio_config(GPIO_PORT_V, GPIO_PIN_0, GPIO_MODE_SPIO); // Backlight power mode.
 }
 
 void display_backlight(bool enable)
 {
-	gpio_write(GPIO_PORT_V, GPIO_PIN_0, enable ? GPIO_HIGH : GPIO_LOW); // Backlight PWM GPIO.
-}
-
-void display_dsi_backlight_brightness(u32 brightness)
-{
-	// Normalize brightness value by 82% and a base of 45 duty.
-	if (brightness)
-		brightness = (brightness * PANEL_OLED_BL_COEFF / 100) + PANEL_OLED_BL_OFFSET;
-
-	u16 bl_ctrl = byte_swap_16((u16)(brightness * 8));
-	display_dsi_vblank_write(MIPI_DCS_SET_BRIGHTNESS, 2, &bl_ctrl);
-}
-
-void display_pwm_backlight_brightness(u32 brightness, u32 step_delay)
-{
-	u32 old_value = (PWM(PWM_CONTROLLER_PWM_CSR_0) >> 16) & 0xFF;
-	if (brightness == old_value)
+	if (_panel_id == PANEL_SAM_AMS699VC01)
 		return;
 
-	if (old_value < brightness)
+	// Backlight PWM GPIO.
+	gpio_write(GPIO_PORT_V, GPIO_PIN_0, enable ? GPIO_HIGH : GPIO_LOW);
+}
+
+static void _display_dsi_backlight_brightness(u32 duty)
+{
+	if (DISPLAY_A(DC_DCS_BACKLIGHT_LEVEL) == duty)
+		return;
+
+	// Convert duty to candela.
+	u32 candela = duty * PANEL_SM_BL_CANDELA_MAX / 255;
+
+	u16 bl_ctrl = byte_swap_16((u16)candela);
+	display_dsi_vblank_write(MIPI_DCS_SET_BRIGHTNESS, 2, &bl_ctrl);
+
+	// Wait for backlight to completely turn off. 6 frames.
+	if (!duty)
+		usleep(100000);
+
+	DISPLAY_A(DC_DCS_BACKLIGHT_LEVEL) = duty;
+}
+
+static void _display_pwm_backlight_brightness(u32 duty, u32 step_delay)
+{
+	u32 old_value = (PWM(PWM_CONTROLLER_PWM_CSR_0) >> 16) & 0xFF;
+	if (duty == old_value)
+		return;
+
+	if (old_value < duty)
 	{
-		for (u32 i = old_value; i < brightness + 1; i++)
+		for (u32 i = old_value; i <= duty; i++)
 		{
 			PWM(PWM_CONTROLLER_PWM_CSR_0) = PWM_CSR_EN | (i << 16);
 			usleep(step_delay);
@@ -581,14 +859,12 @@ void display_pwm_backlight_brightness(u32 brightness, u32 step_delay)
 	}
 	else
 	{
-		for (u32 i = old_value; i > brightness; i--)
+		for (int i = old_value; i >= (int)duty; i--)
 		{
 			PWM(PWM_CONTROLLER_PWM_CSR_0) = PWM_CSR_EN | (i << 16);
 			usleep(step_delay);
 		}
 	}
-	if (!brightness)
-		PWM(PWM_CONTROLLER_PWM_CSR_0) = 0;
 }
 
 void display_backlight_brightness(u32 brightness, u32 step_delay)
@@ -596,15 +872,10 @@ void display_backlight_brightness(u32 brightness, u32 step_delay)
 	if (brightness > 255)
 		brightness = 255;
 
-	if (_display_id != PANEL_SAM_AMS699VC01)
-		display_pwm_backlight_brightness(brightness, step_delay);
+	if (_panel_id != PANEL_SAM_AMS699VC01)
+		_display_pwm_backlight_brightness(brightness, step_delay);
 	else
-		display_dsi_backlight_brightness(brightness);
-}
-
-u32 display_get_backlight_brightness()
-{
-	return ((PWM(PWM_CONTROLLER_PWM_CSR_0) >> 16) & 0xFF);
+		_display_dsi_backlight_brightness(brightness);
 }
 
 static void _display_panel_and_hw_end(bool no_panel_deinit)
@@ -615,253 +886,358 @@ static void _display_panel_and_hw_end(bool no_panel_deinit)
 	display_backlight_brightness(0, 1000);
 
 	// Enable host cmd packets during video.
-	DSI(_DSIREG(DSI_VIDEO_MODE_CONTROL)) = DSI_CMD_PKT_VID_ENABLE;
+	DSI(DSI_VIDEO_MODE_CONTROL) = DSI_CMD_PKT_VID_ENABLE;
 
 	// Blank display.
-	DSI(_DSIREG(DSI_WR_DATA)) = (MIPI_DCS_SET_DISPLAY_OFF << 8) | MIPI_DSI_DCS_SHORT_WRITE;
+	DSI(DSI_WR_DATA) = (MIPI_DCS_SET_DISPLAY_OFF << 8) | MIPI_DSI_DCS_SHORT_WRITE;
+
+	// Wait for 5 frames (HOST1X_CH0_SYNC_SYNCPT_9).
+	// Not here. Wait for 1 frame + transmission manually.
+	usleep(_di_frame_us((_panel_id == PANEL_SAM_AMS699VC01) ? (15933 + 195) : (16666 + 230)));
 
 	// Propagate changes to all register buffers and disable host cmd packets during video.
-	DISPLAY_A(_DIREG(DC_CMD_STATE_ACCESS)) = READ_MUX | WRITE_MUX;
-	DSI(_DSIREG(DSI_VIDEO_MODE_CONTROL)) = 0;
+	DISPLAY_A(DC_CMD_STATE_ACCESS) = READ_MUX_ACTIVE | WRITE_MUX_ACTIVE;
+	DSI(DSI_VIDEO_MODE_CONTROL) = 0;
 
 	// De-initialize video controller.
-	exec_cfg((u32 *)DISPLAY_A_BASE, _display_video_disp_controller_disable_config, 17);
-	exec_cfg((u32 *)DSI_BASE, _display_dsi_timing_deinit_config, 16);
+	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_dc_video_disable_config, ARRAY_SIZE(_di_dc_video_disable_config));
 
-	if (_display_id != PANEL_SAM_AMS699VC01)
+	// Set DISP1 clock source, parent clock and DSI/PCLK to command mode.
+	// T210:    DIVM: 1, DIVN: 20, DIVP: 3. PLLD_OUT: 100.0 MHz, PLLD_OUT0 (DSI-BCLK): 50.0 MHz. (PCLK: 16.66 MHz)
+	// T210B01: DIVM: 1, DIVN: 20, DIVP: 3. PLLD_OUT:  97.8 MHz, PLLD_OUT0 (DSI-BCLK): 48.9 MHz. (PCLK: 16.30 MHz)
+	clock_enable_plld(3, 20, true, hw_get_chip_id() == GP_HIDREV_MAJOR_T210);
+
+	// DSI soft reset.
+	_display_dsi_soft_reset();
+
+	// Set DSI LP timings.
+	reg_write_array((vu32 *)DSI_BASE, _di_dsi_timing_lp_config, ARRAY_SIZE(_di_dsi_timing_lp_config));
+
+	if (_panel_id != PANEL_SAM_AMS699VC01)
 		usleep(10000);
 
 	// De-initialize display panel.
-	switch (_display_id)
+	switch (_panel_id)
 	{
 	case PANEL_JDI_XXX062M:
-		exec_cfg((u32 *)DSI_BASE, _display_deinit_config_jdi, 22);
+		reg_write_array((vu32 *)DSI_BASE, _di_dsi_panel_deinit_config_jdi, ARRAY_SIZE(_di_dsi_panel_deinit_config_jdi));
 		break;
 
 	case PANEL_AUO_A062TAN01:
-		exec_cfg((u32 *)DSI_BASE, _display_deinit_config_auo, 37);
+		reg_write_array((vu32 *)DSI_BASE, _di_dsi_panel_deinit_config_auo, ARRAY_SIZE(_di_dsi_panel_deinit_config_auo));
+		usleep(5000);
 		break;
 
 	case PANEL_INL_2J055IA_27A:
 	case PANEL_AUO_A055TAN01:
-	case PANEL_V40_55_UNK:
+	case PANEL_SHP_LQ055T1SW10:
 		// Unlock extension cmds.
-		DSI(_DSIREG(DSI_WR_DATA)) = 0x439;          // MIPI_DSI_DCS_LONG_WRITE: 4 bytes.
-		DSI(_DSIREG(DSI_WR_DATA)) = 0x9483FFB9;     // MIPI_DCS_PRIV_SET_EXTC. (Pass: FF 83 94).
-		DSI(_DSIREG(DSI_TRIGGER)) = DSI_TRIGGER_HOST;
+		DSI(DSI_WR_DATA) = 0x439;          // MIPI_DSI_DCS_LONG_WRITE: 4 bytes.
+		DSI(DSI_WR_DATA) = 0x9483FFB9;     // MIPI_DCS_PRIV_SET_EXTC. (Pass: FF 83 94).
+		DSI(DSI_TRIGGER) = DSI_TRIGGER_HOST;
 		usleep(5000);
 
 		// Set Power control.
-		DSI(_DSIREG(DSI_WR_DATA)) = 0xB39;          // MIPI_DSI_DCS_LONG_WRITE: 11 bytes.
-		if (_display_id == PANEL_INL_2J055IA_27A)
-			DSI(_DSIREG(DSI_WR_DATA)) = 0x751548B1; // MIPI_DCS_PRIV_SET_POWER_CONTROL. (Not deep standby, BT5 / XDK, VRH gamma volt adj 53 / x40).
-		else if (_display_id == PANEL_AUO_A055TAN01)
-			DSI(_DSIREG(DSI_WR_DATA)) = 0x711148B1; // MIPI_DCS_PRIV_SET_POWER_CONTROL. (Not deep standby, BT1 / XDK, VRH gamma volt adj 49 / x40).
-		else // PANEL_V40_55_UNK.
-			DSI(_DSIREG(DSI_WR_DATA)) = 0x731348B1; // MIPI_DCS_PRIV_SET_POWER_CONTROL. (Not deep standby, BT3 / XDK, VRH gamma volt adj 51 / x40).
-		if (_display_id == PANEL_INL_2J055IA_27A || _display_id == PANEL_AUO_A055TAN01)
+		DSI(DSI_WR_DATA) = 0xB39;          // MIPI_DSI_DCS_LONG_WRITE: 11 bytes.
+		if (_panel_id == PANEL_INL_2J055IA_27A)
+			DSI(DSI_WR_DATA) = 0x751548B1; // MIPI_DCS_PRIV_SET_POWER_CONTROL. (Not deep standby, BT5 / XDK, VRH gamma volt adj 53 / x40).
+		else if (_panel_id == PANEL_AUO_A055TAN01)
+			DSI(DSI_WR_DATA) = 0x711148B1; // MIPI_DCS_PRIV_SET_POWER_CONTROL. (Not deep standby, BT1 / XDK, VRH gamma volt adj 49 / x40).
+		else // PANEL_SHP_LQ055T1SW10.
+			DSI(DSI_WR_DATA) = 0x731348B1; // MIPI_DCS_PRIV_SET_POWER_CONTROL. (Not deep standby, BT3 / XDK, VRH gamma volt adj 51 / x40).
+		if (_panel_id == PANEL_INL_2J055IA_27A || _panel_id == PANEL_AUO_A055TAN01)
 		{
 			// (NVRH gamma volt adj 9, Amplifier current small / x30, FS0 freq Fosc/80 / FS1 freq Fosc/32, Enter standby / PON / VCOMG).
-			DSI(_DSIREG(DSI_WR_DATA)) = 0x71143209;
-			DSI(_DSIREG(DSI_WR_DATA)) = 0x114D31;   // (Unknown).
+			DSI(DSI_WR_DATA) = 0x71143209;
+			DSI(DSI_WR_DATA) = 0x114D31;   // (Unknown).
 		}
-		else // PANEL_V40_55_UNK.
+		else // PANEL_SHP_LQ055T1SW10.
 		{
 			// (NVRH gamma volt adj 9, Amplifier current small / x30, FS0 freq Fosc/80 / FS1 freq Fosc/48, Enter standby / PON / VCOMG).
-			DSI(_DSIREG(DSI_WR_DATA)) = 0x71243209;
-			DSI(_DSIREG(DSI_WR_DATA)) = 0x004C31;   // (Unknown).
+			DSI(DSI_WR_DATA) = 0x71243209;
+			DSI(DSI_WR_DATA) = 0x004C31;   // (Unknown).
 		}
-		DSI(_DSIREG(DSI_TRIGGER)) = DSI_TRIGGER_HOST;
+		DSI(DSI_TRIGGER) = DSI_TRIGGER_HOST;
 		usleep(5000);
 		break;
 
 	case PANEL_INL_P062CCA_AZ1:
+	case PANEL_SAM_AMS699VC01:
 	default:
 		break;
 	}
 
 	// Blank - powerdown.
 	_display_dsi_send_cmd(MIPI_DSI_DCS_SHORT_WRITE, MIPI_DCS_ENTER_SLEEP_MODE,
-		(_display_id == PANEL_SAM_AMS699VC01) ? 120000 : 50000);
+		(_panel_id == PANEL_SAM_AMS699VC01) ? 120000 : 50000);
 
 skip_panel_deinit:
-	// Disable LCD power pins.
-	gpio_write(GPIO_PORT_V, GPIO_PIN_2, GPIO_LOW);     // LCD Reset disable.
+	// Disable Panel Reset.
+	gpio_write(GPIO_PORT_V, GPIO_PIN_2, GPIO_LOW);
+	usleep(10000);
 
-	if (!nx_aula) // HOS uses panel id.
+	if (!_nx_aula) // HOS uses panel id.
 	{
-		usleep(10000);
-		gpio_write(GPIO_PORT_I, GPIO_PIN_1, GPIO_LOW); // LCD -5V disable.
-		usleep(10000);
-		gpio_write(GPIO_PORT_I, GPIO_PIN_0, GPIO_LOW); // LCD +5V disable.
-		usleep(10000);
+		// Disable LCD driver AVDD channels.
+		gpio_write(GPIO_PORT_I, GPIO_PIN_0 | GPIO_PIN_1, GPIO_LOW);
+
+		// Make sure LCD driver PWM pin is in PWM0 mode.
+		gpio_config(GPIO_PORT_V, GPIO_PIN_0, GPIO_MODE_SPIO); // Backlight PWM.
+		PINMUX_AUX(PINMUX_AUX_LCD_BL_PWM) = PINMUX_TRISTATE | PINMUX_PULL_DOWN | 1; // Set PWM0 mode.
 	}
-	else
-		usleep(30000); // Aula Panel.
+	usleep(10000);
 
 	// Disable Display Interface specific clocks.
 	CLOCK(CLK_RST_CONTROLLER_RST_DEV_H_SET) = BIT(CLK_H_MIPI_CAL) | BIT(CLK_H_DSI);
 	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_H_CLR) = BIT(CLK_H_MIPI_CAL) | BIT(CLK_H_DSI);
-	CLOCK(CLK_RST_CONTROLLER_RST_DEV_L_SET) = BIT(CLK_L_HOST1X) | BIT(CLK_L_DISP1);
-	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_L_CLR) = BIT(CLK_L_HOST1X) | BIT(CLK_L_DISP1);
+	CLOCK(CLK_RST_CONTROLLER_RST_DEV_L_SET) = BIT(CLK_L_DISP1);
+	CLOCK(CLK_RST_CONTROLLER_CLK_ENB_L_CLR) = BIT(CLK_L_DISP1);
 
-	// Power down pads.
-	DSI(_DSIREG(DSI_PAD_CONTROL_0)) = DSI_PAD_CONTROL_VS1_PULLDN_CLK | DSI_PAD_CONTROL_VS1_PULLDN(0xF) | DSI_PAD_CONTROL_VS1_PDIO_CLK | DSI_PAD_CONTROL_VS1_PDIO(0xF);
-	DSI(_DSIREG(DSI_POWER_CONTROL)) = 0;
+	// Power down.
+	DSI(DSI_PAD_CONTROL_0) = DSI_PAD_CONTROL_VS1_PULLDN_CLK | DSI_PAD_CONTROL_VS1_PULLDN(0xF) |
+							 DSI_PAD_CONTROL_VS1_PDIO_CLK   | DSI_PAD_CONTROL_VS1_PDIO(0xF);
+	_display_dsi_soft_reset();
 
-	// Switch LCD PWM backlight pin to special function mode and enable PWM0 mode.
-	if (!nx_aula)
-	{
-		gpio_config(GPIO_PORT_V, GPIO_PIN_0, GPIO_MODE_SPIO); // Backlight PWM.
-		PINMUX_AUX(PINMUX_AUX_LCD_BL_PWM) = (PINMUX_AUX(PINMUX_AUX_LCD_BL_PWM) & ~PINMUX_TRISTATE) | PINMUX_TRISTATE;
-		PINMUX_AUX(PINMUX_AUX_LCD_BL_PWM) = (PINMUX_AUX(PINMUX_AUX_LCD_BL_PWM) & ~PINMUX_FUNC_MASK) | 1; // Set PWM0 mode.
-	}
+	// Disable DSI AVDD.
+	max7762x_regulator_enable(REGULATOR_LDO0, false);
 }
 
 void display_end() { _display_panel_and_hw_end(false); };
 
+u32 display_get_verbose_panel_id()
+{
+	return _panel_id_raw;
+}
+
 u16 display_get_decoded_panel_id()
 {
-	return _display_id;
+	return _panel_id;
 }
 
 void display_set_decoded_panel_id(u32 id)
 {
 	// Get Hardware type, as it's used in various DI functions.
-	nx_aula = fuse_read_hw_type() == FUSE_NX_HW_TYPE_AULA;
+	_nx_aula = fuse_read_hw_type() == FUSE_NX_HW_TYPE_AULA;
 
 	// Decode Display ID.
-	_display_id = ((id >> 8) & 0xFF00) | (id & 0xFF);
+	_panel_id = ((id >> 8) & 0xFF00) | (id & 0xFF);
 
-	if ((_display_id & 0xFF) == PANEL_JDI_XXX062M)
-		_display_id = PANEL_JDI_XXX062M;
+	if ((_panel_id & 0xFF) == PANEL_JDI_XXX062M)
+		_panel_id = PANEL_JDI_XXX062M;
 
 	// For Aula ensure that we have a compatible panel id.
-	if (nx_aula && _display_id == 0xCCCC)
-		_display_id = PANEL_SAM_AMS699VC01;
+	if (_nx_aula && _panel_id == 0xCCCC)
+		_panel_id = PANEL_SAM_AMS699VC01;
 }
 
 void display_color_screen(u32 color)
 {
-	exec_cfg((u32 *)DISPLAY_A_BASE, cfg_display_one_color, 8);
+	// Disable all windows.
+	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_win_one_color, ARRAY_SIZE(_di_win_one_color));
 
 	// Configure display to show single color.
-	DISPLAY_A(_DIREG(DC_WIN_AD_WIN_OPTIONS)) = 0;
-	DISPLAY_A(_DIREG(DC_WIN_BD_WIN_OPTIONS)) = 0;
-	DISPLAY_A(_DIREG(DC_WIN_CD_WIN_OPTIONS)) = 0;
-	DISPLAY_A(_DIREG(DC_DISP_BLEND_BACKGROUND_COLOR)) = color;
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = (DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) & 0xFFFFFFFE) | GENERAL_ACT_REQ;
-	usleep(35000); // No need to wait on Aula.
+	DISPLAY_A(DC_DISP_BLEND_BACKGROUND_COLOR) = color;
 
-	if (_display_id != PANEL_SAM_AMS699VC01)
+	// Arm and activate changes.
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | WIN_A_UPDATE |  WIN_B_UPDATE  | WIN_C_UPDATE  | WIN_D_UPDATE;
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | WIN_A_ACT_REQ | WIN_B_ACT_REQ | WIN_C_ACT_REQ | WIN_D_ACT_REQ;
+	usleep(_di_frame_us(35000)); // Wait 2 frames. No need on Aula.
+
+	if (_panel_id != PANEL_SAM_AMS699VC01)
 		display_backlight(true);
 	else
-		display_backlight_brightness(255, 0);
+		display_backlight_brightness(150, 0);
 }
 
-u32 *display_init_framebuffer_pitch()
+u32 *display_init_window_a_pitch()
 {
 	// Sanitize framebuffer area.
-	memset((u32 *)IPL_FB_ADDRESS, 0, 0x3C0000);
+	memset((u32 *)IPL_FB_ADDRESS, 0, IPL_FB_SZ);
 
-	// This configures the framebuffer @ IPL_FB_ADDRESS with a resolution of 1280x720 (line stride 720).
-	exec_cfg((u32 *)DISPLAY_A_BASE, cfg_display_framebuffer_pitch, 32);
-	usleep(35000); // No need to wait on Aula.
+	// This configures the framebuffer @ IPL_FB_ADDRESS with a resolution of 720x1280 (line stride 720).
+	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_winA_pitch, ARRAY_SIZE(_di_winA_pitch));
+	//usleep(_di_frame_us(35000)); // Wait 2 frames. No need on Aula.
 
-	return (u32 *)IPL_FB_ADDRESS;
+	return (u32 *)DISPLAY_A(DC_WINBUF_START_ADDR);
 }
 
-u32 *display_init_framebuffer_pitch_inv()
+u32 *display_init_window_a_pitch_vic()
 {
-	// This configures the framebuffer @ NYX_FB_ADDRESS with a resolution of 1280x720 (line stride 720).
-	exec_cfg((u32 *)DISPLAY_A_BASE, cfg_display_framebuffer_pitch_inv, 34);
-	usleep(35000); // No need to wait on Aula.
+	// This configures the framebuffer @ NYX_FB_ADDRESS with a resolution of 720x1280 (line stride 720).
+	if (_panel_id != PANEL_SAM_AMS699VC01)
+		usleep(_di_frame_us(8000)); // Wait half frame for PWM to apply.
+	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_winA_pitch_vic, ARRAY_SIZE(_di_winA_pitch_vic));
+	if (_panel_id != PANEL_SAM_AMS699VC01)
+		usleep(_di_frame_us(35000)); // Wait 2 frames.
 
-	return (u32 *)NYX_FB_ADDRESS;
+	return (u32 *)DISPLAY_A(DC_WINBUF_START_ADDR);
 }
 
-u32 *display_init_framebuffer_block()
+u32 *display_init_window_a_pitch_inv()
 {
-	// This configures the framebuffer @ NYX_FB_ADDRESS with a resolution of 1280x720 (line stride 720).
-	exec_cfg((u32 *)DISPLAY_A_BASE, cfg_display_framebuffer_block, 34);
-	usleep(35000); // No need to wait on Aula.
+	// This configures the framebuffer @ NYX_FB_ADDRESS with a resolution of 720x1280 (line stride 720).
+	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_winA_pitch_inv, ARRAY_SIZE(_di_winA_pitch_inv));
+	usleep(_di_frame_us(35000)); // Wait 2 frames. No need on Aula.
 
-	return (u32 *)NYX_FB_ADDRESS;
+	return (u32 *)DISPLAY_A(DC_WINBUF_START_ADDR);
 }
 
-u32 *display_init_framebuffer_log()
+u32 *display_init_window_a_block()
+{
+	// This configures the framebuffer @ NYX_FB_ADDRESS with a resolution of 720x1280.
+	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_winA_block, ARRAY_SIZE(_di_winA_block));
+	usleep(_di_frame_us(35000)); // Wait 2 frames. No need on Aula.
+
+	return (u32 *)DISPLAY_A(DC_WINBUF_START_ADDR);
+}
+
+u32 *display_init_window_d_console()
 {
 	// This configures the framebuffer @ LOG_FB_ADDRESS with a resolution of 1280x720 (line stride 720).
-	exec_cfg((u32 *)DISPLAY_A_BASE, cfg_display_framebuffer_log, 20);
+	reg_write_array((vu32 *)DISPLAY_A_BASE, _di_winD_log, ARRAY_SIZE(_di_winD_log));
 
-	return (u32 *)LOG_FB_ADDRESS;
+	return (u32 *)DISPLAY_A(DC_WINBUF_START_ADDR);
 }
 
-void display_activate_console()
+void display_window_disable(u32 window)
 {
-	DISPLAY_A(_DIREG(DC_CMD_DISPLAY_WINDOW_HEADER)) = WINDOW_D_SELECT; // Select window D.
-	DISPLAY_A(_DIREG(DC_WIN_WIN_OPTIONS)) = WIN_ENABLE; // Enable window DD.
-	DISPLAY_A(_DIREG(DC_WIN_POSITION)) = 0xFF80;
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_UPDATE | WIN_D_UPDATE;
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_ACT_REQ | WIN_D_ACT_REQ;
+	// Select window C.
+	DISPLAY_A(DC_CMD_DISPLAY_WINDOW_HEADER) = BIT(WINDOW_SELECT + window);
 
+	// Disable window C.
+	DISPLAY_A(DC_WIN_WIN_OPTIONS) = 0;
+
+	// Arm and activate changes.
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | BIT(WIN_UPDATE  + window);
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | BIT(WIN_ACT_REQ + window);
+}
+
+void display_set_framebuffer(u32 window, void *fb)
+{
+	// Select window.
+	DISPLAY_A(DC_CMD_DISPLAY_WINDOW_HEADER) = BIT(WINDOW_SELECT + window);
+
+	// Set new fb address.
+	DISPLAY_A(DC_WINBUF_START_ADDR) = (u32)fb;
+
+	// Arm and activate changes.
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | BIT(WIN_UPDATE  + window);
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | BIT(WIN_ACT_REQ + window);
+}
+
+void display_move_framebuffer(u32 window, void *fb)
+{
+	// Select window.
+	DISPLAY_A(DC_CMD_DISPLAY_WINDOW_HEADER) = BIT(WINDOW_SELECT + window);
+
+	// Get current framebuffer address.
+	const void *fb_curr = (void *)DISPLAY_A(DC_WINBUF_START_ADDR);
+	u32 win_size = DISPLAY_A(DC_WIN_PRESCALED_SIZE);
+	win_size = (win_size & 0x7FFF) * ((win_size >> 16) & 0x1FFF);
+
+	// Copy fb over.
+	memcpy(fb, fb_curr, win_size);
+
+	// Set new fb address.
+	DISPLAY_A(DC_WINBUF_START_ADDR) = (u32)fb;
+
+	// Arm and activate changes.
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | BIT(WIN_UPDATE  + window);
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | BIT(WIN_ACT_REQ + window);
+}
+
+void display_window_d_console_enable()
+{
+	// Only update active registers on vsync.
+	DISPLAY_A(DC_CMD_REG_ACT_CONTROL) = DISPLAY_A(DC_CMD_REG_ACT_CONTROL) & ~WIN_D_ACT_HCNTR_SEL;
+
+	// Select window D.
+	DISPLAY_A(DC_CMD_DISPLAY_WINDOW_HEADER) = WINDOW_D_SELECT;
+
+	// Enable and setup window D.
+	DISPLAY_A(DC_WIN_WIN_OPTIONS) = WIN_ENABLE;
+	DISPLAY_A(DC_WIN_POSITION)    = 0xFF80; // X: -128.
+
+	// Arm and activate changes.
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | WIN_D_UPDATE;
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | WIN_D_ACT_REQ;
+
+	// Pull-down effect.
 	for (u32 i = 0xFF80; i < 0x10000; i++)
 	{
-		DISPLAY_A(_DIREG(DC_WIN_POSITION)) = i & 0xFFFF;
-		DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_UPDATE | WIN_D_UPDATE;
-		DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_ACT_REQ | WIN_D_ACT_REQ;
+		// Set window position.
+		DISPLAY_A(DC_WIN_POSITION) = i & 0xFFFF;
+
+		// Arm and activate changes.
+		DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | WIN_D_UPDATE;
+		DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | WIN_D_ACT_REQ;
 		usleep(1000);
 	}
 
-	DISPLAY_A(_DIREG(DC_WIN_POSITION)) = 0;
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_UPDATE | WIN_D_UPDATE;
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_ACT_REQ | WIN_D_ACT_REQ;
+	DISPLAY_A(DC_WIN_POSITION) = 0;
+
+	// Arm and activate changes.
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | WIN_D_UPDATE;
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | WIN_D_ACT_REQ;
 }
 
-void display_deactivate_console()
+void display_window_d_console_disable()
 {
-	DISPLAY_A(_DIREG(DC_CMD_DISPLAY_WINDOW_HEADER)) = WINDOW_D_SELECT; // Select window D.
+	// Select window D.
+	DISPLAY_A(DC_CMD_DISPLAY_WINDOW_HEADER) = WINDOW_D_SELECT;
 
+	// Pull-up effect.
 	for (u32 i = 0xFFFF; i > 0xFF7F; i--)
 	{
-		DISPLAY_A(_DIREG(DC_WIN_POSITION)) = i & 0xFFFF;
-		DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_UPDATE | WIN_D_UPDATE;
-		DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_ACT_REQ | WIN_D_ACT_REQ;
+		// Set window position.
+		DISPLAY_A(DC_WIN_POSITION) = i & 0xFFFF;
+
+		// Arm and activate changes.
+		DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | WIN_D_UPDATE;
+		DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | WIN_D_ACT_REQ;
 		usleep(500);
 	}
 
-	DISPLAY_A(_DIREG(DC_WIN_POSITION)) = 0;
-	DISPLAY_A(_DIREG(DC_WIN_WIN_OPTIONS)) = 0; // Disable window DD.
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_UPDATE | WIN_D_UPDATE;
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_ACT_REQ | WIN_D_ACT_REQ;
-}
-
-void display_init_cursor(void *crs_fb, u32 size)
-{
-	// Setup cursor.
-	DISPLAY_A(_DIREG(DC_DISP_CURSOR_START_ADDR)) = CURSOR_CLIPPING(CURSOR_CLIP_WIN_A) | size | ((u32)crs_fb >> 10);
-	DISPLAY_A(_DIREG(DC_DISP_BLEND_CURSOR_CONTROL)) =
-		CURSOR_BLEND_R8G8B8A8 | CURSOR_BLEND_DST_FACTOR(CURSOR_BLEND_K1) | CURSOR_BLEND_SRC_FACTOR(CURSOR_BLEND_K1) | 0xFF;
-
-	DISPLAY_A(_DIREG(DC_DISP_DISP_WIN_OPTIONS)) |= CURSOR_ENABLE;
+	// Disable window D.
+	DISPLAY_A(DC_WIN_POSITION)    = 0;
+	DISPLAY_A(DC_WIN_WIN_OPTIONS) = 0;
 
 	// Arm and activate changes.
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_UPDATE | CURSOR_UPDATE;
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_ACT_REQ | CURSOR_ACT_REQ;
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | WIN_D_UPDATE;
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | WIN_D_ACT_REQ;
 }
 
-void display_set_pos_cursor(u32 x, u32 y)
+void display_cursor_init(void *crs_fb, u32 size)
 {
-	DISPLAY_A(_DIREG(DC_DISP_CURSOR_POSITION)) = x | (y << 16);
+	// Setup cursor.
+	DISPLAY_A(DC_DISP_CURSOR_START_ADDR)    = CURSOR_CLIPPING(CURSOR_CLIP_WIN_A) | size | ((u32)crs_fb >> 10);
+	DISPLAY_A(DC_DISP_BLEND_CURSOR_CONTROL) = CURSOR_BLEND_R8G8B8A8                    |
+											  CURSOR_BLEND_DST_FACTOR(CURSOR_BLEND_K1) |
+											  CURSOR_BLEND_SRC_FACTOR(CURSOR_BLEND_K1) | 0xFF;
 
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_UPDATE | CURSOR_UPDATE;
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_ACT_REQ | CURSOR_ACT_REQ;
+	// Enable cursor window.
+	DISPLAY_A(DC_DISP_DISP_WIN_OPTIONS) |= CURSOR_ENABLE;
+
+	// Arm and activate changes.
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | CURSOR_UPDATE;
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | CURSOR_ACT_REQ;
 }
 
-void display_deinit_cursor()
+void display_cursor_set_pos(u32 x, u32 y)
 {
-	DISPLAY_A(_DIREG(DC_DISP_BLEND_CURSOR_CONTROL)) = 0;
-	DISPLAY_A(_DIREG(DC_DISP_DISP_WIN_OPTIONS)) &= ~CURSOR_ENABLE;
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_UPDATE | CURSOR_UPDATE;
-	DISPLAY_A(_DIREG(DC_CMD_STATE_CONTROL)) = GENERAL_ACT_REQ | CURSOR_ACT_REQ;
+	// Set cursor position.
+	DISPLAY_A(DC_DISP_CURSOR_POSITION) = x | (y << 16);
+
+	// Arm and activate changes.
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | CURSOR_UPDATE;
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | CURSOR_ACT_REQ;
+}
+
+void display_cursor_deinit()
+{
+	DISPLAY_A(DC_DISP_BLEND_CURSOR_CONTROL) = 0;
+	DISPLAY_A(DC_DISP_DISP_WIN_OPTIONS) &= ~CURSOR_ENABLE;
+
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_UPDATE  | CURSOR_UPDATE;
+	DISPLAY_A(DC_CMD_STATE_CONTROL) = GENERAL_ACT_REQ | CURSOR_ACT_REQ;
 }

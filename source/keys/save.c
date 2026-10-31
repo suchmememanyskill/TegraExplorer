@@ -23,7 +23,7 @@ ErrCode_t saveCommit(const char *path){
         goto out_free;
     }
 
-    se_calc_sha256_oneshot(hash, buf, hashed_data_size);
+    se_sha_hash_256_oneshot(hash, buf, hashed_data_size);
 
     f_lseek(&file, 0x108);
     if ((res = f_write(&file, hash, sizeof(hash), NULL))){
@@ -35,7 +35,7 @@ ErrCode_t saveCommit(const char *path){
         goto out_free;
     }
 
-    se_aes_cmac(8, cmac, 0x10, cmac_data, cmac_data_size);
+    se_aes_hash_cmac(8, cmac, cmac_data, cmac_data_size);
 
     f_lseek(&file, 0);
 

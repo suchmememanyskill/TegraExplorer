@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2021 CTCaer
+ * Copyright (c) 2018-2025 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -21,8 +21,6 @@
 #include <utils/types.h>
 #include <mem/minerva.h>
 
-#define NYX_NEW_INFO 0x3058594E
-
 typedef enum
 {
 	REBOOT_RCM,          // PMC reset. Enter RCM mode.
@@ -33,12 +31,33 @@ typedef enum
 	POWER_OFF_REBOOT,    // Power off PMIC. Reset regulators. Power on.
 } power_state_t;
 
-typedef enum
+typedef struct _reg_cfg_t
 {
-	NYX_CFG_UMS  = BIT(6),
+	u32 idx;
+	u32 val;
+} reg_cfg_t;
 
-	NYX_CFG_EXTRA = 0xFF << 24
-} nyx_cfg_t;
+u8   bit_count(u32 val);
+u32  bit_count_mask(u8 bits);
+char *strcpy_ns(char *dst, char *src);
+u64  sqrt64(u64 num);
+long strtol(const char *nptr, char **endptr, register int base);
+int  atoi(const char *nptr);
+
+void reg_write_array(vu32 *base, const reg_cfg_t *cfg, u32 num_cfg);
+u32  crc32_calc(u32 crc, const u8 *buf, u32 len);
+
+int qsort_compare_int(const void *a, const void *b);
+int qsort_compare_char(const void *a, const void *b);
+int qsort_compare_char_case(const void *a, const void *b);
+
+void panic(u32 val);
+void power_set_state(power_state_t state);
+void power_set_state_ex(void *param);
+
+
+/*! hekate and Nyx common defines */
+#define NYX_NEW_INFO 0x3058594E
 
 typedef enum
 {
@@ -51,11 +70,12 @@ typedef enum
 	ERR_EXCEPTION  = BIT(31),
 } hekate_errors_t;
 
-typedef struct _cfg_op_t
+typedef enum
 {
-	u32 off;
-	u32 val;
-} cfg_op_t;
+	NYX_CFG_UMS  = BIT(6),
+
+	NYX_CFG_EXTRA = 0xFF << 24
+} nyx_cfg_t;
 
 typedef struct _nyx_info_t
 {
@@ -63,37 +83,26 @@ typedef struct _nyx_info_t
 	u32 sd_init;
 	u32 sd_errors[3];
 	u8  rsvd[0x1000];
-	u32 disp_id;
+	u32 panel_id;
 	u32 errors;
 } nyx_info_t;
+
+typedef struct _nyx_info_ex_t
+{
+	u32 magic;
+	u32 rsvd_flags;
+} nyx_info_ex_t;
 
 typedef struct _nyx_storage_t
 {
 	u32 version;
 	u32 cfg;
-	u8  irama[0x8000];
+	u8  rsdv0[0x8000];
 	u8  hekate[0x30000];
-	u8  rsvd[SZ_8M - sizeof(nyx_info_t)];
+	nyx_info_ex_t info_ex;
+	u8  rsvd1[SZ_8M - sizeof(nyx_info_ex_t) - sizeof(nyx_info_t)];
 	nyx_info_t info;
-	mtc_config_t mtc_cfg;
-	emc_table_t mtc_table[10];
+	minerva_str_t minerva;
 } nyx_storage_t;
-
-u8   bit_count(u32 val);
-u32  bit_count_mask(u8 bits);
-
-void exec_cfg(u32 *base, const cfg_op_t *ops, u32 num_ops);
-u16  crc16_calc(const u8 *buf, u32 len);
-u32  crc32_calc(u32 crc, const u8 *buf, u32 len);
-
-u32  get_tmr_us();
-u32  get_tmr_ms();
-u32  get_tmr_s();
-void usleep(u32 us);
-void msleep(u32 ms);
-
-void panic(u32 val);
-void power_set_state(power_state_t state);
-void power_set_state_ex(void *param);
 
 #endif

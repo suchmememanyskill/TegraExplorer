@@ -27,7 +27,7 @@
 
 #include <libs/fatfs/diskio.h>	/* FatFs lower layer API */
 #include <memory_map.h>
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include "../../storage/nx_emmc_bis.h"
 #include <storage/sdmmc.h>
 
@@ -64,7 +64,7 @@ DRESULT disk_read (
 	switch (pdrv)
 	{
 	case DRIVE_SD:
-		return sdmmc_storage_read(&sd_storage, sector, count, buff) ? RES_OK : RES_ERROR;
+		return sdmmc_storage_read(&sd_storage, sector, count, buff) ? RES_ERROR : RES_OK;
 
 	case DRIVE_BIS:
 		return nx_emmc_bis_read(sector, count, buff);
@@ -86,7 +86,7 @@ DRESULT disk_write (
 	switch (pdrv)
 	{
 	case DRIVE_SD:
-		return sdmmc_storage_write(&sd_storage, sector, count, (void *)buff) ? RES_OK : RES_ERROR;
+		return sdmmc_storage_write(&sd_storage, sector, count, (void *)buff) ? RES_ERROR : RES_OK;
 
 	case DRIVE_BIS:
 		return nx_emmc_bis_write(sector, count, (void *)buff);

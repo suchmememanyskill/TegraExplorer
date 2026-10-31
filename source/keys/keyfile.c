@@ -5,7 +5,7 @@
 #include <string.h>
 #include <utils/ini.h>
 #include "../tegraexplorer/tconf.h"
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include "../gfx/gfx.h"
 
 #define GetHexFromChar(c) ((c & 0x0F) + (c >= 'A' ? 9 : 0))
@@ -33,11 +33,11 @@ void AddKey(u8 *buff, char *in, u32 len){
 
 int GetKeysFromFile(char *path){
     gfx_puts("Grabbing keys from prod.keys...");
-    if (!sd_mount())
+    if (sd_mount())
         return 1;
 
     LIST_INIT(iniList); // Whatever we'll just let this die in memory hell
-    if (!ini_parse(&iniList, path, false))
+    if (ini_parse(&iniList, path, false))
         return 1;
 
     // add biskeys, mkey 0, header_key, save_mac_key

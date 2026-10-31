@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2020 CTCaer
+ * Copyright (c) 2018-2024 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -21,25 +21,7 @@
 #include <libs/fatfs/ff.h>
 #include <mem/heap.h>
 #include <utils/dirlist.h>
-
-static char *_strdup(char *str)
-{
-	if (!str)
-		return NULL;
-
-	// Remove starting space.
-	if (str[0] == ' ' && strlen(str))
-		str++;
-
-	char *res = (char *)malloc(strlen(str) + 1);
-	strcpy(res, str);
-
-	// Remove trailing space.
-	if (strlen(res) && res[strlen(res) - 1] == ' ')
-		res[strlen(res) - 1] = 0;
-
-	return res;
-}
+#include <utils/util.h>
 
 u32 _find_section_name(char *lbuf, u32 lblen, char schar)
 {
@@ -57,23 +39,30 @@ ini_sec_t *_ini_create_section(link_t *dst, ini_sec_t *csec, char *name, u8 type
 	if (csec)
 		list_append(dst, &csec->link);
 
-	csec = (ini_sec_t *)calloc(sizeof(ini_sec_t), 1);
-	csec->name = _strdup(name);
+	// Calculate total allocation size.
+	u32 len = name ? strlen(name) + 1 : 0;
+	char *buf = zalloc(sizeof(ini_sec_t) + len);
+
+	csec = (ini_sec_t *)buf;
+	csec->name = strcpy_ns(buf + sizeof(ini_sec_t), name);
 	csec->type = type;
+
+	// Initialize list.
+	list_init(&csec->kvs);
 
 	return csec;
 }
 
-int ini_parse(link_t *dst, char *ini_path, bool is_dir)
+int ini_parse(link_t *dst, const char *ini_path, bool is_dir)
 {
 	FIL fp;
 	u32 lblen;
-	u32 pathlen = strlen(ini_path);
 	u32 k = 0;
+	u32 pathlen = strlen(ini_path);
 	ini_sec_t *csec = NULL;
 
-	char *lbuf = NULL;
-	char *filelist = NULL;
+	char *lbuf     = NULL;
+	dirlist_t *filelist = NULL;
 	char *filename = (char *)malloc(256);
 
 	strcpy(filename, ini_path);
@@ -81,11 +70,11 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 	// Get all ini filenames.
 	if (is_dir)
 	{
-		filelist = dirlist(filename, "*.ini", false, false);
+		filelist = dirlist(filename, "*.ini", DIR_ASCII_ORDER);
 		if (!filelist)
 		{
 			free(filename);
-			return 0;
+			return 1;
 		}
 		strcpy(filename + pathlen, "/");
 		pathlen++;
@@ -96,9 +85,9 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 		// Copy ini filename in path string.
 		if (is_dir)
 		{
-			if (filelist[k * 256])
+			if (filelist->name[k])
 			{
-				strcpy(filename + pathlen, &filelist[k * 256]);
+				strcpy(filename + pathlen, filelist->name[k]);
 				k++;
 			}
 			else
@@ -111,12 +100,10 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 			free(filelist);
 			free(filename);
 
-			return 0;
+			return 1;
 		}
 
 		lbuf = malloc(512);
-		csec = _ini_create_section(dst, csec, "Unknown", INI_CHOICE);
-		list_init(&csec->kvs);
 
 		do
 		{
@@ -134,7 +121,6 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 				_find_section_name(lbuf, lblen, ']');
 
 				csec = _ini_create_section(dst, csec, &lbuf[1], INI_CHOICE);
-				list_init(&csec->kvs);
 			}
 			else if (lblen > 1 && lbuf[0] == '{') // Create new caption. Support empty caption '{}'.
 			{
@@ -155,12 +141,21 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 			{
 				u32 i = _find_section_name(lbuf, lblen, '=');
 
-				ini_kv_t *kv = (ini_kv_t *)calloc(sizeof(ini_kv_t), 1);
-				kv->key = _strdup(&lbuf[0]);
-				kv->val = _strdup(&lbuf[i + 1]);
+				// Calculate total allocation size.
+				u32 klen  = strlen(&lbuf[0]) + 1;
+				u32 vlen  = strlen(&lbuf[i + 1]) + 1;
+				char *buf = zalloc(sizeof(ini_kv_t) + klen + vlen);
+
+				ini_kv_t *kv = (ini_kv_t *)buf;
+				buf += sizeof(ini_kv_t);
+				kv->key = strcpy_ns(buf, &lbuf[0]);
+				buf += klen;
+				kv->val = strcpy_ns(buf, &lbuf[i + 1]);
 				list_append(&csec->kvs, &kv->link);
 			}
 		} while (!f_eof(&fp));
+
+		free(lbuf);
 
 		f_close(&fp);
 
@@ -172,23 +167,61 @@ int ini_parse(link_t *dst, char *ini_path, bool is_dir)
 		}
 	} while (is_dir);
 
-	free(lbuf);
 	free(filename);
 	free(filelist);
 
-	return 1;
+	return 0;
 }
 
-char *ini_check_payload_section(ini_sec_t *cfg)
+char *ini_check_special_section(ini_sec_t *cfg)
 {
 	if (cfg == NULL)
 		return NULL;
 
 	LIST_FOREACH_ENTRY(ini_kv_t, kv, &cfg->kvs, link)
 	{
-		if (!strcmp("payload", kv->key))
+		if (!strcmp("l4t",          kv->key))
+			return ((kv->val[0] == '1') ? (char *)-1 : NULL);
+		else if (!strcmp("payload", kv->key))
 			return kv->val;
 	}
 
 	return NULL;
+}
+
+void ini_free(link_t *src)
+{
+	ini_sec_t *prev_sec = NULL;
+
+	// Parse and free all ini sections.
+	LIST_FOREACH_ENTRY(ini_sec_t, ini_sec, src, link)
+	{
+		ini_kv_t *prev_kv  = NULL;
+
+		// Free all ini key allocations if they exist.
+		LIST_FOREACH_ENTRY(ini_kv_t, kv, &ini_sec->kvs, link)
+		{
+			// Free previous key.
+			if (prev_kv)
+				free(prev_kv);
+
+			// Set next key to free.
+			prev_kv = kv;
+		}
+
+		// Free last key.
+		if (prev_kv)
+			free(prev_kv);
+
+		// Free previous section.
+		if (prev_sec)
+			free(prev_sec);
+
+		// Set next section to free.
+		prev_sec = ini_sec;
+	}
+
+	// Free last section.
+	if (prev_sec)
+		free(prev_sec);
 }

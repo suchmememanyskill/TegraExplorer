@@ -19,6 +19,8 @@
 #ifndef __BQ24193_H_
 #define __BQ24193_H_
 
+#include <utils/types.h>
+
 #define BQ24193_I2C_ADDR 0x6B
 
 // REG 0 masks.
@@ -28,7 +30,7 @@
 
 // REG 1 masks.
 #define BQ24193_PORCONFIG_BOOST_MASK       (1<<0)
-#define BQ24193_PORCONFIG_SYSMIN_MASK      (7<<1)
+#define BQ24193_PORCONFIG_SYSMIN_MASK      (7<<1) // 3000uV HOS default.
 #define BQ24193_PORCONFIG_CHGCONFIG_MASK   (3<<4)
 #define BQ24193_PORCONFIG_CHGCONFIG_CHARGER_EN (1<<4)
 #define BQ24193_PORCONFIG_I2CWATCHDOG_MASK (1<<6)
@@ -114,7 +116,9 @@ enum BQ24193_reg_prop {
 	BQ24193_ProductNumber,          // REG A.
 };
 
-int bq24193_get_property(enum BQ24193_reg_prop prop, int *value);
+int  bq24193_get_version(u32 *value);
+int  bq24193_get_property(enum BQ24193_reg_prop prop, int *value);
+void bq24193_set_input_current_limit(int ma);
 void bq24193_enable_charger();
 void bq24193_fake_battery_removal();
 

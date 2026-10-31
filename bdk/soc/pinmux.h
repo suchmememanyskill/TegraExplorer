@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
+ * Copyright (c) 2018-2024 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -39,6 +40,7 @@
 #define PINMUX_AUX_SDMMC3_DAT2     0x2C
 #define PINMUX_AUX_SDMMC3_DAT3     0x30
 #define PINMUX_AUX_SATA_LED_ACTIVE 0x4C
+#define PINMUX_AUX_GPIO_PA5_T210B01 PINMUX_AUX_SATA_LED_ACTIVE
 #define PINMUX_AUX_DMIC3_CLK       0xB4
 #define PINMUX_AUX_DMIC3_DAT       0xB8
 #define PINMUX_AUX_CAM_I2C_SCL     0xD4
@@ -46,7 +48,10 @@
 #define PINMUX_AUX_UART2_TX        0xF4
 #define PINMUX_AUX_UART3_TX        0x104
 #define PINMUX_AUX_DAP4_DIN        0x148
+#define PINMUX_AUX_DAP4_DOUT       0x14C
 #define PINMUX_AUX_DAP4_SCLK       0x150
+#define PINMUX_AUX_CLK_32K_OUT     0x164
+#define PINMUX_AUX_AUD_MCLK        0x180
 #define PINMUX_AUX_GPIO_X1_AUD     0x18C
 #define PINMUX_AUX_GPIO_X3_AUD     0x190
 #define PINMUX_AUX_SPDIF_IN        0x1A4
@@ -57,20 +62,29 @@
 #define PINMUX_AUX_AP_WAKE_NFC     0x1CC
 #define PINMUX_AUX_NFC_EN          0x1D0
 #define PINMUX_AUX_NFC_INT         0x1D4
+#define PINMUX_AUX_CAM_RST         0x1E0
 #define PINMUX_AUX_CAM1_PWDN       0x1EC
 #define PINMUX_AUX_CAM2_PWDN       0x1F0
+#define PINMUX_AUX_CAM1_STROBE     0x1F4
 #define PINMUX_AUX_LCD_BL_PWM      0x1FC
 #define PINMUX_AUX_LCD_BL_EN       0x200
 #define PINMUX_AUX_LCD_RST         0x204
 #define PINMUX_AUX_LCD_GPIO1       0x208
 #define PINMUX_AUX_LCD_GPIO2       0x20C
+#define PINMUX_AUX_TOUCH_RST       0x214
+#define PINMUX_AUX_TOUCH_CLK       0x218
 #define PINMUX_AUX_TOUCH_INT       0x220
 #define PINMUX_AUX_MOTION_INT      0x224
+#define PINMUX_AUX_ALS_PROX_INT    0x228
+#define PINMUX_AUX_BUTTON_POWER_ON 0x230
 #define PINMUX_AUX_BUTTON_HOME     0x240
 #define PINMUX_AUX_GPIO_PE6        0x248
+#define PINMUX_AUX_GPIO_PE7        0x24C
 #define PINMUX_AUX_GPIO_PH6        0x250
 #define PINMUX_AUX_GPIO_PK3        0x260
+#define PINMUX_AUX_GPIO_PK7        0x270
 #define PINMUX_AUX_GPIO_PZ1        0x280
+#define PINMUX_AUX_GPIO_PZ4        0x28C
 /* Only in T210B01 */
 #define PINMUX_AUX_SDMMC2_DAT0     0x294
 #define PINMUX_AUX_SDMMC2_DAT1     0x298
@@ -91,6 +105,11 @@
 /*! 0:GEN1, 1:GEN2, 2:GEN3, 3:CAM, 4:PWR */
 #define PINMUX_AUX_X_I2C_SCL(x) (0xBC + 8 * (x))
 #define PINMUX_AUX_X_I2C_SDA(x) (0xC0 + 8 * (x))
+/*! 0:I2S1, 1:I2S2 */
+#define PINMUX_AUX_X_I2S_LRCK(x) (0x124 + 0x10 * (x))
+#define PINMUX_AUX_X_I2C_DIN(x)  (0x128 + 0x10 * (x))
+#define PINMUX_AUX_X_I2C_DOUT(x) (0x12c + 0x10 * (x))
+#define PINMUX_AUX_X_I2C_BCLK(x) (0x130 + 0x10 * (x))
 
 #define PINMUX_FUNC_MASK    (3 << 0)
 
@@ -116,7 +135,10 @@
 #define PINMUX_DRIVE_3X     (2 << 13)
 #define PINMUX_DRIVE_4X     (3 << 13)
 
+#define PINMUX_PREEMP       BIT(15)
+
 void pinmux_config_uart(u32 idx);
 void pinmux_config_i2c(u32 idx);
+void pinmux_config_i2s(u32 idx);
 
 #endif

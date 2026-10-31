@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2020-2021 CTCaer
+ * Copyright (c) 2020-2026 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -16,8 +16,6 @@
  */
 
 #define DRAM_CFG_T210_SIZE 1896
-
-#define DRAM_ID(x) BIT(x)
 
 static const sdram_params_t210_t _dram_cfg_0_samsung_4gb = {
 	/* Specifies the type of memory device */
@@ -436,9 +434,9 @@ static const sdram_params_t210_t _dram_cfg_0_samsung_4gb = {
 	.emc_dll_cfg0                                    = 0x1F13412F,
 	.emc_dll_cfg1                                    = 0x00010014,
 
-	.emc_pmc_scratch1                                = 0x4FAFFFFF,
+	.emc_pmc_scratch1                                = 0x4FAFFFFF, // APBDEV_PMC_IO_DPD3_REQ.
 	.emc_pmc_scratch2                                = 0x7FFFFFFF,
-	.emc_pmc_scratch3                                = 0x4006D70B,
+	.emc_pmc_scratch3                                = 0x4006D70B, // APBDEV_PMC_DDR_CNTRL.
 
 	.emc_pmacro_pad_cfg_ctrl                         = 0x00020000,
 	.emc_pmacro_vttgen_ctrl0                         = 0x00030808,
@@ -491,17 +489,17 @@ static const sdram_params_t210_t _dram_cfg_0_samsung_4gb = {
 
 	/* DRAM size information */
 	.mc_emem_adr_cfg                                 = 0x00000001, // 2 Ranks.
-	.mc_emem_adr_cfg_dev0                            = 0x00070302, // Rank 0 Density 512MB.
-	.mc_emem_adr_cfg_dev1                            = 0x00070302, // Rank 1 Density 512MB.
+	.mc_emem_adr_cfg_dev0                            = 0x00070302, // Chip 0 Density 512MB.
+	.mc_emem_adr_cfg_dev1                            = 0x00070302, // Chip 1 Density 512MB.
 	.mc_emem_adr_cfg_channel_mask                    = 0xFFFF2400,
 	.mc_emem_adr_cfg_bank_mask0                      = 0x6E574400,
 	.mc_emem_adr_cfg_bank_mask1                      = 0x39722800,
 	.mc_emem_adr_cfg_bank_mask2                      = 0x4B9C1000,
 	/*
 	 * Specifies the value for MC_EMEM_CFG which holds the external memory
-	 * size (in KBytes)
+	 * size (in MBytes)
 	 */
-	.mc_emem_cfg                                     = 0x00001000, // 4GB total density.
+	.mc_emem_cfg                                     = 0x00001000, // 4GB total density. Max 8GB.
 
 	/* MC arbitration configuration */
 	.mc_emem_arb_cfg                                 = 0x08000001,
@@ -540,16 +538,36 @@ static const sdram_params_t210_t _dram_cfg_0_samsung_4gb = {
 	.mc_clken_override                               = 0x00008000,
 
 	.mc_stat_control                                 = 0x00000000,
+
+	/* VPR carveout configuration */
 	.mc_video_protect_bom                            = 0xFFF00000,
 	.mc_video_protect_bom_adr_hi                     = 0x00000000,
 	.mc_video_protect_size_mb                        = 0x00000000,
-	.mc_video_protect_vpr_override                   = 0xE4BAC343,
-	.mc_video_protect_vpr_override1                  = 0x00001ED3,
-	.mc_video_protect_gpu_override0                  = 0x00000000,
-	.mc_video_protect_gpu_override1                  = 0x00000000,
+
+	// Disable access:
+	//  AFI (PCIE), BPMP, HC (HOST1x), ISP2, CCPLEX, PPCS (AHB), SATA, VI, XUSB_HOST, XUSB_DEV, ADSP, PPCS1 (AHB), DC1 (WinT), SDMMC1/2/3. Plus TSEC, NVENC.
+	// Enable access:
+	//  DC, DCB, HDA, VIC.
+	.mc_video_protect_vpr_override                   = 0xE4FACB43, // Stock/Reset: 0xE4BAC343. HOS new: 0xE4FACB43. + TSEC, NVENC.
+	// Disable access:
+	//  SDMMC4, ISP2B, PPCS2 (AHB), APE, SE, HC1, SE1, AXIAP, ETR. Plus TSECB, TSEC1, TSECB1.
+	// Enable access:
+	//  GPU, GPUB, NVDEC, NVJPG, NVDEC1.
+	.mc_video_protect_vpr_override1                  = 0x0000FED3, // Stock/Reset: 0x00001ED3. HOS new: 0x0000FED3. + TSECB, TSEC1, TSECB1.
+
+	// VPR CYA. L4T override (set PD, SCC, SKED, L1 as UNTRUSTED).
+	.mc_video_protect_gpu_override0                  = VPR_OVR0_CYA_TRUST_GCC(VPR_TRUST_GRAPHICS)    |
+													   VPR_OVR0_CYA_TRUST_RASTER(VPR_TRUST_GRAPHICS) |
+													   VPR_OVR0_CYA_TRUST_PE(VPR_TRUST_GRAPHICS)     |
+													   VPR_OVR0_CYA_TRUST_TEX(VPR_TRUST_GRAPHICS)    |
+													   VPR_OVR0_CYA_TRUST_OVERRIDE,                 // Stock: 0. HOS: VPR_OVR0_CYA_TRUST_DEFAULT.
+	.mc_video_protect_gpu_override1                  = VPR_OVR1_CYA_TRUST_PROP(VPR_TRUST_GRAPHICS), // Stock: 0. HOS: 0.
+
+	/* TZDRAM carveout configuration */
 	.mc_sec_carveout_bom                             = 0xFFF00000,
 	.mc_sec_carveout_adr_hi                          = 0x00000000,
 	.mc_sec_carveout_size_mb                         = 0x00000000,
+
 	.mc_video_protect_write_access                   = 0x00000000,
 	.mc_sec_carveout_protect_write_access            = 0x00000000,
 
@@ -638,59 +656,36 @@ static const sdram_params_t210_t _dram_cfg_0_samsung_4gb = {
 	/* Specifies data for patched boot rom write */
 	.boot_rom_patch_data                             = 0x00000000,
 
+	/* CPU FW carveout configuration */
 	.mc_mts_carveout_bom                             = 0xFFF00000,
 	.mc_mts_carveout_adr_hi                          = 0x00000000,
 	.mc_mts_carveout_size_mb                         = 0x00000000,
 	.mc_mts_carveout_reg_ctrl                        = 0x00000000
 };
 
+#define DCFG_OFFSET_OF(m) (OFFSET_OF(sdram_params_t210_t, m) / 4)
 static const sdram_vendor_patch_t sdram_cfg_vendor_patches_t210[] = {
 	// Hynix timing config.
-	{ 0x0000000D, 0x10C / 4, DRAM_ID(1) }, // emc_r2w.
-	{ 0x00000001, 0x16C / 4, DRAM_ID(1) }, // emc_puterm_extra.
-	{ 0x80000000, 0x170 / 4, DRAM_ID(1) }, // emc_puterm_width.
-	{ 0x00000210, 0x4F4 / 4, DRAM_ID(1) }, // emc_pmacro_data_rx_term_mode.
-	{ 0x00000005, 0x5C0 / 4, DRAM_ID(1) }, // mc_emem_arb_timing_r2w.
+	{ 0x0000000D, DRAM_ID(LPDDR4_ICOSA_4GB_HYNIX_H9HCNNNBPUMLHR_NLE), DCFG_OFFSET_OF(emc_r2w)                      },
+	{ 0x00000001, DRAM_ID(LPDDR4_ICOSA_4GB_HYNIX_H9HCNNNBPUMLHR_NLE), DCFG_OFFSET_OF(emc_puterm_extra)             },
+	{ 0x80000000, DRAM_ID(LPDDR4_ICOSA_4GB_HYNIX_H9HCNNNBPUMLHR_NLE), DCFG_OFFSET_OF(emc_puterm_width)             },
+	{ 0x00000210, DRAM_ID(LPDDR4_ICOSA_4GB_HYNIX_H9HCNNNBPUMLHR_NLE), DCFG_OFFSET_OF(emc_pmacro_data_rx_term_mode) },
+	{ 0x00000005, DRAM_ID(LPDDR4_ICOSA_4GB_HYNIX_H9HCNNNBPUMLHR_NLE), DCFG_OFFSET_OF(mc_emem_arb_timing_r2w)       },
 
 	// Samsung 6GB density config.
-	{ 0x000C0302, 0x56C / 4, DRAM_ID(4) }, // mc_emem_adr_cfg_dev0. 768MB Rank 0 density.
-	{ 0x000C0302, 0x570 / 4, DRAM_ID(4) }, // mc_emem_adr_cfg_dev1. 768MB Rank 1 density.
-	{ 0x00001800, 0x584 / 4, DRAM_ID(4) }, // mc_emem_cfg. 6GB total density.
+	{ 0x000C0302, DRAM_ID(LPDDR4_ICOSA_6GB_SAMSUNG_K4FHE3D4HM_MGCH),  DCFG_OFFSET_OF(mc_emem_adr_cfg_dev0)         }, // 768MB Chip 0 density.
+	{ 0x000C0302, DRAM_ID(LPDDR4_ICOSA_6GB_SAMSUNG_K4FHE3D4HM_MGCH),  DCFG_OFFSET_OF(mc_emem_adr_cfg_dev1)         }, // 768MB Chip 1 density.
+	{ 0x00001800, DRAM_ID(LPDDR4_ICOSA_6GB_SAMSUNG_K4FHE3D4HM_MGCH),  DCFG_OFFSET_OF(mc_emem_cfg)                  }, // 6GB total density. Max 8GB.
 
-#ifdef CONFIG_SDRAM_COPPER_SUPPORT
-	// Copper prototype Samsung/Hynix/Micron timing configs.
-	{ 0x0000003A,  0xEC / 4, DRAM_ID(6) },              // emc_rfc. Auto refresh.
-	{ 0x0000001D,  0xF0 / 4, DRAM_ID(6) },              // emc_rfc_pb. Bank Auto refresh.
-	{ 0x0000000D, 0x10C / 4, DRAM_ID(5) },              // emc_r2w.
-	{ 0x00000001, 0x16C / 4, DRAM_ID(5) },              // emc_puterm_extra.
-	{ 0x80000000, 0x170 / 4, DRAM_ID(5) },              // emc_puterm_width.
-	{ 0x00000012, 0x1B0 / 4, DRAM_ID(3) | DRAM_ID(5) | DRAM_ID(6) }, // emc_rw2pden.
-	{ 0x0000003B, 0x1C0 / 4, DRAM_ID(6) },              // emc_txsr.
-	{ 0x0000003B, 0x1C4 / 4, DRAM_ID(6) },              // emc_txsr_dll.
-	{ 0x00000003, 0x1DC / 4, DRAM_ID(3) | DRAM_ID(5) | DRAM_ID(6) }, // emc_tclkstable.
-	{ 0x00120015, 0x334 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dq_rank0_4.
-	{ 0x00160012, 0x338 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dq_rank0_5.
-	{ 0x00120015, 0x34C / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dq_rank1_4.
-	{ 0x00160012, 0x350 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dq_rank1_5.
-	{ 0x002F0032, 0x354 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dqs_rank0_0.
-	{ 0x00310032, 0x358 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dqs_rank0_1.
-	{ 0x00360034, 0x35C / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dqs_rank0_2.
-	{ 0x0033002F, 0x360 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dqs_rank0_3.
-	{ 0x00000006, 0x364 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dqs_rank0_4.
-	{ 0x002F0032, 0x36C / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dqs_rank1_0.
-	{ 0x00310032, 0x370 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dqs_rank1_1.
-	{ 0x00360034, 0x374 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dqs_rank1_2.
-	{ 0x0033002F, 0x378 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dqs_rank1_3.
-	{ 0x00000006, 0x37C / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ob_ddll_long_dqs_rank1_4.
-	{ 0x00150015, 0x3A4 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ddll_long_cmd_0.
-	{ 0x00120012, 0x3AC / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ddll_long_cmd_2.
-	{ 0x00160016, 0x3B0 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ddll_long_cmd_3.
-	{ 0x00000015, 0x3B4 / 4, DRAM_ID(5) | DRAM_ID(6) }, // emc_pmacro_ddll_long_cmd_4.
-	{ 0x00000012, 0x49C / 4, DRAM_ID(3) | DRAM_ID(5) | DRAM_ID(6) }, // emc_cmd_brlshft2.
-	{ 0x00000012, 0x4A0 / 4, DRAM_ID(3) | DRAM_ID(5) | DRAM_ID(6) }, // emc_cmd_brlshft3.
-	{ 0x00000210, 0x4F4 / 4, DRAM_ID(5) },              // emc_pmacro_data_rx_term_mode.
-	{ 0x00000005, 0x5C0 / 4, DRAM_ID(5) },              // mc_emem_arb_timing_r2w.
-	{ 0x00000007, 0x5C8 / 4, DRAM_ID(6) },              // mc_emem_arb_timing_rfcpb. Bank refresh.
-	{ 0x72A30504, 0x5D4 / 4, DRAM_ID(6) },              // mc_emem_arb_misc0.
-#endif
+	// Samsung 8GB density config.
+	{ 0x0000003A, DRAM_ID(LPDDR4_ICOSA_8GB_SAMSUNG_K4FBE3D4HM_MGXX),  DCFG_OFFSET_OF(emc_rfc)                      },
+	{ 0x0000001D, DRAM_ID(LPDDR4_ICOSA_8GB_SAMSUNG_K4FBE3D4HM_MGXX),  DCFG_OFFSET_OF(emc_rfc_pb)                   },
+	{ 0x0000003B, DRAM_ID(LPDDR4_ICOSA_8GB_SAMSUNG_K4FBE3D4HM_MGXX),  DCFG_OFFSET_OF(emc_txsr)                     },
+	{ 0x0000003B, DRAM_ID(LPDDR4_ICOSA_8GB_SAMSUNG_K4FBE3D4HM_MGXX),  DCFG_OFFSET_OF(emc_txsr_dll)                 },
+	{ 0x00080302, DRAM_ID(LPDDR4_ICOSA_8GB_SAMSUNG_K4FBE3D4HM_MGXX),  DCFG_OFFSET_OF(mc_emem_adr_cfg_dev0)         }, // 1024MB Chip 0 density.
+	{ 0x00080302, DRAM_ID(LPDDR4_ICOSA_8GB_SAMSUNG_K4FBE3D4HM_MGXX),  DCFG_OFFSET_OF(mc_emem_adr_cfg_dev1)         }, // 1024MB Chip 1 density.
+	{ 0x00002000, DRAM_ID(LPDDR4_ICOSA_8GB_SAMSUNG_K4FBE3D4HM_MGXX),  DCFG_OFFSET_OF(mc_emem_cfg)                  }, // 8GB total density. Max 8GB.
+	{ 0x00000007, DRAM_ID(LPDDR4_ICOSA_8GB_SAMSUNG_K4FBE3D4HM_MGXX),  DCFG_OFFSET_OF(mc_emem_arb_timing_rfcpb)     },
+	{ 0x72A30504, DRAM_ID(LPDDR4_ICOSA_8GB_SAMSUNG_K4FBE3D4HM_MGXX),  DCFG_OFFSET_OF(mc_emem_arb_misc0)            },
 };
+#undef DCFG_OFFSET_OF

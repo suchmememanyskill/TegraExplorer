@@ -12,7 +12,7 @@
 #include "../err.h"
 #include "../tegraexplorer/tconf.h"
 #include "emmcfile.h"
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include "../fs/fsutils.h"
 #include "../utils/utils.h"
 
@@ -121,7 +121,7 @@ void GptMenu(u8 MMCType){
             }
         }
         else {
-            if (!sd_mount())
+            if (sd_mount())
                 continue;
 
             gfx_clearscreen();

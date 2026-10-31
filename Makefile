@@ -23,7 +23,7 @@ SOURCEDIR = source
 BDKDIR := bdk
 BDKINC := -I./$(BDKDIR)
 LOADERDIR := ./loader
-LZ77DIR := ./tools/lz
+LZ77DIR   := ./tools/nrv
 BIN2CDIR := ./tools/bin2c
 VPATH = $(dir ./$(SOURCEDIR)/) $(dir $(wildcard ./$(SOURCEDIR)/*/)) $(dir $(wildcard ./$(SOURCEDIR)/*/*/))
 VPATH += $(dir $(wildcard ./$(BDKDIR)/)) $(dir $(wildcard ./$(BDKDIR)/*/)) $(dir $(wildcard ./$(BDKDIR)/*/*/))
@@ -70,15 +70,14 @@ all: $(OUTPUTDIR)/$(TARGET)_small.bin
 clean:
 	@rm -rf $(BUILDDIR)
 	@rm -rf $(OUTPUTDIR)
-	@rm -rf $(LOADERDIR)/payload_*.h
+	@rm -rf $(LOADERDIR)/payload.h
 
 $(OUTPUTDIR)/$(TARGET)_small.bin: $(OUTPUTDIR)/$(TARGET).bin
 	@$(MAKE) -C $(LZ77DIR)
-	@$(LZ77DIR)/lz77 $(OUTPUTDIR)/$(TARGET).bin
+	@$(LZ77DIR)/nrv2e $(OUTPUTDIR)/$(TARGET).bin
 	@$(MAKE) -C $(BIN2CDIR)
-	@$(BIN2CDIR)/bin2c $(OUTPUTDIR)/$(TARGET).bin.00.lz payload_00 > $(LOADERDIR)/payload_00.h
-	@$(BIN2CDIR)/bin2c $(OUTPUTDIR)/$(TARGET).bin.01.lz payload_01 > $(LOADERDIR)/payload_01.h
-	@rm -rf $(OUTPUTDIR)/$(TARGET).bin.*.lz
+	@$(BIN2CDIR)/bin2c $(OUTPUTDIR)/$(TARGET).bin.nrv payload > $(LOADERDIR)/payload.h
+	@rm -rf $(OUTPUTDIR)/$(TARGET).bin.nrv
 
 	$(MAKE) -C $(LOADERDIR) PAYLOAD_NAME=$(TARGET)_small
 

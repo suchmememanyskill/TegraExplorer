@@ -6,7 +6,7 @@
 #include <libs/fatfs/ff.h>
 #include "../keys/keys.h"
 #include "../keys/nca.h"
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include "../fs/fsutils.h"
 #include <utils/util.h>
 #include "../storage/mountmanager.h"
@@ -19,9 +19,9 @@
 #include "../fs/fscopy.h"
 #include "../utils/utils.h"
 #include <display/di.h>
+#include <soc/timer.h>
 
 extern sdmmc_storage_t sd_storage;
-extern bool is_sd_inited;
 
 MenuEntry_t FatAndEmu[] = {
 	{.optionUnion = COLORTORGB(COLOR_ORANGE), .name = "Back to main menu"},
@@ -36,7 +36,7 @@ void FormatSD(){
 	bool emummc = 0;
 	int res;
 
-	if (!is_sd_inited || sd_get_card_removed())
+	if (!sd_get_card_initialized() || sd_get_card_removed())
 		return;
 
 	gfx_printf("\nDo you want to partition for an emummc?\n");
@@ -101,12 +101,10 @@ void FormatSD(){
 	hidWait();
 }
 
-extern bool sd_mounted;
-
 void TakeScreenshot(){
     static u32 timer = 0;
 
-    if (!TConf.minervaEnabled || !sd_mounted)
+    if (!TConf.minervaEnabled || !sd_get_card_mounted())
 		return;
 
     if (timer + 3 < get_tmr_s())

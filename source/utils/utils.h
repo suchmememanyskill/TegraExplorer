@@ -1,5 +1,6 @@
 #pragma once
 #include <utils/types.h>
+#include <soc/timer.h>
 
 char *CpyStr(const char* in);
 void MaskIn(char *mod, u32 bitstream, char mask);

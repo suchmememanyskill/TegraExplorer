@@ -9,7 +9,7 @@
 #include "../tegraexplorer/tconf.h"
 #include "../gfx/gfxutils.h"
 #include "../hid/hid.h"
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include <string.h>
 #include "../fs/fsutils.h"
 #include "nx_emmc_bis.h"
@@ -150,7 +150,7 @@ ErrCode_t DumpOrWriteEmmcPart(const char *path, const char *part, u8 write, u8 f
     u32 lba_end = 0;
     u8 crypt = false;
 
-    if (!sd_mount())
+    if (sd_mount())
         return newErrCode(TE_ERR_NO_SD);
 
     if (TConf.currentMMCConnected == MMC_CONN_None)

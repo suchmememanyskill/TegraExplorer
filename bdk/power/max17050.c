@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2011 Samsung Electronics
  * MyungJoo Ham <myungjoo.ham@samsung.com>
- * Copyright (c) 2018 CTCaer
+ * Copyright (c) 2018-2025 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,15 @@
 
 #include "max17050.h"
 #include <soc/i2c.h>
-#include <utils/util.h>
+#include <soc/timer.h>
 
-#define BASE_SNS_UOHM 5000
+/* Board default values */
+#define BOARD_CGAIN       2 /* Actual: 1.99993 */
+#define BOARD_RSENSE_MOHM 5 /* 0.005 Ohm */
+#define ADJ_RSENSE_MOHM   (BOARD_RSENSE_MOHM * BOARD_CGAIN) /* 0.01 Ohm */
+
+/* Consider RepCap which is less then 10 units below FullCAP full */
+#define FULL_THRESHOLD 10
 
 /* Status register bits */
 #define STATUS_POR_BIT BIT(1)
@@ -45,12 +51,6 @@
 
 #define MAX17050_VMAX_TOLERANCE 50 /* 50 mV */
 
-static u32 battery_voltage = 0;
-u32 max17050_get_cached_batt_volt()
-{
-	return battery_voltage;
-}
-
 static u16 max17050_get_reg(u8 reg)
 {
 	u16 data = 0;
@@ -58,6 +58,18 @@ static u16 max17050_get_reg(u8 reg)
 	i2c_recv_buf_small((u8 *)&data, 2, I2C_1, MAXIM17050_I2C_ADDR, reg);
 
 	return data;
+}
+
+int max17050_get_version(u32 *value)
+{
+	u16 data = max17050_get_reg(MAX17050_DevName);
+	if (value)
+		*value = data;
+
+	if (data == 0x00AC)
+		return 0;
+	else
+		return 1;
 }
 
 int max17050_get_property(enum MAX17050_reg reg, int *value)
@@ -88,7 +100,6 @@ int max17050_get_property(enum MAX17050_reg reg, int *value)
 	case MAX17050_VCELL: // Voltage now.
 		data = max17050_get_reg(MAX17050_VCELL);
 		*value = (data >> 3) * 625 / 1000; /* Units of LSB = 0.625mV */
-		battery_voltage = *value;
 		break;
 	case MAX17050_AvgVCELL: // Voltage avg.
 		data = max17050_get_reg(MAX17050_AvgVCELL);
@@ -103,15 +114,15 @@ int max17050_get_property(enum MAX17050_reg reg, int *value)
 		break;
 	case MAX17050_DesignCap: // Charge full design.
 		data = max17050_get_reg(MAX17050_DesignCap);
-		*value = data * (BASE_SNS_UOHM / MAX17050_BOARD_SNS_RESISTOR_UOHM) / MAX17050_BOARD_CGAIN;
+		*value = (u32)data * 5 / ADJ_RSENSE_MOHM; /* Units of LSB = 5uVh / Rsense = 0.5mAh */
 		break;
 	case MAX17050_FullCAP: // Charge full.
 		data = max17050_get_reg(MAX17050_FullCAP);
-		*value = data * (BASE_SNS_UOHM / MAX17050_BOARD_SNS_RESISTOR_UOHM) / MAX17050_BOARD_CGAIN;
+		*value = (u32)data * 5 / ADJ_RSENSE_MOHM; /* Units of LSB = 5uVh / Rsense = 0.5mAh */
 		break;
 	case MAX17050_RepCap: // Charge now.
 		data = max17050_get_reg(MAX17050_RepCap);
-		*value = data * (BASE_SNS_UOHM / MAX17050_BOARD_SNS_RESISTOR_UOHM) / MAX17050_BOARD_CGAIN;
+		*value = (u32)data * 5 / ADJ_RSENSE_MOHM; /* Units of LSB = 5uVh / Rsense = 0.5mAh */
 		break;
 	case MAX17050_TEMP: // Temp.
 		data = max17050_get_reg(MAX17050_TEMP);
@@ -120,16 +131,14 @@ int max17050_get_property(enum MAX17050_reg reg, int *value)
 		break;
 	case MAX17050_Current: // Current now.
 		data = max17050_get_reg(MAX17050_Current);
-		*value = (s16)data;
-		*value *= 1562500 / (MAX17050_BOARD_SNS_RESISTOR_UOHM * MAX17050_BOARD_CGAIN);
+		*value = (int)(s16)data * 15625 / ADJ_RSENSE_MOHM / 10; /* Units of LSB = 1.5625uV / Rsense = 156.25uA */
 		break;
 	case MAX17050_AvgCurrent: // Current avg.
 		data = max17050_get_reg(MAX17050_AvgCurrent);
-		*value = (s16)data;
-		*value *= 1562500 / (MAX17050_BOARD_SNS_RESISTOR_UOHM * MAX17050_BOARD_CGAIN);
+		*value = (int)(s16)data * 15625 / ADJ_RSENSE_MOHM / 10; /* Units of LSB = 1.5625uV / Rsense = 156.25uA */
 		break;
 	default:
-		return -1;
+		return 1;
 	}
 	return 0;
 }
@@ -138,18 +147,14 @@ static int _max17050_write_verify_reg(u8 reg, u16 value)
 {
 	int retries = 8;
 	int ret;
-	u16 read_value;
 
 	do
 	{
 		ret = i2c_send_buf_small(I2C_1, MAXIM17050_I2C_ADDR, reg, (u8 *)&value, 2);
-		read_value = max17050_get_reg(reg);
-		if (read_value != value)
-		{
-			ret = -1;
-			retries--;
-		}
-	} while (retries && read_value != value);
+		u16 read_value = max17050_get_reg(reg);
+		if (!ret && read_value == value)
+			break;
+	} while (--retries);
 
 	return ret;
 }
@@ -242,7 +247,7 @@ static void _max17050_set_por_bit(u16 value)
 	_max17050_write_verify_reg(MAX17050_STATUS, value);
 }
 
-int max17050_fix_configuration()
+void max17050_fix_configuration()
 {
 	/* Init phase, set the POR bit */
 	_max17050_set_por_bit(STATUS_POR_BIT);
@@ -276,6 +281,27 @@ int max17050_fix_configuration()
 
 	// Sets POR, BI, BR.
 	_max17050_set_por_bit(0x8801);
+}
 
-	return 0;
+void max17050_dump_regs(void *buf)
+{
+	u16 *buff = (u16 *)buf;
+
+	// Unlock model table.
+	u16 unlock = 0x59;
+	i2c_send_buf_small(I2C_1, MAXIM17050_I2C_ADDR, MAX17050_MODELEnable1, (u8 *)&unlock, 2);
+	unlock = 0xC4;
+	i2c_send_buf_small(I2C_1, MAXIM17050_I2C_ADDR, MAX17050_MODELEnable2, (u8 *)&unlock, 2);
+
+	// Dump all battery fuel gauge registers.
+	for (u32 i = 0; i < 0x100; i++)
+	{
+		buff[i] = max17050_get_reg(i);
+		msleep(1);
+	}
+
+	// Lock model table.
+	unlock = 0;
+	i2c_send_buf_small(I2C_1, MAXIM17050_I2C_ADDR, MAX17050_MODELEnable1, (u8 *)&unlock, 2);
+	i2c_send_buf_small(I2C_1, MAXIM17050_I2C_ADDR, MAX17050_MODELEnable2, (u8 *)&unlock, 2);
 }

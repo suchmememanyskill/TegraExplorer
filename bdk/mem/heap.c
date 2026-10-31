@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2020 CTCaer
+ * Copyright (c) 2018-2026 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,33 +19,46 @@
 #include "heap.h"
 #include <gfx_utils.h>
 
-static void _heap_create(heap_t *heap, u32 start)
+#define HEAP_USED_MAGIC 0x50414548 // "HEAP".
+
+heap_t _heap;
+
+static void _heap_create(void *start)
 {
-	heap->start = start;
-	heap->first = NULL;
+	_heap.start = start;
+	_heap.first = NULL;
+	_heap.last  = NULL;
 }
 
 // Node info is before node address.
-static u32 _heap_alloc(heap_t *heap, u32 size)
+static void *_heap_alloc(u32 size)
 {
 	hnode_t *node, *new_node;
 
 	// Align to cache line size.
 	size = ALIGN(size, sizeof(hnode_t));
 
-	if (!heap->first)
+	// First allocation.
+	if (!_heap.first)
 	{
-		node = (hnode_t *)heap->start;
-		node->used = 1;
+		node = (hnode_t *)_heap.start;
+		node->used = HEAP_USED_MAGIC;
 		node->size = size;
 		node->prev = NULL;
 		node->next = NULL;
-		heap->first = node;
 
-		return (u32)node + sizeof(hnode_t);
+		_heap.first = node;
+		_heap.last = node;
+
+		return (void *)node + sizeof(hnode_t);
 	}
 
-	node = heap->first;
+#ifdef BDK_MALLOC_NO_DEFRAG
+	// Get the last allocated block.
+	node = _heap.last;
+#else
+	// Get first block and find the first available one.
+	node = _heap.first;
 	while (true)
 	{
 		// Check if there's available unused node.
@@ -53,14 +66,14 @@ static u32 _heap_alloc(heap_t *heap, u32 size)
 		{
 			// Size and offset of the new unused node.
 			u32 new_size = node->size - size;
-			new_node = (hnode_t *)((u32)node + sizeof(hnode_t) + size);
+			new_node = (hnode_t *)((void *)node + sizeof(hnode_t) + size);
 
 			// If there's aligned unused space from the old node,
 			// create a new one and set the leftover size.
 			if (new_size >= (sizeof(hnode_t) << 2))
 			{
-				new_node->size = new_size - sizeof(hnode_t);
 				new_node->used = 0;
+				new_node->size = new_size - sizeof(hnode_t);
 				new_node->next = node->next;
 
 				// Check that we are not on first node.
@@ -74,9 +87,9 @@ static u32 _heap_alloc(heap_t *heap, u32 size)
 				size += new_size;
 
 			node->size = size;
-			node->used = 1;
+			node->used = HEAP_USED_MAGIC;
 
-			return (u32)node + sizeof(hnode_t);
+			return (void *)node + sizeof(hnode_t);
 		}
 
 		// No unused node found, try the next one.
@@ -85,68 +98,92 @@ static u32 _heap_alloc(heap_t *heap, u32 size)
 		else
 			break;
 	}
+#endif
 
 	// No unused node found, create a new one.
-	new_node = (hnode_t *)((u32)node + sizeof(hnode_t) + node->size);
-	new_node->used = 1;
+	new_node = (hnode_t *)((void *)node + sizeof(hnode_t) + node->size);
+	new_node->used = HEAP_USED_MAGIC;
 	new_node->size = size;
 	new_node->prev = node;
 	new_node->next = NULL;
-	node->next = new_node;
 
-	return (u32)new_node + sizeof(hnode_t);
+	node->next = new_node;
+	_heap.last = new_node;
+
+	return (void *)new_node + sizeof(hnode_t);
 }
 
-static void _heap_free(heap_t *heap, u32 addr)
+static void _heap_free(void *addr)
 {
 	hnode_t *node = (hnode_t *)(addr - sizeof(hnode_t));
-	node->used = 0;
-	node = heap->first;
-	while (node)
+
+	// Check if heap owns this address.
+	if (addr < _heap.start || node->used != HEAP_USED_MAGIC)
 	{
-		if (!node->used)
-		{
-			if (node->prev && !node->prev->used)
-			{
-				node->prev->size += node->size + sizeof(hnode_t);
-				node->prev->next = node->next;
-
-				if (node->next)
-					node->next->prev = node->prev;
-			}
-		}
-		node = node->next;
+		//! BUGPRINTF("free error: addr %08p, used %08X!\n");
+		return;
 	}
+
+	node->used = 0;
+
+#ifndef BDK_MALLOC_NO_DEFRAG
+	// Merge with previous node if empty.
+	hnode_t *prev = node->prev;
+	if (prev && !prev->used)
+	{
+		prev->size += node->size + sizeof(hnode_t);
+		prev->next  = node->next;
+
+		if (node->next)
+			node->next->prev = prev;
+
+		// Set node to resized one.
+		node = prev;
+	}
+
+	// Merge with next node if empty.
+	hnode_t *next = node->next;
+	if (next && !next->used)
+	{
+		node->size += next->size + sizeof(hnode_t);
+		node->next  = next->next;
+
+		if (next->next)
+			next->next->prev = node;
+	}
+#endif
 }
 
-heap_t _heap;
-
-void heap_init(u32 base)
+void heap_init(void *base)
 {
-	_heap_create(&_heap, base);
+	_heap_create(base);
 }
 
-void heap_copy(heap_t *heap)
+void heap_set(heap_t *heap)
 {
 	memcpy(&_heap, heap, sizeof(heap_t));
 }
 
 void *malloc(u32 size)
 {
-	return (void *)_heap_alloc(&_heap, size);
+	return _heap_alloc(size);
+}
+
+void *zalloc(u32 size)
+{
+	void *buf = (void *)_heap_alloc(size);
+	memset(buf, 0, ALIGN(size, sizeof(hnode_t))); // Clear the aligned size.
+	return buf;
 }
 
 void *calloc(u32 num, u32 size)
 {
-	void *res = (void *)_heap_alloc(&_heap, num * size);
-	memset(res, 0, ALIGN(num * size, sizeof(hnode_t))); // Clear the aligned size.
-	return res;
+	return zalloc(num * size);
 }
 
 void free(void *buf)
 {
-	if ((u32)buf >= _heap.start)
-		_heap_free(&_heap, (u32)buf);
+	_heap_free(buf);
 }
 
 void heap_monitor(heap_monitor_t *mon, bool print_node_stats)
@@ -158,7 +195,10 @@ void heap_monitor(heap_monitor_t *mon, bool print_node_stats)
 	while (true)
 	{
 		if (node->used)
+		{
+			mon->nodes_used++;
 			mon->used += node->size + sizeof(hnode_t);
+		}
 		else
 			mon->total += node->size + sizeof(hnode_t);
 
@@ -174,4 +214,5 @@ void heap_monitor(heap_monitor_t *mon, bool print_node_stats)
 			break;
 	}
 	mon->total += mon->used;
+	mon->nodes_total = count;
 }

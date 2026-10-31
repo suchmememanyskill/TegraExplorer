@@ -25,7 +25,7 @@
 #include <libs/fatfs/ff.h>
 #include <mem/heap.h>
 #include "../storage/nx_emmc.h"
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include <utils/list.h>
 #include <utils/types.h>
 
@@ -137,13 +137,13 @@ int emummc_storage_init_mmc(sdmmc_storage_t *storage, sdmmc_t *sdmmc)
 	emu_cfg.active_part = 0;
 
 	// Always init eMMC even when in emuMMC. eMMC is needed from the emuMMC driver anyway.
-	if (!sdmmc_storage_init_mmc(storage, sdmmc, SDMMC_BUS_WIDTH_8, SDHCI_TIMING_MMC_HS400))
+	if (sdmmc_storage_init_mmc(storage, sdmmc, SDMMC_BUS_WIDTH_8, SDHCI_TIMING_MMC_HS400))
 		return 2;
 
 	if (!emu_cfg.enabled || h_cfg.emummc_force_disable)
 		return 0;
 
-	if (!sd_mount())
+	if (sd_mount())
 		goto out;
 
 	if (!emu_cfg.sector)
@@ -184,12 +184,12 @@ int emummc_storage_read(sdmmc_storage_t *storage, u32 sector, u32 num_sectors, v
 {
 	FIL fp;
 	if (!emu_cfg.enabled || h_cfg.emummc_force_disable)
-		return sdmmc_storage_read(storage, sector, num_sectors, buf);
+		return !sdmmc_storage_read(storage, sector, num_sectors, buf);
 	else if (emu_cfg.sector)
 	{
 		sector += emu_cfg.sector;
 		sector += emummc_raw_get_part_off(emu_cfg.active_part) * 0x2000;
-		return sdmmc_storage_read(&sd_storage, sector, num_sectors, buf);
+		return !sdmmc_storage_read(&sd_storage, sector, num_sectors, buf);
 	}
 	else
 	{
@@ -229,12 +229,12 @@ int emummc_storage_write(sdmmc_storage_t *storage, u32 sector, u32 num_sectors, 
 {
 	FIL fp;
 	if (!emu_cfg.enabled || h_cfg.emummc_force_disable)
-		return sdmmc_storage_write(storage, sector, num_sectors, buf);
+		return !sdmmc_storage_write(storage, sector, num_sectors, buf);
 	else if (emu_cfg.sector)
 	{
 		sector += emu_cfg.sector;
 		sector += emummc_raw_get_part_off(emu_cfg.active_part) * 0x2000;
-		return sdmmc_storage_write(&sd_storage, sector, num_sectors, buf);
+		return !sdmmc_storage_write(&sd_storage, sector, num_sectors, buf);
 	}
 	else
 	{

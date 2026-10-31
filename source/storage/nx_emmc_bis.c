@@ -87,7 +87,7 @@ static int _nx_aes_xts_crypt_sec(u32 tweak_ks, u32 crypt_ks, u32 enc, u8 *tweak,
 			tweak[i] = sec & 0xFF;
 			sec >>= 8;
 		}
-		if (!se_aes_crypt_block_ecb(tweak_ks, 1, tweak, tweak))
+		if (se_aes_crypt_ecb(tweak_ks, 1, tweak, tweak, 0x10))
 			return 0;
 	}
 
@@ -109,7 +109,7 @@ static int _nx_aes_xts_crypt_sec(u32 tweak_ks, u32 crypt_ks, u32 enc, u8 *tweak,
 		pdst += 4;
 	}
 
-	if (!se_aes_crypt_ecb(crypt_ks, enc, dst, sec_size, dst, sec_size))
+	if (se_aes_crypt_ecb(crypt_ks, enc, dst, dst, sec_size))
 		return 0;
 
 	pdst = (u32 *)dst;

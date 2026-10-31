@@ -1,7 +1,7 @@
 /*
  * USB Gadget HID driver for Tegra X1
  *
- * Copyright (c) 2019-2020 CTCaer
+ * Copyright (c) 2019-2026 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,8 +23,8 @@
 #include <input/joycon.h>
 #include <input/touch.h>
 #include <soc/hw_init.h>
+#include <soc/timer.h>
 #include <soc/t210.h>
-#include <utils/util.h>
 
 #include <memory_map.h>
 
@@ -56,52 +56,69 @@ typedef struct _gamepad_report_t
 
 typedef struct _jc_cal_t
 {
-	bool cl_done;
-	bool cr_done;
-	u16  clx_max;
-	u16  clx_min;
-	u16  cly_max;
-	u16  cly_min;
-	u16  crx_max;
-	u16  crx_min;
-	u16  cry_max;
-	u16  cry_min;
+// 15ms * JC_CAL_MAX_STEPS = 240 ms.
+#define JC_CAL_MAX_STEPS 16
+	u32 cl_step;
+	u32 cr_step;
+
+	u16 clx_max;
+	u16 clx_min;
+	u16 cly_max;
+	u16 cly_min;
+	u16 crx_max;
+	u16 crx_min;
+	u16 cry_max;
+	u16 cry_min;
 } jc_cal_t;
+
+enum {
+	INPUT_POLL_HAS_PACKET,
+	INPUT_POLL_NO_PACKET,
+	INPUT_POLL_EXIT,
+};
 
 static jc_cal_t jc_cal_ctx;
 static usb_ops_t usb_ops;
 
-static bool _jc_calibration(jc_gamepad_rpt_t *jc_pad)
+static void *rpt_buffer = (u8 *)USB_EP_BULK_IN_BUF_ADDR;
+
+static bool _jc_calibration(const jc_gamepad_rpt_t *jc_pad)
 {
 	// Calibrate left stick.
-	if (!jc_cal_ctx.cl_done)
+	if (jc_cal_ctx.cl_step != JC_CAL_MAX_STEPS)
 	{
 		if (jc_pad->conn_l
 			&& jc_pad->lstick_x > 0x400 && jc_pad->lstick_y > 0x400
 			&& jc_pad->lstick_x < 0xC00 && jc_pad->lstick_y < 0xC00)
 		{
+			jc_cal_ctx.cl_step++;
 			jc_cal_ctx.clx_max = jc_pad->lstick_x + 0x72;
 			jc_cal_ctx.clx_min = jc_pad->lstick_x - 0x72;
 			jc_cal_ctx.cly_max = jc_pad->lstick_y + 0x72;
 			jc_cal_ctx.cly_min = jc_pad->lstick_y - 0x72;
-			jc_cal_ctx.cl_done = true;
+
+			if (jc_cal_ctx.cl_step != JC_CAL_MAX_STEPS)
+				return false;
 		}
 		else
 			return false;
 	}
 
 	// Calibrate right stick.
-	if (!jc_cal_ctx.cr_done)
+	if (jc_cal_ctx.cr_step != JC_CAL_MAX_STEPS)
 	{
 		if (jc_pad->conn_r
 			&& jc_pad->rstick_x > 0x400 && jc_pad->rstick_y > 0x400
 			&& jc_pad->rstick_x < 0xC00 && jc_pad->rstick_y < 0xC00)
 		{
+			jc_cal_ctx.cr_step++;
 			jc_cal_ctx.crx_max = jc_pad->rstick_x + 0x72;
 			jc_cal_ctx.crx_min = jc_pad->rstick_x - 0x72;
 			jc_cal_ctx.cry_max = jc_pad->rstick_y + 0x72;
 			jc_cal_ctx.cry_min = jc_pad->rstick_y - 0x72;
-			jc_cal_ctx.cr_done = true;
+
+			if (jc_cal_ctx.cr_step != JC_CAL_MAX_STEPS)
+				return false;
 		}
 		else
 			return false;
@@ -110,29 +127,31 @@ static bool _jc_calibration(jc_gamepad_rpt_t *jc_pad)
 	return true;
 }
 
-static bool _jc_poll(gamepad_report_t *rpt)
+static int _jc_poll(gamepad_report_t *rpt)
 {
+	static gamepad_report_t prev_rpt = {0};
+
 	// Poll Joy-Con.
 	jc_gamepad_rpt_t *jc_pad = joycon_poll();
 
 	if (!jc_pad)
-		return false;
+		return INPUT_POLL_NO_PACKET;
 
 	// Exit emulation if Left stick and Home are pressed.
 	if (jc_pad->l3 && jc_pad->home)
-		return true;
+		return INPUT_POLL_EXIT;
 
-	if (!jc_cal_ctx.cl_done || !jc_cal_ctx.cr_done)
+	if (jc_cal_ctx.cl_step != JC_CAL_MAX_STEPS || jc_cal_ctx.cr_step != JC_CAL_MAX_STEPS)
 	{
 		if (!_jc_calibration(jc_pad))
-			return false;
+			return INPUT_POLL_NO_PACKET;
 	}
 
 	// Re-calibrate on disconnection.
 	if (!jc_pad->conn_l)
-		jc_cal_ctx.cl_done = false;
+		jc_cal_ctx.cl_step = 0;
 	if (!jc_pad->conn_r)
-		jc_cal_ctx.cr_done = false;
+		jc_cal_ctx.cr_step = 0;
 
 	// Calculate left analog stick.
 	if (jc_pad->lstick_x <= jc_cal_ctx.clx_max && jc_pad->lstick_x >= jc_cal_ctx.clx_min)
@@ -159,14 +178,22 @@ static bool _jc_poll(gamepad_report_t *rpt)
 		u16 y_raw = (jc_pad->lstick_y - jc_cal_ctx.cly_max) / 7;
 		if (y_raw > 0x7F)
 			y_raw = 0x7F;
-		rpt->y = 0x7F - y_raw;
+		// Hoag has inverted Y axis.
+		if (!jc_pad->sio_mode)
+			rpt->y = 0x7F - y_raw;
+		else
+			rpt->y = 0x7F + y_raw;
 	}
 	else
 	{
 		u16 y_raw = (jc_cal_ctx.cly_min - jc_pad->lstick_y) / 7;
 		if (y_raw > 0x7F)
 			y_raw = 0x7F;
-		rpt->y = 0x7F + y_raw;
+		// Hoag has inverted Y axis.
+		if (!jc_pad->sio_mode)
+			rpt->y = 0x7F + y_raw;
+		else
+			rpt->y = 0x7F - y_raw;
 	}
 
 	// Calculate right analog stick.
@@ -194,14 +221,22 @@ static bool _jc_poll(gamepad_report_t *rpt)
 		u16 y_raw = (jc_pad->rstick_y - jc_cal_ctx.cry_max) / 7;
 		if (y_raw > 0x7F)
 			y_raw = 0x7F;
-		rpt->rz = 0x7F - y_raw;
+		// Hoag has inverted Y axis.
+		if (!jc_pad->sio_mode)
+			rpt->rz = 0x7F - y_raw;
+		else
+			rpt->rz = 0x7F + y_raw;
 	}
 	else
 	{
 		u16 y_raw = (jc_cal_ctx.cry_min - jc_pad->rstick_y) / 7;
 		if (y_raw > 0x7F)
 			y_raw = 0x7F;
-		rpt->rz = 0x7F + y_raw;
+		// Hoag has inverted Y axis.
+		if (!jc_pad->sio_mode)
+			rpt->rz = 0x7F + y_raw;
+		else
+			rpt->rz = 0x7F - y_raw;
 	}
 
 	// Set D-pad.
@@ -257,7 +292,12 @@ static bool _jc_poll(gamepad_report_t *rpt)
 	//rpt->btn13 = jc_pad->cap;
 	//rpt->btn14 = jc_pad->home;
 
-	return false;
+	if (!memcmp(rpt, &prev_rpt, sizeof(gamepad_report_t)))
+		return INPUT_POLL_NO_PACKET;
+
+	memcpy(&prev_rpt, rpt, sizeof(gamepad_report_t));
+
+	return INPUT_POLL_HAS_PACKET;
 }
 
 typedef struct _touchpad_report_t
@@ -275,33 +315,30 @@ typedef struct _touchpad_report_t
 
 static bool _fts_touch_read(touchpad_report_t *rpt)
 {
-	static touch_event touchpad;
+	static touch_event_t touchpad;
 
-	touch_poll(&touchpad);
+	if (touch_poll(&touchpad))
+		return false;
 
 	rpt->rpt_id = 5;
 	rpt->count = 1;
 
 	// Decide touch enable.
-	switch (touchpad.type & STMFTS_MASK_EVENT_ID)
+	if (touchpad.touch)
 	{
-	//case STMFTS_EV_MULTI_TOUCH_ENTER:
-	case STMFTS_EV_MULTI_TOUCH_MOTION:
 		rpt->x = touchpad.x;
 		rpt->y = touchpad.y;
 		//rpt->z = touchpad.z;
-		rpt->id = touchpad.fingers ? touchpad.fingers - 1 : 0;
+		rpt->id = touchpad.finger;
 		rpt->tip_switch = 1;
-		break;
-	case STMFTS_EV_MULTI_TOUCH_LEAVE:
+	}
+	else
+	{
 		rpt->x = touchpad.x;
 		rpt->y = touchpad.y;
 		//rpt->z = touchpad.z;
-		rpt->id = touchpad.fingers ? touchpad.fingers - 1 : 0;
+		rpt->id = touchpad.finger;
 		rpt->tip_switch = 0;
-		break;
-	case STMFTS_EV_NO_EVENT:
-		return false;
 	}
 
 	return true;
@@ -309,7 +346,7 @@ static bool _fts_touch_read(touchpad_report_t *rpt)
 
 static u8 _hid_transfer_start(usb_ctxt_t *usbs, u32 len)
 {
-	u8 status = usb_ops.usb_device_ep1_in_write((u8 *)USB_EP_BULK_IN_BUF_ADDR, len, NULL, USB_XFER_SYNCED_CMD);
+	u8 status = usb_ops.usb_device_ep1_in_write(rpt_buffer, len, NULL, USB_XFER_SYNCED_CMD);
 	if (status == USB_ERROR_XFER_ERROR)
 	{
 		usbs->set_text(usbs->label, "#FFDD00 Error:# EP IN transfer!");
@@ -326,19 +363,21 @@ static u8 _hid_transfer_start(usb_ctxt_t *usbs, u32 len)
 
 static bool _hid_poll_jc(usb_ctxt_t *usbs)
 {
-	if (_jc_poll((gamepad_report_t *)USB_EP_BULK_IN_BUF_ADDR))
+	int res = _jc_poll(rpt_buffer);
+	if (res == INPUT_POLL_EXIT)
 		return true;
 
 	// Send HID report.
-	if (_hid_transfer_start(usbs, sizeof(gamepad_report_t)))
-		return true; // EP Error.
+	if (res == INPUT_POLL_HAS_PACKET || usbs->idle)
+		if (_hid_transfer_start(usbs, sizeof(gamepad_report_t)))
+			return true; // EP Error.
 
 	return false;
 }
 
 static bool _hid_poll_touch(usb_ctxt_t *usbs)
 {
-	_fts_touch_read((touchpad_report_t *)USB_EP_BULK_IN_BUF_ADDR);
+	_fts_touch_read(rpt_buffer);
 
 	// Send HID report.
 	if (_hid_transfer_start(usbs, sizeof(touchpad_report_t)))
@@ -359,9 +398,13 @@ int usb_device_gadget_hid(usb_ctxt_t *usbs)
 	else
 		xusb_device_get_ops(&usb_ops);
 
+	// Always push packets by default.
+	//! TODO: For now only per polling rate or on change is supported.
+	usbs->idle = 1;
+
 	if (usbs->type == USB_HID_GAMEPAD)
 	{
-		polling_time = 8000;
+		polling_time = 15000;
 		gadget_type = USB_GADGET_HID_GAMEPAD;
 	}
 	else
@@ -386,7 +429,8 @@ int usb_device_gadget_hid(usb_ctxt_t *usbs)
 
 	usbs->set_text(usbs->label, "#C7EA46 Status:# Waiting for HID report request");
 
-	if (usb_ops.usb_device_class_send_hid_report())
+	u32 rpt_size = usbs->type == USB_HID_GAMEPAD ? sizeof(gamepad_report_t) : sizeof(touchpad_report_t);
+	if (usb_ops.usb_device_class_send_hid_report(rpt_buffer, rpt_size))
 		goto error;
 
 	usbs->set_text(usbs->label, "#C7EA46 Status:# Started HID emulation");
@@ -395,6 +439,13 @@ int usb_device_gadget_hid(usb_ctxt_t *usbs)
 	while (true)
 	{
 		u32 timer = get_tmr_us();
+
+		// Check for suspended USB in case the cable was pulled.
+		if (usb_ops.usb_device_get_suspended())
+			break; // Disconnected.
+
+		// Handle control endpoint.
+		usb_ops.usbd_handle_ep0_ctrl_setup(&usbs->idle);
 
 		// Parse input device.
 		if (usbs->type == USB_HID_GAMEPAD)
@@ -407,13 +458,6 @@ int usb_device_gadget_hid(usb_ctxt_t *usbs)
 			if (_hid_poll_touch(usbs))
 				break;
 		}
-
-		// Check for suspended USB in case the cable was pulled.
-		if (usb_ops.usb_device_get_suspended())
-			break; // Disconnected.
-
-		// Handle control endpoint.
-		usb_ops.usbd_handle_ep0_ctrl_setup();
 
 		// Wait max gadget timing.
 		timer = get_tmr_us() - timer;

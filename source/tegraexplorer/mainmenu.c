@@ -6,7 +6,7 @@
 #include "../hid/hid.h"
 #include "../fs/menus/explorer.h"
 #include <utils/btn.h>
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include "tconf.h"
 #include "../keys/keys.h"
 #include "../storage/mountmanager.h"
@@ -80,7 +80,7 @@ MenuEntry_t mainMenuEntries[] = {
 void HandleSD(){
     gfx_clearscreen();
     TConf.curExplorerLoc = LOC_SD;
-    if (!sd_mount() || sd_get_card_removed()){
+    if (sd_mount() || sd_get_card_removed()){
         gfx_printf("Sd is not mounted!");
         hidWait();
     }
@@ -131,8 +131,6 @@ void ViewCredits(){
     hidWait();
 }
 
-extern bool sd_mounted;
-extern bool is_sd_inited;
 extern int launch_payload(char *path);
 
 void RebootToAMS(){
@@ -145,9 +143,9 @@ void RebootToHekate(){
 
 void MountOrUnmountSD(){
     gfx_clearscreen();
-    if (sd_mounted)
+    if (sd_get_card_mounted())
         sd_unmount();
-    else if (!sd_mount())
+    else if (sd_mount())
         hidWait();
 }
 
@@ -176,24 +174,24 @@ void EnterMainMenu(){
 
         #ifndef SCRIPT_ONLY
         // -- Explore --
-        mainMenuEntries[MainBrowseSd].hide = !sd_mounted;
-        mainMenuEntries[MainMountSd].name = (sd_mounted) ? "Unmount SD" : "Mount SD";
-        mainMenuEntries[MainBrowseEmummc].hide = (!emu_cfg.enabled || !sd_mounted);
+        mainMenuEntries[MainBrowseSd].hide = !sd_get_card_mounted();
+        mainMenuEntries[MainMountSd].name = (sd_get_card_mounted()) ? "Unmount SD" : "Mount SD";
+        mainMenuEntries[MainBrowseEmummc].hide = (!emu_cfg.enabled || !sd_get_card_mounted());
 
         // -- Tools --
-        mainMenuEntries[MainPartitionSd].hide = (!is_sd_inited || sd_get_card_removed());
+        mainMenuEntries[MainPartitionSd].hide = (!sd_get_card_initialized() || sd_get_card_removed());
         mainMenuEntries[MainViewKeys].hide = !TConf.keysDumped;
 
         // -- Exit --
-        mainMenuEntries[MainRebootAMS].hide = (!sd_mounted || !FileExists("sd:/atmosphere/reboot_payload.bin"));
-        mainMenuEntries[MainRebootHekate].hide = (!sd_mounted || !FileExists("sd:/bootloader/update.bin"));
+        mainMenuEntries[MainRebootAMS].hide = (!sd_get_card_mounted() || !FileExists("sd:/atmosphere/reboot_payload.bin"));
+        mainMenuEntries[MainRebootHekate].hide = (!sd_get_card_mounted() || !FileExists("sd:/bootloader/update.bin"));
         mainMenuEntries[MainRebootRCM].hide = h_cfg.t210b01;
         #endif
         // -- Scripts --
         #ifndef INCLUDE_BUILTIN_SCRIPTS
-        mainMenuEntries[MainScripts].hide = (!sd_mounted || !FileExists("sd:/tegraexplorer/scripts"));
+        mainMenuEntries[MainScripts].hide = (!sd_get_card_mounted() || !FileExists("sd:/tegraexplorer/scripts"));
         #else
-        mainMenuEntries[MainScripts].hide = ((!sd_mounted || !FileExists("sd:/tegraexplorer/scripts")) && !EMBEDDED_SCRIPTS_LEN);
+        mainMenuEntries[MainScripts].hide = ((!sd_get_card_mounted() || !FileExists("sd:/tegraexplorer/scripts")) && !EMBEDDED_SCRIPTS_LEN);
         #endif
 
         Vector_t ent = newVec(sizeof(MenuEntry_t), ARRAY_SIZE(mainMenuEntries));
@@ -209,7 +207,7 @@ void EnterMainMenu(){
         }
         #endif
 
-        if (sd_mounted && FileExists("sd:/tegraexplorer/scripts")){
+        if (sd_get_card_mounted() && FileExists("sd:/tegraexplorer/scripts")){
             scriptFiles = ReadFolder("sd:/tegraexplorer/scripts", &res);
             if (!res){
                 if (!scriptFiles.count){

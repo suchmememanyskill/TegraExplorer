@@ -31,9 +31,10 @@
 #include <rtc/max77620-rtc.h>
 #include <soc/bpmp.h>
 #include <soc/hw_init.h>
+#include <soc/t210.h>
 #include "storage/emummc.h"
 #include "storage/nx_emmc.h"
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include <storage/sdmmc.h>
 #include <utils/btn.h>
 #include <utils/dirlist.h>
@@ -55,7 +56,7 @@
 #include "fs/fsutils.h"
 #include "fs/fstypes.h"
 #include "fs/menus/filemenu.h"
-
+#include <mem/mariko_mtc.h>
 
 hekate_config h_cfg;
 boot_cfg_t __attribute__((section ("._boot_cfg"))) b_cfg;
@@ -100,7 +101,7 @@ int launch_payload(char *path)
 	if (!path)
 		return 1;
 
-	if (sd_mount())
+	if (!sd_mount())
 	{
 		FIL fp;
 		if (f_open(&fp, path, FA_READ))
@@ -139,12 +140,12 @@ int launch_payload(char *path)
 		{
 			reloc_patcher(PATCHED_RELOC_ENTRY, EXT_PAYLOAD_ADDR, ALIGN(size, 0x10));
 
-			hw_reinit_workaround(false, byte_swap_32(*(u32 *)(buf + size - sizeof(u32))));
+			hw_deinit(false);
 		}
 		else
 		{
 			reloc_patcher(PATCHED_RELOC_ENTRY, EXT_PAYLOAD_ADDR, 0x7000);
-			hw_reinit_workaround(true, 0);
+			hw_deinit(false);
 		}
 
 		// Some cards (Sandisk U1), do not like a fast power cycle. Wait min 100ms.
@@ -231,10 +232,10 @@ void ipl_main()
 	hw_init();
 
 	// Pivot the stack so we have enough space.
-	pivot_stack(IPL_STACK_TOP);
+	pivot_stack(IPL_LOAD_ADDR);
 
 	// Tegra/Horizon configuration goes to 0x80000000+, package2 goes to 0xA9800000, we place our heap in between.
-	heap_init(IPL_HEAP_START);
+	heap_init((void *)IPL_HEAP_START);
 
 #ifdef DEBUG_UART_PORT
 	uart_send(DEBUG_UART_PORT, (u8 *)"hekate: Hello!\r\n", 16);
@@ -245,9 +246,9 @@ void ipl_main()
 	set_default_configuration();
 
 	// Mount SD Card.
-	h_cfg.errors |= !sd_mount() ? ERR_SD_BOOT_EN : 0;
+	h_cfg.errors |= sd_mount() ? ERR_SD_BOOT_EN : 0;
 
-	TConf.minervaEnabled = !minerva_init();
+	TConf.minervaEnabled = !minerva_init((minerva_str_t *)&nyx_str->minerva);
 	TConf.FSBuffSize = (TConf.minervaEnabled) ? 0x800000 : 0x10000;
 
 	if (!TConf.minervaEnabled) //!TODO: Add Tegra210B01 support to minerva.
@@ -255,7 +256,7 @@ void ipl_main()
 
 	display_init();
 
-	u32 *fb = display_init_framebuffer_pitch();
+	u32 *fb = display_init_window_a_pitch();
 	gfx_init_ctxt(fb, 720, 1280, 720);
 
 	gfx_con_init();
@@ -292,12 +293,18 @@ void ipl_main()
 	if (TConf.keysDumped)
 		SetKeySlots();
 	
-	if (res == 0)
-		hidWait();
+	// if (res == 0)
+	// 	hidWait();
 
 	if (FileExists("sd:/startup.te"))
 		RunScript("sd:/", newFSEntry("startup.te"));
 
+	/* Train DRAM on mariko via Fusee-Train */
+	if(hw_get_chip_id() == GP_HIDREV_MAJOR_T210B01) {
+		bool did_training = false;
+		MarikoTrainMemory(&did_training);
+	}
+	
 	EnterMainMenu();
 
 	// Halt BPMP if we managed to get out of execution.

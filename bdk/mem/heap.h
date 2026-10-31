@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 naehrwert
- * Copyright (c) 2018-2020 CTCaer
+ * Copyright (c) 2018-2024 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -31,20 +31,24 @@ typedef struct _hnode
 
 typedef struct _heap
 {
-	u32 start;
+	void *start;
 	hnode_t *first;
+	hnode_t *last;
 } heap_t;
 
 typedef struct
 {
-    u32 total;
-    u32 used;
+	u32 total;
+	u32 used;
+	u32 nodes_total;
+	u32 nodes_used;
 } heap_monitor_t;
 
-void heap_init(u32 base);
-void heap_copy(heap_t *heap);
+void heap_init(void *base);
+void heap_set(heap_t *heap);
 void *malloc(u32 size);
 void *calloc(u32 num, u32 size);
+void *zalloc(u32 size);
 void free(void *buf);
 void heap_monitor(heap_monitor_t *mon, bool print_node_stats);
 

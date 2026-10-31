@@ -22,10 +22,6 @@
 #include <storage/mbr_gpt.h>
 #include <utils/list.h>
 
-sdmmc_t emmc_sdmmc;
-sdmmc_storage_t emmc_storage;
-FATFS emmc_fs;
-
 void nx_emmc_gpt_parse(link_t *gpt, sdmmc_storage_t *storage)
 {
 	gpt_t *gpt_buf = (gpt_t *)calloc(NX_GPT_NUM_BLOCKS, NX_EMMC_BLOCKSIZE);

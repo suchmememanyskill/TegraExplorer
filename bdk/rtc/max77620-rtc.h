@@ -1,7 +1,7 @@
 /*
  * PMIC Real Time Clock driver for Nintendo Switch's MAX77620-RTC
  *
- * Copyright (c) 2018 CTCaer
+ * Copyright (c) 2018-2022 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -25,6 +25,8 @@
 
 #define MAX77620_RTC_NR_TIME_REGS   7
 
+#define MAX77620_RTC_RTCINT_REG     0x00
+#define MAX77620_RTC_RTCINTM_REG    0x01
 #define MAX77620_RTC_CONTROLM_REG   0x02
 #define MAX77620_RTC_CONTROL_REG    0x03
 #define  MAX77620_RTC_BIN_FORMAT    BIT(0)
@@ -34,6 +36,9 @@
 #define  MAX77620_RTC_WRITE_UPDATE  BIT(0)
 #define  MAX77620_RTC_READ_UPDATE   BIT(4)
 
+#define MAX77620_RTC_UPDATE1_REG    0x05
+#define MAX77620_RTC_RTCSMPL_REG    0x06
+
 #define MAX77620_RTC_SEC_REG        0x07
 #define MAX77620_RTC_MIN_REG        0x08
 #define MAX77620_RTC_HOUR_REG       0x09
@@ -41,7 +46,7 @@
 #define MAX77620_RTC_WEEKDAY_REG    0x0A
 #define MAX77620_RTC_MONTH_REG      0x0B
 #define MAX77620_RTC_YEAR_REG       0x0C
-#define MAX77620_RTC_DATE_REG       0x0D
+#define MAX77620_RTC_DAY_REG        0x0D
 
 #define MAX77620_ALARM1_SEC_REG     0x0E
 #define MAX77620_ALARM1_MIN_REG     0x0F
@@ -69,9 +74,48 @@ typedef struct _rtc_time_t {
 	u16 year;
 } rtc_time_t;
 
+#define RTC_REBOOT_REASON_MAGIC 0x77 // 7-bit reg.
+
+enum {
+	REBOOT_REASON_NOP   = 0, // Use [config].
+	REBOOT_REASON_SELF  = 1, // Use autoboot_idx/autoboot_list.
+	REBOOT_REASON_MENU  = 2, // Force menu.
+	REBOOT_REASON_UMS   = 3, // Force selected UMS partition.
+	REBOOT_REASON_REC   = 4, // Set PMC_SCRATCH0_MODE_RECOVERY and reboot to self.
+	REBOOT_REASON_PANIC = 5  // Inform bootloader that panic occured if T210B01.
+};
+
+typedef struct _rtc_rr_decoded_t
+{
+	u16 reason:4;
+	u16 autoboot_idx:4;
+	u16 autoboot_list:1;
+	u16 ums_idx:3;
+} rtc_rr_decoded_t;
+
+typedef struct _rtc_rr_encoded_t
+{
+	u16 val1:6; // 6-bit reg.
+	u16 val2:6; // 6-bit reg.
+} rtc_rr_encoded_t;
+
+typedef struct _rtc_reboot_reason_t
+{
+	union {
+		rtc_rr_decoded_t dec;
+		rtc_rr_encoded_t enc;
+	};
+} rtc_reboot_reason_t;
+
+void max77620_rtc_prep_read();
 void max77620_rtc_get_time(rtc_time_t *time);
+void max77620_rtc_get_time_adjusted(rtc_time_t *time);
+void max77620_rtc_set_epoch_offset(int offset);
+void max77620_rtc_set_auto_dst(bool enable);
 void max77620_rtc_stop_alarm();
 void max77620_rtc_epoch_to_date(u32 epoch, rtc_time_t *time);
-u32 max77620_rtc_date_to_epoch(const rtc_time_t *time);
+u32  max77620_rtc_date_to_epoch(const rtc_time_t *time);
+void max77620_rtc_set_reboot_reason(rtc_reboot_reason_t *rr);
+bool max77620_rtc_get_reboot_reason(rtc_reboot_reason_t *rr);
 
 #endif /* _MFD_MAX77620_RTC_H_ */

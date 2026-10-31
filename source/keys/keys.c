@@ -1,7 +1,7 @@
 #include "keys.h"
 
 #include <libs/fatfs/ff.h>
-#include <storage/nx_sd.h>
+#include <storage/sd.h>
 #include <storage/sdmmc.h>
 #include <utils/btn.h>
 #include <utils/list.h>
@@ -55,6 +55,10 @@ typedef struct _bl_hdr_t210b01_t
 
 static int  _key_exists(const void *data) { return memcmp(data, "\x00\x00\x00\x00\x00\x00\x00\x00", 8) != 0; };
 
+static ALWAYS_INLINE int se_aes_crypt_block_ecb(u32 ks, int enc, void *dst, const void *src) {
+    return se_aes_crypt_ecb(ks, enc, dst, src, AES_128_KEY_SIZE);
+}
+
 static ALWAYS_INLINE u8 *_find_tsec_fw(const u8 *pkg1) {
     const u32 tsec_fw_align = 0x100;
     const u32 tsec_fw_first_instruction = 0xCF42004D;
@@ -94,10 +98,10 @@ static void _get_device_key(u32 ks, void *out_device_key, u32 revision, const vo
     }
     u32 temp_key[AES_128_KEY_SIZE / 4] = {0};
     se_aes_key_set(ks, new_device_key, AES_128_KEY_SIZE);
-    se_aes_crypt_ecb(ks, 0, temp_key, AES_128_KEY_SIZE, device_master_key_source_sources[revision], AES_128_KEY_SIZE);
+    se_aes_crypt_ecb(ks, 0, temp_key, device_master_key_source_sources[revision], AES_128_KEY_SIZE);
     se_aes_key_set(ks, master_key, AES_128_KEY_SIZE);
     se_aes_unwrap_key(ks, ks, device_master_kek_sources[revision]);
-    se_aes_crypt_ecb(ks, 0, out_device_key, AES_128_KEY_SIZE, temp_key, AES_128_KEY_SIZE);
+    se_aes_crypt_ecb(ks, 0, out_device_key, temp_key, AES_128_KEY_SIZE);
 }
 
 static void _derive_misc_keys(key_derivation_ctx_t *keys) {
@@ -151,7 +155,7 @@ static int _derive_master_keys_from_keyblobs(key_derivation_ctx_t *keys) {
 
     if (keys->sbk[0] == 0xFFFFFFFF) {
         u8 *aes_keys = (u8 *)calloc(0x1000, 1);
-        se_get_aes_keys(aes_keys + 0x800, aes_keys, AES_128_KEY_SIZE);
+        se_aes_ctx_get_keys(aes_keys + 0x800, aes_keys, AES_128_KEY_SIZE);
         memcpy(keys->sbk, aes_keys + 14 * AES_128_KEY_SIZE, AES_128_KEY_SIZE);
         free(aes_keys);
     }
@@ -171,7 +175,7 @@ static int _derive_master_keys_from_keyblobs(key_derivation_ctx_t *keys) {
     se_aes_crypt_block_ecb(7, 0, keys->device_key_4x, device_master_key_source_kek_source);
     
     se_aes_key_set(10, keys->keyblob_mac_key, sizeof(keys->keyblob_mac_key));
-    se_aes_cmac(10, keyblob_mac, sizeof(keyblob_mac), current_keyblob->iv, sizeof(current_keyblob->iv) + sizeof(keyblob_t));
+    se_aes_hash_cmac(10, keyblob_mac, current_keyblob->iv, sizeof(current_keyblob->iv) + sizeof(keyblob_t));
     if (memcmp(current_keyblob, keyblob_mac, sizeof(keyblob_mac)) != 0) {
         //EPRINTFARGS("Keyblob %x corrupt.", 0);
         free(keyblob_block);
@@ -179,7 +183,7 @@ static int _derive_master_keys_from_keyblobs(key_derivation_ctx_t *keys) {
     }
 
     se_aes_key_set(6, keys->keyblob_key, sizeof(keys->keyblob_key));
-    se_aes_crypt_ctr(6, &keys->keyblob, sizeof(keyblob_t), &current_keyblob->key_data, sizeof(keyblob_t), current_keyblob->iv);
+    se_aes_crypt_ctr(6, &keys->keyblob, &current_keyblob->key_data, sizeof(keyblob_t), current_keyblob->iv);
 
     memcpy(keys->package1_key, keys->keyblob.package1_key, sizeof(keys->package1_key));
     memcpy(keys->master_kek, keys->keyblob.master_kek, sizeof(keys->master_kek));

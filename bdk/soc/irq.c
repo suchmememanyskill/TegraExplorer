@@ -1,7 +1,7 @@
 /*
  * BPMP-Lite IRQ driver for Tegra X1
  *
- * Copyright (c) 2019 CTCaer
+ * Copyright (c) 2019-2024 CTCaer
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "irq.h"
+#include <soc/timer.h>
 #include <soc/t210.h>
 #include <gfx_utils.h>
 #include <mem/heap.h>
@@ -26,6 +27,7 @@
 //#define DPRINTF(...) gfx_printf(__VA_ARGS__)
 #define DPRINTF(...)
 
+extern void excp_reset();
 extern void irq_disable();
 extern void irq_enable_cpu_irq_exceptions();
 extern void irq_disable_cpu_irq_exceptions();
@@ -69,17 +71,7 @@ static void _irq_disable_and_ack_all()
 	{
 		u32 enabled_irqs = ICTLR(ctrl_idx, PRI_ICTLR_COP_IER);
 		ICTLR(ctrl_idx, PRI_ICTLR_COP_IER_CLR) = enabled_irqs;
-		ICTLR(ctrl_idx, PRI_ICTLR_FIR_CLR) = enabled_irqs;
 	}
-}
-
-static void _irq_ack_source(u32 irq)
-{
-	u32 ctrl_idx = irq >> 5;
-	u32 bit = irq % 32;
-
-	// Force stop the interrupt as it's serviced here.
-	ICTLR(ctrl_idx, PRI_ICTLR_FIR_CLR) = BIT(bit);
 }
 
 void irq_free(u32 irq)
@@ -88,10 +80,10 @@ void irq_free(u32 irq)
 	{
 		if (irqs[idx].irq == irq && irqs[idx].handler)
 		{
-			irqs[idx].irq = 0;
+			irqs[idx].irq     = 0;
 			irqs[idx].handler = NULL;
-			irqs[idx].data = NULL;
-			irqs[idx].flags = 0;
+			irqs[idx].data    = NULL;
+			irqs[idx].flags   = 0;
 
 			_irq_disable_source(irq);
 		}
@@ -106,10 +98,10 @@ static void _irq_free_all()
 		{
 			_irq_disable_source(irqs[idx].irq);
 
-			irqs[idx].irq = 0;
+			irqs[idx].irq     = 0;
 			irqs[idx].handler = NULL;
-			irqs[idx].data = NULL;
-			irqs[idx].flags = 0;
+			irqs[idx].data    = NULL;
+			irqs[idx].flags   = 0;
 		}
 	}
 }
@@ -119,7 +111,6 @@ static irq_status_t _irq_handle_source(u32 irq)
 	int status = IRQ_NONE;
 
 	_irq_disable_source(irq);
-	_irq_ack_source(irq);
 
 	u32 idx;
 	for (idx = 0; idx < IRQ_MAX_HANDLERS; idx++)
@@ -133,8 +124,8 @@ static irq_status_t _irq_handle_source(u32 irq)
 		}
 	}
 
-	// Do not re-enable if not handled.
-	if (status == IRQ_NONE)
+	// Do not re-enable if not handled or error.
+	if (status != IRQ_HANDLED)
 		return status;
 
 	if (irqs[idx].flags & IRQ_FLAG_ONE_OFF)
@@ -153,7 +144,6 @@ void irq_handler()
 	if (!irq_init_done)
 	{
 		_irq_disable_source(irq);
-		_irq_ack_source(irq);
 
 		return;
 	}
@@ -192,10 +182,9 @@ void irq_wait_event(u32 irq)
 	_irq_enable_source(irq);
 
 	// Halt BPMP and wait for the IRQ. No need to use WAIT_EVENT + LIC_IRQ when BPMP serves the IRQ.
-	FLOW_CTLR(FLOW_CTLR_HALT_COP_EVENTS) = HALT_COP_STOP_UNTIL_IRQ;
+	FLOW_CTLR(FLOW_CTLR_HALT_COP_EVENTS) = HALT_MODE_STOP_UNTIL_IRQ;
 
 	_irq_disable_source(irq);
-	_irq_ack_source(irq);
 
 	irq_enable_cpu_irq_exceptions();
 }
@@ -218,10 +207,10 @@ irq_status_t irq_request(u32 irq, irq_handler_t handler, void *data, irq_flags_t
 			DPRINTF("Registered handler, IRQ: %d, Slot: %d\n", irq, idx);
 			DPRINTF("Handler: %08p, Flags: %x\n", (u32)handler, flags);
 
-			irqs[idx].irq = irq;
+			irqs[idx].irq     = irq;
 			irqs[idx].handler = handler;
-			irqs[idx].data = data;
-			irqs[idx].flags = flags;
+			irqs[idx].data    = data;
+			irqs[idx].flags   = flags;
 
 			_irq_enable_source(irq);
 
@@ -270,4 +259,14 @@ void  __attribute__ ((target("arm"), interrupt ("FIQ"))) fiq_handler()
 		len--;
 	}
 */
+#ifdef BDK_WATCHDOG_FIQ_ENABLE
+	// Set watchdog timeout status and disable WDT and its FIQ signal.
+	watchdog_handle();
+
+#ifdef BDK_RESTART_BL_ON_WDT
+	// Restart bootloader.
+	excp_reset();
+#endif
+
+#endif
 }
